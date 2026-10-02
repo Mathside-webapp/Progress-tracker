@@ -1,0 +1,487 @@
+/* Mathside V15 — original Mathside styling + layout/performance/calendar fixes */
+
+/* ------------------------------------------------------------------
+   CLASSES PANEL: behave like the dashboard grid
+   #classGrid already has .class-grid; V12 places a .class-grid-group inside it.
+   Make the outer element one full-width lane so the inner group gets the full page.
+   ------------------------------------------------------------------ */
+#teacherApp #view-classes #classGrid{
+  display:block!important;
+  width:100%!important;
+}
+#teacherApp #view-classes #classGrid>.class-grid-group,
+#teacherApp #dashboardClassGrid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:18px!important;
+  width:100%!important;
+}
+#teacherApp #view-classes .class-card{
+  width:100%!important;
+  min-width:0!important;
+}
+#teacherApp #view-classes .class-card-actions{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px!important;
+}
+#teacherApp #view-classes .class-card-actions .btn{
+  width:100%!important;
+  min-width:0!important;
+  justify-content:center!important;
+  text-align:center!important;
+}
+#teacherApp #dashboardClassGrid .class-card-actions{
+  display:block!important;
+}
+
+/* Four summary cards when Performance Tasks is present. */
+#teacherApp .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+
+/* ------------------------------------------------------------------
+   NOTIFICATION BELLS
+   ------------------------------------------------------------------ */
+#teacherNotificationBtn,
+#studentNotificationBtn,
+.v10-notification-button{
+  color:#ff6b00!important;
+}
+#teacherNotificationBtn{
+  width:54px!important;
+  height:54px!important;
+  min-width:54px!important;
+  border-radius:16px!important;
+}
+#teacherNotificationBtn .ui-icon{
+  width:29px!important;
+  height:29px!important;
+  stroke:#ff6b00!important;
+  stroke-width:2!important;
+}
+#studentNotificationBtn{
+  min-width:54px!important;
+  min-height:54px!important;
+}
+#studentNotificationBtn .v8-icon{
+  width:28px!important;
+  height:28px!important;
+  stroke:#ff6b00!important;
+}
+.v10-notification-row.unread{background:#fff4e9!important;border-color:#ffb578!important;}
+.v10-notification-row:not(.unread){background:#fff!important;}
+
+/* ------------------------------------------------------------------
+   PERFORMANCE TASKS
+   ------------------------------------------------------------------ */
+.submission-kind-tabs{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:4px 0 18px;
+  padding:6px;
+  border:1px solid #ead7c8;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 8px 24px rgba(111,54,14,.07);
+}
+.submission-kind-tab{
+  appearance:none;
+  border:1px solid transparent;
+  background:transparent;
+  color:#6c5a4d;
+  border-radius:12px;
+  padding:9px 14px;
+  font:inherit;
+  font-weight:800;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+}
+.submission-kind-tab span{
+  min-width:24px;
+  padding:2px 7px;
+  border-radius:999px;
+  background:#f3ece6;
+  font-size:.76rem;
+  text-align:center;
+}
+.submission-kind-tab.active{
+  color:#7b4218;
+  background:#fff1e5;
+  border-color:#ffc394;
+}
+.submission-kind-tab.active span{background:#fff;color:#a94708;}
+
+.performance-task-card{border-left:4px solid #ff6b00!important;}
+.performance-thumb{
+  font-size:1.7rem;
+  font-weight:900;
+  color:#ff6b00;
+  background:linear-gradient(145deg,#fff0e5,#fff)!important;
+}
+.rubric-chip{color:#8b470f!important;background:#fff2e8!important;border-color:#ffd0aa!important;}
+.performance-editor-box{width:min(1040px,calc(100vw - 32px));}
+.performance-submit-box{width:min(780px,calc(100vw - 28px));}
+.performance-image-preview,
+.performance-preview-images{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:10px;
+  margin-top:10px;
+}
+.performance-image-preview figure{margin:0;}
+.performance-image-preview img,
+.performance-preview-images img{
+  width:100%;
+  aspect-ratio:4/3;
+  object-fit:cover;
+  border-radius:14px;
+  border:1px solid #ecd7c6;
+  box-shadow:0 7px 18px rgba(111,54,14,.08);
+  background:#fff;
+}
+.performance-image-preview figcaption{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  margin-top:5px;
+  font-size:.75rem;
+  color:#7b6a5e;
+}
+.performance-rubric-existing,
+.performance-student-rubric{margin-top:12px;}
+.performance-output-upload{margin-top:16px;}
+.performance-student-row{border-left:3px solid #ff9d4a!important;}
+.performance-student-row .v8-task-icon.orange{background:#fff0e5;color:#d95a00;}
+.proof-link-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+.proof-link-grid .btn{min-width:0;}
+.v8-status.missed{background:#ffeded;color:#9e3232;}
+.v8-status.archived{background:#ece7e2;color:#624f42;}
+
+/* ------------------------------------------------------------------
+   CALENDAR: show deadlines directly inside each date
+   ------------------------------------------------------------------ */
+.v10-calendar-day{
+  position:relative;
+  min-height:112px!important;
+  padding:9px!important;
+  overflow:hidden;
+}
+.v15-calendar-number{
+  display:block;
+  font-weight:900;
+  font-size:16px;
+  margin-bottom:6px;
+}
+.v15-calendar-events{
+  display:grid;
+  gap:5px;
+  align-content:start;
+}
+.v15-calendar-event{
+  appearance:none;
+  border:1px solid #ead7c8;
+  border-radius:9px;
+  background:#fff;
+  padding:5px 6px;
+  text-align:left;
+  min-width:0;
+  cursor:pointer;
+  color:#2e2118;
+  display:grid;
+  gap:1px;
+  box-shadow:none;
+}
+.v15-calendar-event:hover{border-color:#ff9e5b;background:#fffaf5;}
+.v15-calendar-event>span{
+  font-size:7px;
+  line-height:1.1;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:#b7540c;
+}
+.v15-calendar-event>b{
+  display:block;
+  font-size:9px;
+  line-height:1.15;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.v15-calendar-event>em{
+  justify-self:start;
+  font-style:normal;
+  font-size:7px;
+  font-weight:900;
+  border-radius:999px;
+  padding:2px 5px;
+  margin-top:2px;
+}
+.v15-calendar-event.submitted>em{background:#e8f7ee;color:#14783d;}
+.v15-calendar-event.missed>em{background:#ffeded;color:#a52828;}
+.v15-calendar-event.todo>em{background:#fff0e2;color:#b84b00;}
+
+/* Keep proof/file controls easy to distinguish. */
+#reviewProofLinks,
+#studentResponseProofLinks{margin-top:8px;}
+
+@media(max-width:980px){
+  #teacherApp .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+
+@media(max-width:760px){
+  #teacherApp #view-classes #classGrid>.class-grid-group,
+  #teacherApp #dashboardClassGrid{
+    grid-template-columns:1fr!important;
+    gap:14px!important;
+  }
+  #teacherApp #view-classes .class-card-actions{
+    grid-template-columns:1fr 1fr!important;
+  }
+  #teacherApp #view-classes .class-card{
+    margin:0!important;
+  }
+  #teacherApp .stats-grid{grid-template-columns:1fr!important;}
+
+  #teacherNotificationBtn{
+    width:50px!important;
+    height:50px!important;
+    min-width:50px!important;
+  }
+  #studentNotificationBtn{
+    min-width:50px!important;
+    min-height:50px!important;
+  }
+
+  .submission-kind-tabs{gap:6px;padding:5px;margin-bottom:12px;}
+  .submission-kind-tab{flex:1 1 0;justify-content:center;padding:7px 8px;font-size:.77rem;}
+  .performance-editor-box,.performance-submit-box{width:calc(100vw - 14px);max-height:calc(100dvh - 18px);overflow:auto;}
+  .performance-image-preview,.performance-preview-images{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+
+  .v10-calendar-day{min-height:92px!important;padding:6px!important;}
+  .v15-calendar-number{font-size:13px;margin-bottom:4px;}
+  .v15-calendar-event{padding:4px;border-radius:7px;}
+  .v15-calendar-event>span{font-size:6px;}
+  .v15-calendar-event>b{font-size:7px;}
+  .v15-calendar-event>em{font-size:6px;padding:1px 4px;}
+}
+
+@media(max-width:460px){
+  #teacherApp #view-classes .class-card-actions{grid-template-columns:1fr!important;}
+  .v10-calendar-day{min-height:78px!important;}
+  .v15-calendar-event>span{display:none;}
+}
+
+
+/* =====================================================================
+   MATHSIDE STEP 6.9.2 — MOBILE ROSTER + DASHBOARD SUMMARY POLISH
+   ===================================================================== */
+@media (max-width:760px){
+  /* Class roster modal: keep the action rail slimmer and move the status chips
+     directly underneath the username area. */
+  #classStudentsModal .roster-student-card{
+    grid-template-columns:22px minmax(0,1fr) 56px!important;
+    grid-template-areas:
+      "check main actions"
+      ". progress actions"!important;
+    column-gap:7px!important;
+    row-gap:4px!important;
+    align-items:center!important;
+    padding:8px 8px 7px!important;
+  }
+  #classStudentsModal .roster-check{grid-area:check!important;align-self:start!important;margin-top:8px!important}
+  #classStudentsModal .roster-student-main{grid-area:main!important;min-width:0!important}
+  #classStudentsModal .roster-student-copy{min-width:0!important}
+  #classStudentsModal .roster-student-copy b{
+    display:block!important;
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+    font-size:12.5px!important;
+    line-height:1.16!important;
+  }
+  #classStudentsModal .roster-student-copy small{
+    font-size:8.9px!important;
+    line-height:1.16!important;
+    margin-top:2px!important;
+    display:block!important;
+    white-space:nowrap!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+  }
+  #classStudentsModal .roster-progress{
+    grid-area:progress!important;
+    grid-column:auto!important;
+    display:flex!important;
+    flex-wrap:nowrap!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:6px!important;
+    min-width:0!important;
+    margin:1px 0 0 44px!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+  #classStudentsModal .roster-progress span{
+    padding:3px 6px!important;
+    font-size:8px!important;
+    line-height:1.05!important;
+    white-space:nowrap!important;
+    border-radius:999px!important;
+  }
+  #classStudentsModal .roster-student-actions{
+    grid-area:actions!important;
+    grid-column:auto!important;
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    justify-content:center!important;
+    gap:5px!important;
+    width:56px!important;
+    min-width:56px!important;
+    margin:0!important;
+    padding:0!important;
+    position:static!important;
+    visibility:visible!important;
+    opacity:1!important;
+  }
+  #classStudentsModal .roster-student-actions .btn,
+  #classStudentsModal .roster-student-actions .table-delete{
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:56px!important;
+    min-width:56px!important;
+    height:24px!important;
+    min-height:24px!important;
+    padding:2px 4px!important;
+    border-radius:8px!important;
+    font-size:8.4px!important;
+    line-height:1!important;
+    white-space:nowrap!important;
+  }
+
+  /* Dashboard summary cards: show three compact cards in one row and let
+     the Classes summary sit alone underneath for readability. */
+  #teacherApp .stats-grid{
+    display:grid!important;
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    gap:8px!important;
+    align-items:stretch!important;
+  }
+  #teacherApp .stats-grid article{
+    min-width:0!important;
+    min-height:118px!important;
+    padding:11px 8px!important;
+    border-radius:15px!important;
+    grid-template-columns:1fr!important;
+    grid-template-rows:auto auto auto!important;
+    justify-items:center!important;
+    align-content:start!important;
+    row-gap:4px!important;
+    text-align:center!important;
+  }
+  #teacherApp .stats-grid article:nth-child(1){order:1!important;grid-column:auto!important;}
+  #teacherApp .stats-grid article:nth-child(3){order:2!important;grid-column:auto!important;}
+  #teacherApp .stats-grid article:nth-child(4){order:3!important;grid-column:auto!important;}
+  #teacherApp .stats-grid article:nth-child(2){order:4!important;grid-column:1 / -1!important;min-height:92px!important;grid-template-columns:40px 1fr!important;grid-template-rows:auto auto!important;justify-items:start!important;column-gap:10px!important;row-gap:2px!important;text-align:left!important;align-items:center!important;}
+  #teacherApp .stats-grid article:nth-child(2) .stat-icon{grid-row:1 / 3!important;grid-column:1!important;margin-bottom:0!important;align-self:center!important;justify-self:start!important;}
+  #teacherApp .stats-grid article:nth-child(2) b,#teacherApp .stats-grid article:nth-child(2) small{grid-column:2!important;justify-self:start!important;}
+  #teacherApp .stats-grid .stat-icon{width:36px!important;height:36px!important;border-radius:11px!important;grid-row:auto!important;grid-column:auto!important;margin-bottom:2px!important;}
+  #teacherApp .stats-grid .stat-icon svg{width:20px!important;height:20px!important;}
+  #teacherApp .stats-grid b{font-size:22px!important;line-height:1!important;grid-column:auto!important;}
+  #teacherApp .stats-grid small{font-size:10px!important;line-height:1.15!important;grid-column:auto!important;}
+}
+
+@media (max-width:420px){
+  #classStudentsModal .roster-progress{margin-left:40px!important;gap:4px!important;}
+  #classStudentsModal .roster-progress span{font-size:7.5px!important;padding:3px 5px!important;}
+  #classStudentsModal .roster-student-actions{width:52px!important;min-width:52px!important;}
+  #classStudentsModal .roster-student-actions .btn,
+  #classStudentsModal .roster-student-actions .table-delete{width:52px!important;min-width:52px!important;font-size:8px!important;}
+  #teacherApp .stats-grid article{min-height:112px!important;padding:10px 7px!important;}
+  #teacherApp .stats-grid article:nth-child(2){min-height:88px!important;}
+  #teacherApp .stats-grid b{font-size:20px!important;}
+  #teacherApp .stats-grid small{font-size:9.5px!important;}
+}
+
+
+/* =====================================================================
+   MATHSIDE STEP 6.9.3 — MOBILE ROSTER ACTIONS FINAL POLISH
+   ===================================================================== */
+@media (max-width:760px){
+  #classStudentsModal .roster-student-card{
+    grid-template-columns:22px minmax(0,1fr)!important;
+    grid-template-areas:
+      "check main"
+      ". progress"
+      ". actions"!important;
+    column-gap:7px!important;
+    row-gap:4px!important;
+    padding:8px 9px 8px!important;
+  }
+  #classStudentsModal .roster-progress{
+    grid-area:progress!important;
+    margin:1px 0 0 44px!important;
+    gap:6px!important;
+    flex-wrap:nowrap!important;
+  }
+  #classStudentsModal .roster-student-actions{
+    grid-area:actions!important;
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+    gap:5px!important;
+    width:auto!important;
+    min-width:0!important;
+    margin:1px 0 0 44px!important;
+    padding:0!important;
+  }
+  #classStudentsModal .roster-student-actions .btn,
+  #classStudentsModal .roster-student-actions .table-delete{
+    width:auto!important;
+    min-width:52px!important;
+    height:22px!important;
+    min-height:22px!important;
+    padding:2px 8px!important;
+    border-radius:7px!important;
+    font-size:8.2px!important;
+    line-height:1!important;
+    box-shadow:none!important;
+  }
+  #classStudentsModal .roster-student-actions .btn{
+    background:#fffdfb!important;
+    border:1px solid #e7d7ca!important;
+    color:#4b3b31!important;
+  }
+  #classStudentsModal .roster-student-actions .table-delete{
+    background:#fff8f8!important;
+    border:1px solid #e5a7ad!important;
+    color:#a93242!important;
+    font-weight:800!important;
+  }
+  #classStudentsModal .roster-student-actions .table-delete:hover,
+  #classStudentsModal .roster-student-actions .table-delete:focus-visible{
+    background:#fff0f1!important;
+    border-color:#c95a68!important;
+    color:#8f2432!important;
+  }
+}
+
+@media (max-width:420px){
+  #classStudentsModal .roster-progress,
+  #classStudentsModal .roster-student-actions{margin-left:40px!important;}
+  #classStudentsModal .roster-student-actions{gap:4px!important;}
+  #classStudentsModal .roster-student-actions .btn,
+  #classStudentsModal .roster-student-actions .table-delete{
+    min-width:48px!important;
+    height:21px!important;
+    min-height:21px!important;
+    padding:2px 7px!important;
+    font-size:7.8px!important;
+  }
+}
