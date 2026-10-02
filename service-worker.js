@@ -1,0 +1,159 @@
+/* Mathside PWA — Step 6.9.3
+   GitHub Pages + localhost friendly.
+   Provides app-shell caching, a graceful offline fallback, and controlled updates. */
+
+const CACHE_NAME = 'mathside-pwa-v6.9.3';
+const CACHE_PREFIX = 'mathside-pwa-';
+
+const APP_SHELL = [
+  './',
+  './index.html',
+  './offline.html',
+  './manifest.webmanifest',
+  './icons/apple-touch-icon.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/maskable-512.png',
+  './assets/mathside-icon.svg?v=12.3',
+  './css/styles.css?v=12.0',
+  './css/art-theme.css?v=7.0',
+  './css/student-v8.css?v=10.5',
+  './css/design-v9.css?v=9.1',
+  './css/v10-features.css?v=11.3',
+  './js/config.js',
+  './js/app.js?v=15.0',
+  './js/student-v8.js?v=15.0',
+  './js/v10-features.js?v=15.0',
+  './js/design-v9.js?v=9',
+  './js/pwa.js?v=6.9',
+  './js/push-notifications.js?v=6.9',
+  './css/v12-archive-features.css?v=12.2',
+  './css/v14-layout-fixes.css?v=14.0',
+  './css/v15-performance-calendar.css?v=15.2',
+  './js/v12-archive-features.js?v=15.0',
+  './js/v15-performance-tasks.js?v=15.0'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
+  );
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+
+  // Supabase/CDN/other third-party requests stay network-controlled.
+  if (url.origin !== self.location.origin) return;
+
+  // Page navigations: try the newest version first, then cached page, then offline screen.
+  if (request.mode === 'navigate') {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(request);
+        if (fresh && fresh.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(request, fresh.clone());
+        }
+        return fresh;
+      } catch (_) {
+        return (await caches.match(request))
+          || (await caches.match('./index.html'))
+          || (await caches.match('./offline.html'));
+      }
+    })());
+    return;
+  }
+
+  // Same-origin assets: network first so CSS/JS edits appear quickly, cache as fallback.
+  event.respondWith((async () => {
+    try {
+      const fresh = await fetch(request);
+      if (fresh && fresh.ok) {
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(request, fresh.clone());
+      }
+      return fresh;
+    } catch (_) {
+      return (await caches.match(request)) || Response.error();
+    }
+  })());
+});
+
+
+// ---------------------------------------------------------------------------
+// Step 6.9.3: Web Push notifications + final mobile roster polish.
+// ---------------------------------------------------------------------------
+self.addEventListener('push', (event) => {
+  event.waitUntil((async () => {
+    let payload = {};
+    try {
+      payload = event.data ? event.data.json() : {};
+    } catch (_) {
+      payload = { body: event.data ? event.data.text() : '' };
+    }
+
+    const title = payload.title || 'Mathside';
+    const data = {
+      notificationId: payload.notificationId || '',
+      type: payload.type || 'update',
+      relatedAssignmentId: payload.relatedAssignmentId || '',
+      relatedSubmissionId: payload.relatedSubmissionId || '',
+      url: payload.url || './'
+    };
+
+    await self.registration.showNotification(title, {
+      body: payload.body || 'You have a new Mathside update.',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      tag: payload.tag || `mathside-${data.notificationId || Date.now()}`,
+      renotify: false,
+      data,
+      actions: [{ action: 'open', title: 'Open Mathside' }]
+    });
+  })());
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  event.waitUntil((async () => {
+    const params = new URLSearchParams();
+    if (data.notificationId) params.set('push_notification', data.notificationId);
+    if (data.type) params.set('push_type', data.type);
+    if (data.relatedAssignmentId) params.set('assignment', data.relatedAssignmentId);
+    const target = `./${params.toString() ? `?${params.toString()}` : ''}`;
+
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const existing = windows.find(client => {
+      try { return new URL(client.url).origin === self.location.origin; } catch (_) { return false; }
+    });
+    if (existing) {
+      await existing.focus();
+      existing.postMessage({ type: 'MATHSIDE_PUSH_OPEN', ...data });
+      return;
+    }
+    await self.clients.openWindow(target);
+  })());
+});
