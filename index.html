@@ -8,19 +8,19 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Mathside" />
-  <title>Mathside</title>
+  <title>Mathside — Mathematics Classroom</title>
   <meta name="description" content="An energetic Mathematics classroom for teachers and students." />
   <link rel="icon" type="image/svg+xml" href="assets/mathside-icon.svg?v=12.3" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=12.1" />
+  <link rel="stylesheet" href="css/styles.css?v=12.2" />
   <link rel="stylesheet" href="css/art-theme.css?v=7.0" />
   <link rel="stylesheet" href="css/student-v8.css?v=10.5" />
   <link rel="stylesheet" href="css/design-v9.css?v=9.1">
   <link rel="stylesheet" href="css/v10-features.css?v=11.3">
   <link rel="stylesheet" href="css/v12-archive-features.css?v=12.2" />
   <link rel="stylesheet" href="css/v14-layout-fixes.css?v=14.0" />
-  <link rel="stylesheet" href="css/v15-performance-calendar.css?v=15.2" />
+  <link rel="stylesheet" href="css/v15-performance-calendar.css?v=15.10" />
 </head>
 <body>
   <div id="appLoading" class="app-loading" hidden>
@@ -266,8 +266,8 @@
           <div id="studentTodoSummary" class="v10-todo-summary"></div><div id="studentTodoList" class="v10-todo-list"></div>
         </section>
         <section class="student-panel-view v10-student-feature" data-student-panel-view="calendar" hidden>
-          <header class="v8-page-heading"><span class="v8-page-icon"><svg class="v8-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6M17 2v6M3 11h18"/></svg></span><div><h1>Student Calendar</h1><p>Activities and performance-task deadlines appear directly on each day.</p></div></header>
-          <section class="v10-calendar-card v8-paper"><div class="v10-calendar-head"><button type="button" class="v10-calendar-nav" id="calendarPrevBtn" aria-label="Previous month">‹</button><h2 id="calendarMonthLabel">Month</h2><button type="button" class="v10-calendar-nav" id="calendarNextBtn" aria-label="Next month">›</button></div><div class="v10-calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div id="studentCalendarGrid" class="v10-calendar-grid"></div></section>
+          <header class="v8-page-heading"><span class="v8-page-icon"><svg class="v8-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6M17 2v6M3 11h18"/></svg></span><div><h1>Student Calendar</h1><p>Highlighted days have deadlines. Tap a day to see the details below.</p></div></header>
+          <section class="v10-calendar-card v8-paper"><div class="v10-calendar-head"><button type="button" class="v10-calendar-nav" id="calendarPrevBtn" aria-label="Previous month">‹</button><h2 id="calendarMonthLabel">Month</h2><button type="button" class="v10-calendar-nav" id="calendarNextBtn" aria-label="Next month">›</button></div><div class="v10-calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div id="studentCalendarGrid" class="v10-calendar-grid"></div></section><section class="v10-calendar-agenda v8-paper"><header class="v8-section-heading"><h2 id="studentCalendarAgendaTitle">Deadlines this month</h2><small>Tap a highlighted day to show only that day.</small></header><div id="studentCalendarAgenda"></div></section>
         </section>
         <section class="student-panel-view v10-student-feature" data-student-panel-view="feedback" hidden>
           <header class="v8-page-heading"><span class="v8-page-icon"><svg class="v8-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v14H9l-5 4v-4H3zM7 8h10M7 12h7"/></svg></span><div><h1>Teacher Feedback Inbox</h1><p>All reviewed work and teacher comments in one place.</p></div></header>
@@ -297,7 +297,7 @@
           </select>
         </label>
         <label>Class name<input name="name" placeholder="e.g. Beryl" required maxlength="60" /></label>
-        <label>Reuse students from an archived class <select name="import_archived_section" id="importArchivedSection"><option value="">No — start with an empty class</option></select><small class="field-help">This keeps the students’ existing Mathside accounts and simply enrolls them in the new class.</small></label>
+        <label>Reuse students from another class <select name="import_archived_section" id="importArchivedSection"><option value="">No — start with an empty class</option></select><small class="field-help">Choose any of your existing classes. Mathside will keep the students’ accounts and enroll them in the new class too.</small></label>
         <div class="modal-actions"><button type="button" class="btn btn-light" data-close="sectionModal">Cancel</button><button class="btn btn-orange" type="submit">Create class</button></div>
       </form>
     </div>
@@ -570,8 +570,21 @@
       <div class="assignment-editor-heading"><div><p class="eyebrow">PERFORMANCE TASK</p><h2 id="performanceTaskModalTitle">Create performance task</h2><p class="muted">Choose sections, add instructions and pictures, upload a rubric, and set the deadline.</p></div><span class="assignment-editor-badge">MATHSIDE TASK</span></div>
       <form id="performanceTaskForm" class="form-stack assignment-editor-form">
         <section class="assignment-form-section"><div class="assignment-form-section-head"><div><p class="eyebrow">01 • DETAILS</p><h3>Task details</h3></div><span>Required</span></div><div class="assignment-heading-grid"><div class="assignment-main-fields"><label>Title<input name="title" required placeholder="Performance task title"></label><label>Instructions<textarea name="instructions" rows="5" required placeholder="Explain the output, process, materials, format, and other directions."></textarea></label><label>Total points<input name="max_points" type="number" min="1" step="1" value="100" required></label></div><label class="class-checklist-field"><span class="field-label">Classes <small>Select one or more</small></span><div id="performanceSectionChecklist" class="class-checklist" role="group" aria-label="Choose classes for performance task"></div></label></div></section>
-        <div class="assignment-editor-split"><section class="assignment-form-section compact-section"><div class="assignment-form-section-head"><div><p class="eyebrow">02 • SCHEDULE</p><h3>Posting, deadline & reminder</h3></div></div><div class="assignment-deadline-field"><label>Post task <small>Teacher chooses</small><select id="performancePublishMode" name="publish_mode"><option value="now">Post now</option><option value="schedule">Schedule for later</option></select></label><label id="performancePublishAtWrap" hidden>Publish date & time <small>Automatic</small><input id="performancePublishAt" name="publish_at" type="datetime-local"></label><label>Deadline <small>Optional</small><input name="due_at" type="datetime-local"></label><label>Student reminder<select name="reminder_hours_before"><option value="0">No reminder</option><option value="24">1 day before</option><option value="48">2 days before</option><option value="72">3 days before</option></select></label><label class="v10-check-option"><input name="allow_resubmission" type="checkbox"><span><b>Allow resubmission</b><small>Teacher still approves each new attempt.</small></span></label></div></section><section class="assignment-form-section compact-section"><div class="assignment-form-section-head"><div><p class="eyebrow">03 • TASK PICTURES</p><h3>Reference pictures</h3></div><span>Optional</span></div><label class="file-drop assignment-file-drop"><input id="performanceImages" name="task_images" type="file" accept="image/*" multiple><span>Choose one or more pictures</span></label><div id="performanceImagePreview" class="performance-image-preview"></div><label id="removePerformanceImagesWrap" class="v10-check-option" hidden><input id="removePerformanceImages" type="checkbox"><span><b>Remove existing pictures</b><small>Use this if the task no longer needs reference pictures.</small></span></label></section></div>
-        <section class="assignment-form-section compact-section"><div class="assignment-form-section-head"><div><p class="eyebrow">04 • RUBRIC</p><h3>Rubric file or picture</h3></div><span>Optional</span></div><label class="file-drop assignment-file-drop"><input id="performanceRubric" name="rubric" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"><span>Upload a rubric picture, PDF, Word, or Excel file</span></label><div id="performanceRubricExisting" class="performance-rubric-existing" hidden></div><label id="removePerformanceRubricWrap" class="v10-check-option" hidden><input id="removePerformanceRubric" type="checkbox"><span><b>Remove existing rubric</b><small>The task will be saved without the current rubric.</small></span></label></section>
+        <section class="assignment-form-section performance-team-section"><div class="assignment-form-section-head"><div><p class="eyebrow">02 • WORK SETUP</p><h3>Individual, pair, or group</h3></div><span>Required</span></div>
+          <div class="performance-work-mode" id="performanceWorkMode" role="group" aria-label="Performance task work setup">
+            <label class="performance-mode-option"><input type="checkbox" name="performance_mode" value="individual" checked><span><b>Individual</b><small>Each student submits their own output.</small></span></label>
+            <label class="performance-mode-option"><input type="checkbox" name="performance_mode" value="pair"><span><b>Pair</b><small>Students work in teams of two.</small></span></label>
+            <label class="performance-mode-option"><input type="checkbox" name="performance_mode" value="group"><span><b>Group</b><small>Students work in teacher-sized groups.</small></span></label>
+          </div>
+          <div id="performanceGroupingOptions" class="performance-grouping-options" hidden>
+            <div><p class="field-label">Who creates the teams?</p><div class="performance-creator-options"><label><input type="radio" name="grouping_creator" value="teacher" checked><span>Teacher creates teams</span></label><label><input type="radio" name="grouping_creator" value="students"><span>Students create their teams</span></label></div></div>
+            <label id="performanceGroupCountWrap" hidden>How many groups per class?<input id="performanceGroupCount" name="group_count" type="number" min="1" step="1" value="4"><small>Mathside will distribute students as evenly as possible.</small></label>
+            <div id="performanceTeacherGroupingTools" class="performance-grouping-tools"><button type="button" class="btn btn-light" id="generatePerformanceTeamsBtn">Generate team preview</button><p class="muted">Preview each class, then choose the leader for every pair or group before posting.</p></div>
+            <div id="performanceTeamPreview" class="performance-team-preview"></div>
+          </div>
+        </section>
+        <div class="assignment-editor-split"><section class="assignment-form-section compact-section"><div class="assignment-form-section-head"><div><p class="eyebrow">03 • SCHEDULE</p><h3>Posting, deadline & reminder</h3></div></div><div class="assignment-deadline-field"><label>Post task <small>Teacher chooses</small><select id="performancePublishMode" name="publish_mode"><option value="now">Post now</option><option value="schedule">Schedule for later</option></select></label><label id="performancePublishAtWrap" hidden>Publish date & time <small>Automatic</small><input id="performancePublishAt" name="publish_at" type="datetime-local"></label><label>Deadline <small>Optional</small><input name="due_at" type="datetime-local"></label><label>Student reminder<select name="reminder_hours_before"><option value="0">No reminder</option><option value="24">1 day before</option><option value="48">2 days before</option><option value="72">3 days before</option></select></label><label class="v10-check-option"><input name="allow_resubmission" type="checkbox"><span><b>Allow resubmission</b><small>Teacher still approves each new attempt.</small></span></label></div></section><section class="assignment-form-section compact-section"><div class="assignment-form-section-head"><div><p class="eyebrow">04 • TASK PICTURES</p><h3>Reference pictures</h3></div><span>Optional</span></div><label class="file-drop assignment-file-drop"><input id="performanceImages" name="task_images" type="file" accept="image/*" multiple><span>Choose one or more pictures</span></label><div id="performanceImagePreview" class="performance-image-preview"></div><label id="removePerformanceImagesWrap" class="v10-check-option" hidden><input id="removePerformanceImages" type="checkbox"><span><b>Remove existing pictures</b><small>Use this if the task no longer needs reference pictures.</small></span></label></section></div>
+        <section class="assignment-form-section compact-section"><div class="assignment-form-section-head"><div><p class="eyebrow">05 • RUBRIC</p><h3>Rubric file or picture</h3></div><span>Optional</span></div><label class="file-drop assignment-file-drop"><input id="performanceRubric" name="rubric" type="file" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"><span>Upload a rubric picture, PDF, Word, or Excel file</span></label><div id="performanceRubricExisting" class="performance-rubric-existing" hidden></div><label id="removePerformanceRubricWrap" class="v10-check-option" hidden><input id="removePerformanceRubric" type="checkbox"><span><b>Remove existing rubric</b><small>The task will be saved without the current rubric.</small></span></label></section>
         <div class="modal-actions assignment-form-actions"><button type="button" class="btn btn-light" data-close="performanceTaskModal">Cancel</button><button type="submit" class="btn btn-orange" id="performanceTaskSubmitBtn">Post performance task</button></div>
       </form>
     </div>
@@ -597,6 +610,7 @@
         <div class="assignment-preview-section-head"><span class="assignment-preview-section-icon">▣</span><div><p class="eyebrow">RESOURCES</p><h3>Task pictures & rubric</h3></div></div>
         <div id="performancePreviewImages" class="performance-preview-images"></div>
         <div id="performancePreviewRubric"></div>
+        <div id="performancePreviewTeamManager" class="performance-preview-team-manager" hidden></div>
       </section>
 
       <section class="assignment-preview-section assignment-preview-questions">
@@ -651,7 +665,9 @@
     <div class="modal-box performance-submit-box">
       <button class="modal-close" data-close="performanceSubmitModal" aria-label="Close">×</button>
       <p class="eyebrow">PERFORMANCE TASK</p><h2 id="performanceStudentTitle">Performance Task</h2><p id="performanceStudentInstructions" class="muted"></p><div id="performanceStudentMeta" class="assignment-meta"></div><div id="performanceStudentPictures" class="performance-preview-images"></div><div id="performanceStudentRubric" class="performance-student-rubric"></div>
-      <form id="performanceSubmitForm" class="form-stack"><label class="file-drop compact performance-output-upload">Upload pictures of your output<input id="performanceOutputImages" type="file" accept="image/*" multiple><span>Choose one or more clear pictures</span></label><p id="performanceOutputHint" class="muted">At least one picture is required for your first submission.</p><div class="modal-actions"><button type="button" class="btn btn-light" data-close="performanceSubmitModal">Close</button><button class="btn btn-orange" type="submit">Submit performance task</button></div></form>
+      <section id="performanceTeamPanel" class="performance-team-panel" hidden></section>
+      <section id="performanceStudentTeamBuilder" class="performance-team-builder" hidden></section>
+      <form id="performanceSubmitForm" class="form-stack"><label class="file-drop compact performance-output-upload">Upload pictures of your output<input id="performanceOutputImages" type="file" accept="image/*" multiple><span>Choose one or more clear pictures</span></label><p id="performanceOutputHint" class="muted">At least one picture is required for your first submission.</p><section id="performanceParticipationRatings" class="performance-participation-ratings" hidden></section><div class="modal-actions"><button type="button" class="btn btn-light" data-close="performanceSubmitModal">Close</button><button class="btn btn-orange" type="submit">Submit performance task</button></div></form>
     </div>
   </dialog>
 
@@ -668,6 +684,7 @@
         <div><span>Manual review score</span><b id="manualReviewScore">0 / 0</b></div>
         <small>Changing any answer checkbox makes the recomputed manual-review score the teacher score.</small>
       </div>
+      <section id="reviewPerformanceTeamInfo" class="review-performance-team-info" hidden></section>
       <div id="reviewProofWrap" class="proof-wrap" hidden>
         <p class="eyebrow" id="reviewProofLabel">SOLUTION PICTURES</p>
         <div id="reviewProofLinks" class="proof-link-grid"></div>
@@ -796,13 +813,13 @@
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
-  <script src="js/app.js?v=15.1"></script>
+  <script src="js/app.js?v=15.4"></script>
   <script src="js/student-v8.js?v=15.0"></script>
-  <script src="js/v10-features.js?v=15.0"></script>
+  <script src="js/v10-features.js?v=15.1"></script>
 <script src="js/design-v9.js?v=9"></script>
-  <script src="js/pwa.js?v=6.9"></script>
+  <script src="js/pwa.js?v=6.9.7"></script>
   <script src="js/push-notifications.js?v=6.9"></script>
-  <script src="js/v12-archive-features.js?v=15.0"></script>
-  <script src="js/v15-performance-tasks.js?v=15.0"></script>
+  <script src="js/v12-archive-features.js?v=15.3"></script>
+  <script src="js/v15-performance-tasks.js?v=15.6"></script>
 </body>
 </html>

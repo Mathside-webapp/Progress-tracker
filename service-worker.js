@@ -1,8 +1,8 @@
-/* Mathside PWA — Step 6.9.4
+/* Mathside PWA — Step 6.9.10
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v6.9.4';
+const CACHE_NAME = 'mathside-pwa-v6.9.13';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -15,23 +15,23 @@ const APP_SHELL = [
   './icons/icon-512.png',
   './icons/maskable-512.png',
   './assets/mathside-icon.svg?v=12.3',
-  './css/styles.css?v=12.1',
+  './css/styles.css?v=12.2',
   './css/art-theme.css?v=7.0',
   './css/student-v8.css?v=10.5',
   './css/design-v9.css?v=9.1',
   './css/v10-features.css?v=11.3',
   './js/config.js',
-  './js/app.js?v=15.1',
+  './js/app.js?v=15.4',
   './js/student-v8.js?v=15.0',
-  './js/v10-features.js?v=15.0',
+  './js/v10-features.js?v=15.1',
   './js/design-v9.js?v=9',
-  './js/pwa.js?v=6.9',
+  './js/pwa.js?v=6.9.7',
   './js/push-notifications.js?v=6.9',
   './css/v12-archive-features.css?v=12.2',
   './css/v14-layout-fixes.css?v=14.0',
-  './css/v15-performance-calendar.css?v=15.2',
-  './js/v12-archive-features.js?v=15.0',
-  './js/v15-performance-tasks.js?v=15.0'
+  './css/v15-performance-calendar.css?v=15.10',
+  './js/v12-archive-features.js?v=15.3',
+  './js/v15-performance-tasks.js?v=15.6'
 ];
 
 self.addEventListener('install', (event) => {
