@@ -1,8 +1,8 @@
-/* Mathside PWA — Step 6.9.10
+/* Mathside PWA — Step 6.9.14
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v6.9.13';
+const CACHE_NAME = 'mathside-pwa-v6.9.14';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -25,7 +25,7 @@ const APP_SHELL = [
   './js/student-v8.js?v=15.0',
   './js/v10-features.js?v=15.1',
   './js/design-v9.js?v=9',
-  './js/pwa.js?v=6.9.7',
+  './js/pwa.js?v=6.9.14',
   './js/push-notifications.js?v=6.9',
   './css/v12-archive-features.css?v=12.2',
   './css/v14-layout-fixes.css?v=14.0',
