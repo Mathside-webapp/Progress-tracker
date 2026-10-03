@@ -62,10 +62,63 @@
       document.body.appendChild(dialog);
 
       dialog.querySelector('#pwaUpdateLaterBtn').addEventListener('click', () => dialog.close());
-      dialog.querySelector('#pwaUpdateNowBtn').addEventListener('click', () => {
-        const waiting = registrationRef && registrationRef.waiting;
-        if (waiting) waiting.postMessage({ type: 'SKIP_WAITING' });
-        else { dialog.close(); location.reload(); }
+
+      const updateNowBtn = dialog.querySelector('#pwaUpdateNowBtn');
+      updateNowBtn.addEventListener('click', async () => {
+        // Mobile browsers/PWAs can take a moment to hand control from the old
+        // service worker to the waiting one. Give immediate feedback, ask the
+        // waiting worker to activate, and keep a reload fallback so the button
+        // never appears to do nothing.
+        if (updateNowBtn.dataset.updating === '1') return;
+        updateNowBtn.dataset.updating = '1';
+        updateNowBtn.disabled = true;
+        updateNowBtn.setAttribute('aria-busy', 'true');
+        updateNowBtn.textContent = 'Updating…';
+
+        const reloadFallback = window.setTimeout(() => {
+          if (reloadingForUpdate) return;
+          reloadingForUpdate = true;
+          location.reload();
+        }, 2200);
+
+        try {
+          let registration = registrationRef;
+          if (!registration) registration = await navigator.serviceWorker.getRegistration('./');
+
+          // Re-check the server first. On some Android browsers registration.waiting
+          // is populated only after update() has completed.
+          if (registration) {
+            try { await registration.update(); } catch (_) {}
+          }
+
+          const waiting = registration && registration.waiting;
+          if (waiting) {
+            waiting.postMessage({ type: 'SKIP_WAITING' });
+
+            // If the worker reaches activated before controllerchange is emitted,
+            // reload immediately. controllerchange below remains the primary path.
+            waiting.addEventListener('statechange', () => {
+              if (waiting.state !== 'activated' || reloadingForUpdate) return;
+              clearTimeout(reloadFallback);
+              reloadingForUpdate = true;
+              location.reload();
+            });
+            return;
+          }
+
+          // No separate waiting worker (common when the browser already activated
+          // it in the background). Reload so the newest HTML/CSS/JS is requested.
+          clearTimeout(reloadFallback);
+          reloadingForUpdate = true;
+          location.reload();
+        } catch (error) {
+          console.error('Mathside update failed:', error);
+          clearTimeout(reloadFallback);
+          updateNowBtn.dataset.updating = '0';
+          updateNowBtn.disabled = false;
+          updateNowBtn.removeAttribute('aria-busy');
+          updateNowBtn.textContent = 'Try update again';
+        }
       });
     }
 
