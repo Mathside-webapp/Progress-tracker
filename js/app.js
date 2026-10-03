@@ -151,13 +151,13 @@ function updateStudentAnswerPreview(input) {
   preview.hidden = false;
   preview.classList.toggle('is-empty', !latex);
   screen.innerHTML = latex
-    ? richMath(`\(${latex}\)`)
+    ? richMath(`\\(${latex}\\)`)
     : '<span class="student-answer-screen-placeholder">Your answer will appear here</span>';
 }
 
 function richStudentAnswer(value = '') {
   const latex = studentAnswerLatex(value);
-  return latex ? richMath(`\(${latex}\)`) : 'No answer';
+  return latex ? richMath(`\\(${latex}\\)`) : 'No answer';
 }
 
 function refreshStudentAnswerPreviews() {
