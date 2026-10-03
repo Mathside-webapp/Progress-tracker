@@ -110,7 +110,7 @@
       return true;
     } catch (error) {
       console.error('Mathside push enable failed:', error);
-      if (!quiet && typeof toast === 'function') toast(error.message || 'Could not enable app notifications.', 'orange', 'Notifications');
+      if (!quiet && typeof toast === 'function') toast(friendlyErrorMessage(error, 'Could not enable app notifications.'), 'orange', 'Notifications');
       updateUi();
       return false;
     } finally {

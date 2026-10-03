@@ -6,11 +6,10 @@
 
   const feature = {
     calendarCursor: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    calendarSelectedDay: '',
     draftTimer: null,
     notifications: [],
     notificationCleanupDone: false,
-    notificationRefreshPromise: null,
-    lastNotificationRefreshAt: 0,
     pollTimer: null
   };
 
@@ -104,6 +103,8 @@
   function renderCalendar() {
     const grid = document.getElementById('studentCalendarGrid');
     const label = document.getElementById('calendarMonthLabel');
+    const agenda = document.getElementById('studentCalendarAgenda');
+    const agendaTitle = document.getElementById('studentCalendarAgendaTitle');
     if (!grid || !label) return;
     const cursor = feature.calendarCursor;
     const year = cursor.getFullYear();
@@ -115,7 +116,7 @@
     const assignments = studentAssignments().filter(a => {
       const d = safeDate(a.due_at);
       return d && d.getFullYear() === year && d.getMonth() === month;
-    });
+    }).sort((a,b) => new Date(a.due_at || 0) - new Date(b.due_at || 0));
     const byDay = new Map();
     assignments.forEach(a => {
       const key = dayKey(a.due_at);
@@ -128,19 +129,37 @@
     for (let day = 1; day <= daysInMonth; day += 1) {
       const d = new Date(year, month, day);
       const key = dayKey(d);
-      const tasks = (byDay.get(key) || []).sort((a,b) => String(a.title||'').localeCompare(String(b.title||'')));
-      const events = tasks.map(a => {
-        const submitted = submissionFor(a.id);
-        const missed = !submitted && safeDate(a.due_at)?.getTime() < Date.now();
-        const status = submitted ? 'Submitted' : missed ? 'Missed' : 'To do';
-        const statusKey = submitted ? 'submitted' : missed ? 'missed' : 'todo';
-        const type = isPerformanceTask(a) ? 'Performance Task' : 'Activity';
-        const action = submitted ? `data-preview-response="${esc(submitted.id)}"` : isPerformanceTask(a) ? `data-submit-performance="${esc(a.id)}"` : `data-answer-assignment="${esc(a.id)}"`;
-        return `<button type="button" class="v15-calendar-event ${statusKey}" ${action} title="${esc(type)}: ${esc(a.title)} — ${status}"><span>${esc(type)}</span><b>${esc(a.title)}</b><em>${status}</em></button>`;
-      }).join('');
-      cells.push(`<div class="v10-calendar-day ${key === today ? 'is-today' : ''} ${tasks.length ? 'has-task' : ''}" data-calendar-day="${key}"><span class="v15-calendar-number">${day}</span><div class="v15-calendar-events">${events}</div></div>`);
+      const tasks = byDay.get(key) || [];
+      const taskLabel = tasks.length ? `${tasks.length} deadline${tasks.length === 1 ? '' : 's'}` : 'No deadlines';
+      cells.push(`<button type="button" class="v10-calendar-day ${key === today ? 'is-today' : ''} ${tasks.length ? 'has-task' : ''} ${feature.calendarSelectedDay === key ? 'is-selected' : ''}" data-calendar-day="${key}" aria-label="${esc(new Intl.DateTimeFormat(undefined,{month:'long',day:'numeric',year:'numeric'}).format(d))}: ${taskLabel}" title="${esc(taskLabel)}"><span class="v15-calendar-number">${day}</span>${tasks.length ? '<span class="v15-calendar-deadline-dot" aria-hidden="true"></span>' : ''}</button>`);
     }
     grid.innerHTML = cells.join('');
+
+    if (!agenda) return;
+    const selectedTasks = feature.calendarSelectedDay ? (byDay.get(feature.calendarSelectedDay) || []) : assignments;
+    if (agendaTitle) {
+      if (feature.calendarSelectedDay) {
+        const selectedDate = safeDate(`${feature.calendarSelectedDay}T12:00:00`);
+        agendaTitle.textContent = selectedDate
+          ? `Deadlines for ${new Intl.DateTimeFormat(undefined,{month:'long',day:'numeric'}).format(selectedDate)}`
+          : 'Deadlines';
+      } else {
+        agendaTitle.textContent = 'Deadlines this month';
+      }
+    }
+    if (!selectedTasks.length) {
+      agenda.innerHTML = `<div class="v10-calendar-empty">${feature.calendarSelectedDay ? 'No deadlines on this day.' : 'No deadlines this month.'}</div>`;
+      return;
+    }
+    agenda.innerHTML = selectedTasks.map(a => {
+      const submitted = submissionFor(a.id);
+      const missed = !submitted && safeDate(a.due_at)?.getTime() < Date.now();
+      const status = submitted ? 'Submitted' : missed ? 'Missed' : 'To do';
+      const statusKey = submitted ? 'done' : missed ? 'missed' : 'todo';
+      const type = isPerformanceTask(a) ? 'Performance Task' : 'Activity';
+      const action = submitted ? `data-preview-response="${esc(submitted.id)}"` : isPerformanceTask(a) ? `data-submit-performance="${esc(a.id)}"` : `data-answer-assignment="${esc(a.id)}"`;
+      return `<article class="v10-agenda-row"><time>${esc(formatDateTime(a.due_at))}</time><div><span>${esc(type)}</span><b>${esc(a.title)}</b></div><span class="v10-agenda-status ${statusKey}">${status}</span><button type="button" class="v8-view-button" ${action}>${submitted ? 'View' : 'Open'}</button></article>`;
+    }).join('');
   }
 
   // ------------------------------------------------------------------
@@ -192,7 +211,10 @@
         if (match) match.checked = true;
       } else {
         const input = document.querySelector(`[name="answer_${q.id}"]`);
-        if (input) input.value = value;
+        if (input) {
+          input.value = value;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
       }
     });
   }
@@ -307,60 +329,37 @@
     box.innerHTML = feature.notifications.length ? feature.notifications.map(n => `<button type="button" class="v10-notification-row ${n.read_at ? '' : 'unread'}" data-notification-id="${esc(n.id)}"><span class="v10-notification-kind">${notificationIcon(n.type)}</span><span><b>${esc(n.title || 'Mathside update')}</b><small>${esc(n.body || '')}</small><time>${esc(formatDateTime(n.created_at))}</time></span>${n.read_at ? '' : '<i></i>'}</button>`).join('') : featureEmpty('You’re all caught up.', 'New class updates will appear here.');
   }
 
-  async function refreshNotifications(options = {}) {
+  async function refreshNotifications() {
     if (!connected()) return;
-    const force = Boolean(options?.force);
-    const now = Date.now();
 
-    // Several workspace events can fire together (restore, focus, view switch).
-    // Reuse one in-flight request and skip non-forced refreshes that just ran.
-    if (feature.notificationRefreshPromise) return feature.notificationRefreshPromise;
-    if (!force && feature.lastNotificationRefreshAt && now - feature.lastNotificationRefreshAt < 8000) {
-      renderNotifications();
+    // Notifications are retained for seven days only. The RPC removes expired
+    // database rows; the date filter also guarantees that an expired item never
+    // appears in the UI while an older deployment is being upgraded.
+    if (!feature.notificationCleanupDone) {
+      const { error: cleanupError } = await db.rpc('mathside_cleanup_old_notifications');
+      if (cleanupError && !String(cleanupError.message || '').toLowerCase().includes('could not find')) {
+        console.warn('Notification cleanup:', cleanupError.message || cleanupError);
+      }
+      feature.notificationCleanupDone = true;
+    }
+    const retentionCutoff = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString();
+    const { data, error } = await db.from('mathside_notifications')
+      .select('*')
+      .eq('user_id', currentUserId())
+      .gte('created_at', retentionCutoff)
+      .order('created_at', { ascending: false })
+      .limit(60);
+    if (error) {
+      console.warn('Notifications not ready:', error.message || error);
       return;
     }
-
-    feature.notificationRefreshPromise = (async () => {
-      // Notifications are retained for seven days only. Run cleanup once per page
-      // session, and never let concurrent workspace events trigger duplicate RPCs.
-      if (!feature.notificationCleanupDone) {
-        const { error: cleanupError } = await db.rpc('mathside_cleanup_old_notifications');
-        if (cleanupError && !String(cleanupError.message || '').toLowerCase().includes('could not find')) {
-          console.warn('Notification cleanup:', cleanupError.message || cleanupError);
-        }
-        feature.notificationCleanupDone = true;
-      }
-
-      const retentionCutoff = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString();
-      const { data, error } = await db.from('mathside_notifications')
-        .select('*')
-        .eq('user_id', currentUserId())
-        .gte('created_at', retentionCutoff)
-        .order('created_at', { ascending: false })
-        .limit(60);
-      if (error) {
-        console.warn('Notifications not ready:', error.message || error);
-        return;
-      }
-      feature.notifications = data || [];
-      feature.lastNotificationRefreshAt = Date.now();
-      renderNotifications();
-    })();
-
-    try {
-      return await feature.notificationRefreshPromise;
-    } finally {
-      feature.notificationRefreshPromise = null;
-    }
+    feature.notifications = data || [];
+    renderNotifications();
   }
 
   async function openNotifications() {
     ensureNotificationDialog();
-    if (typeof withLoading === 'function') {
-      await withLoading('Opening notifications…', 'Checking for your latest Mathside updates.', () => refreshNotifications({ force: true }));
-    } else {
-      await refreshNotifications({ force: true });
-    }
+    await refreshNotifications();
     const dialog = document.getElementById('v10NotificationDialog');
     if (dialog && !dialog.open) dialog.showModal();
   }
@@ -704,10 +703,19 @@
   // ------------------------------------------------------------------
   document.getElementById('calendarPrevBtn')?.addEventListener('click', () => {
     feature.calendarCursor = new Date(feature.calendarCursor.getFullYear(), feature.calendarCursor.getMonth() - 1, 1);
+    feature.calendarSelectedDay = '';
     renderCalendar();
   });
   document.getElementById('calendarNextBtn')?.addEventListener('click', () => {
     feature.calendarCursor = new Date(feature.calendarCursor.getFullYear(), feature.calendarCursor.getMonth() + 1, 1);
+    feature.calendarSelectedDay = '';
+    renderCalendar();
+  });
+  document.getElementById('studentCalendarGrid')?.addEventListener('click', event => {
+    const day = event.target.closest('[data-calendar-day]');
+    if (!day) return;
+    const key = day.dataset.calendarDay || '';
+    feature.calendarSelectedDay = feature.calendarSelectedDay === key ? '' : key;
     renderCalendar();
   });
 

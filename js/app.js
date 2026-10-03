@@ -93,6 +93,25 @@ function esc(value = '') {
   }[ch]));
 }
 
+function friendlyErrorMessage(error, fallback = 'Something went wrong. Please try again.') {
+  const raw = String(error?.message || error || '').trim();
+  const lower = raw.toLowerCase();
+  const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  const looksLikeNetworkError = offline
+    || lower.includes('failed to fetch')
+    || lower.includes('networkerror')
+    || lower.includes('network request failed')
+    || lower.includes('load failed')
+    || lower.includes('connection closed')
+    || lower.includes('connection reset');
+  if (looksLikeNetworkError) {
+    return offline
+      ? 'You appear to be offline. Connect to Wi-Fi or mobile data, then try again.'
+      : 'Poor internet connection or temporary network problem. Check your Wi-Fi or mobile data, then try again.';
+  }
+  return raw || fallback;
+}
+
 
 // Mathside math text format: plain text can include inline LaTeX as \( ... \).
 // The Math Keyboard writes this format so existing database text columns do not need to change.
@@ -126,21 +145,19 @@ function updateStudentAnswerPreview(input) {
   if (!input?.matches?.('#answerQuestions input[name^="answer_"]')) return;
   const wrap = input.closest('.student-math-answer-wrap');
   const preview = wrap?.querySelector('[data-student-answer-preview]');
-  const field = preview?.querySelector('math-field');
-  if (!preview || !field) return;
+  const screen = preview?.querySelector('[data-student-answer-screen]');
+  if (!preview || !screen) return;
   const latex = studentAnswerLatex(input.value);
-  preview.hidden = !latex;
-  if (!latex) {
-    try { field.value = ''; } catch (_) {}
-    return;
-  }
-  try {
-    field.value = latex;
-    field.readOnly = true;
-    field.mathVirtualKeyboardPolicy = 'manual';
-  } catch (_) {
-    field.textContent = latex;
-  }
+  preview.hidden = false;
+  preview.classList.toggle('is-empty', !latex);
+  screen.innerHTML = latex
+    ? richMath(`\(${latex}\)`)
+    : '<span class="student-answer-screen-placeholder">Your answer will appear here</span>';
+}
+
+function richStudentAnswer(value = '') {
+  const latex = studentAnswerLatex(value);
+  return latex ? richMath(`\(${latex}\)`) : 'No answer';
 }
 
 function refreshStudentAnswerPreviews() {
@@ -359,11 +376,11 @@ function notifyStudentDeadlineOnLogin() {
   if (!urgent.length) return;
   const overdue = urgent.filter(a => new Date(a.due_at).getTime() < Date.now()).length;
   const preview = urgent.slice(0, 4).map(a => `• ${a.title} — ${formatDeadlineDate(a.due_at)} (${deadlineRelativeLabel(a.due_at)})`).join('\n');
-  const more = urgent.length > 4 ? `\n• +${urgent.length - 4} more activity${urgent.length - 4 === 1 ? '' : 'ies'}` : '';
+  const more = urgent.length > 4 ? `\n• +${urgent.length - 4} more classwork item${urgent.length - 4 === 1 ? '' : 's'}` : '';
   const lead = overdue
-    ? `You have ${urgent.length} unfinished activity${urgent.length === 1 ? '' : 'ies'} needing attention, including ${overdue} past the deadline.`
-    : `You have ${urgent.length} unfinished activity${urgent.length === 1 ? '' : 'ies'} approaching the deadline.`;
-  toast(`${lead}\n\n${preview}${more}\n\nSubmit your work before time runs out.`, 'danger', overdue ? 'Overdue activity warning' : 'Deadline approaching');
+    ? `You have ${urgent.length} unfinished classwork item${urgent.length === 1 ? '' : 's'} needing attention, including ${overdue} past the deadline.`
+    : `You have ${urgent.length} unfinished classwork item${urgent.length === 1 ? '' : 's'} approaching the deadline.`;
+  toast(`${lead}\n\n${preview}${more}\n\nSubmit your work before time runs out.`, 'danger', overdue ? 'Overdue classwork warning' : 'Deadline approaching');
 }
 
 function gradeNoticeStorageKey() {
@@ -393,8 +410,9 @@ function notifyUnseenStudentGrades() {
     const total = assignment ? totalPoints(assignment.id) : 0;
     const score = Number(submission.teacher_score ?? submission.auto_score ?? 0);
     const feedback = String(submission.feedback || '').trim();
-    const message = `${assignment?.title || 'Your activity'} has been checked and graded.\n\nScore: ${score}/${total}${feedback ? `\nTeacher feedback: ${feedback}` : ''}`;
-    toast(message, 'success', 'Activity graded');
+    const gradedKind = assignment ? workTypeLabel(assignment) : 'Classwork';
+    const message = `${assignment?.title || `Your ${gradedKind.toLowerCase()}`} has been checked and graded.\n\nScore: ${score}/${total}${feedback ? `\nTeacher feedback: ${feedback}` : ''}`;
+    toast(message, 'success', `${gradedKind} graded`);
     seen[submission.id] = String(submission.graded_at);
   });
   writeSeenGradeNotices(seen);
@@ -483,7 +501,7 @@ $('#authForm').addEventListener('submit', async event => {
       });
     } catch (error) {
       console.error(error);
-      toast(error.message || 'Could not create the teacher account. Make sure this email is in the teacher allowlist.', 'orange');
+      toast(friendlyErrorMessage(error, 'Could not create the teacher account. Make sure this email is in the teacher allowlist.'), 'orange');
     }
     return;
   }
@@ -504,7 +522,7 @@ $('#authForm').addEventListener('submit', async event => {
     });
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not sign in.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not sign in.'), 'orange');
   }
 });
 
@@ -564,7 +582,7 @@ async function signOut(message) {
     toast('Signed out successfully.', 'success');
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not sign out.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not sign out.'), 'orange');
   }
 }
 
@@ -1079,7 +1097,7 @@ $('#bulkResetPasswordsBtn')?.addEventListener('click', async () => {
     }
   } catch (error) {
     console.error('RESET STUDENT PASSWORD ERROR', error);
-    toast(error.message || 'Could not reset the selected student passwords. Deploy the reset-student-passwords Edge Function first.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not reset the selected student passwords. Please try again.'), 'orange');
   }
 });
 
@@ -1155,7 +1173,7 @@ $('#sectionForm').addEventListener('submit', async event => {
     toast('Class created.', 'success');
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not create the class.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not create the class.'), 'orange');
   }
 });
 
@@ -1255,7 +1273,7 @@ async function runStudentDelete(deleteAccount) {
     }
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not update the selected students.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not update the selected students.'), 'orange');
   }
 }
 
@@ -1634,7 +1652,7 @@ $('#studentsFileInput')?.addEventListener('change', async event => {
   } catch (error) {
     console.error('STUDENT IMPORT ERROR', error);
     $('#studentImportStatus').textContent = error.message || 'Could not read this student list.';
-    toast(error.message || 'Could not import the student list.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not import the student list.'), 'orange');
   } finally {
     event.target.value = '';
   }
@@ -1686,7 +1704,7 @@ $('#saveStudentsBtn').addEventListener('click', async () => {
     if (created.length) toast(`${created.length} student account${created.length === 1 ? '' : 's'} created.`, 'success');
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not create student accounts. Deploy the create-students Edge Function first.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not create student accounts. Please try again.'), 'orange');
   }
 });
 
@@ -1889,7 +1907,8 @@ function openMathKeyboard(target, label = 'Math field') {
     end: Number.isInteger(target.selectionEnd) ? target.selectionEnd : String(target.value || '').length
   };
   const field = $('#mathKeyboardField');
-  field.value = '';
+  const isStudentAnswer = Boolean(target.closest?.('.student-math-answer-wrap'));
+  field.value = isStudentAnswer ? studentAnswerLatex(target.value) : '';
   field.inlineShortcuts = { ...field.inlineShortcuts, infty: '\\infty', theta: '\\theta', pi: '\\pi' };
   $('#mathKeyboardTargetLabel').textContent = `Insert formatted mathematics into: ${label}.`;
   openDialog('mathKeyboardModal');
@@ -1972,18 +1991,21 @@ $('#mathKeyboardCloseBtn')?.addEventListener('click', closeMathKeyboard);
 $('#mathKeyboardInsertBtn')?.addEventListener('click', () => {
   if (!mathKeyboardTarget) return closeMathKeyboard();
   const latex = String($('#mathKeyboardField')?.value || '').trim();
-  if (!latex) return toast('Type or choose a mathematical expression first.', 'orange', 'Math Keyboard');
+  if (!latex) return toast('Enter your answer in the Math Keyboard first.', 'orange', 'Math Keyboard');
+  if (/\\placeholder\s*\{\s*\}/i.test(latex) || /^\s*\^/.test(latex)) {
+    return toast('Your math answer is incomplete. Fill every blank in the Math Keyboard before inserting it.', 'orange', 'Complete your answer');
+  }
   const current = String(mathKeyboardTarget.value || '');
   const start = Math.max(0, Math.min(mathKeyboardSelection.start, current.length));
   const end = Math.max(start, Math.min(mathKeyboardSelection.end, current.length));
-  // For student short-answer fields, insert the clean LaTeX value itself.
-  // Teacher/question fields keep the \( ... \) wrapper so rich text continues
-  // to render correctly everywhere else in Mathside.
+  // Student answers are Math Keyboard only: replace the hidden stored answer with
+  // exactly what is visible in the formatted Math Keyboard. Teacher/question
+  // fields keep the \( ... \) wrapper for rich text rendering elsewhere.
   const isStudentAnswer = Boolean(mathKeyboardTarget.closest?.('.student-math-answer-wrap'));
   const block = isStudentAnswer ? latex : `\\(${latex}\\)`;
-  mathKeyboardTarget.value = current.slice(0, start) + block + current.slice(end);
+  mathKeyboardTarget.value = isStudentAnswer ? block : current.slice(0, start) + block + current.slice(end);
   mathKeyboardTarget.dispatchEvent(new Event('input', { bubbles: true }));
-  const caret = start + block.length;
+  const caret = isStudentAnswer ? block.length : start + block.length;
   try { mathKeyboardTarget.setSelectionRange(caret, caret); } catch (_) {}
   mathKeyboardTarget.focus();
   closeMathKeyboard();
@@ -2104,7 +2126,7 @@ $('#assignmentExcelInput')?.addEventListener('change', async event => {
     toast(`Excel imported. ${result.questionCountImported} question${result.questionCountImported === 1 ? '' : 's'} loaded.${classMessage}`, 'success', 'Excel import complete');
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not import the Excel assignment.', 'orange', 'Excel import failed');
+    toast(friendlyErrorMessage(error, 'Could not import the Excel assignment.'), 'orange', 'Excel import failed');
   } finally {
     event.target.value = '';
   }
@@ -2292,7 +2314,7 @@ $('#assignmentForm').addEventListener('submit', async event => {
       );
     } catch (error) {
       console.error(error);
-      toast(error.message || 'Could not save the assignment changes.', 'orange', 'Save failed');
+      toast(friendlyErrorMessage(error, 'Could not save the assignment changes.'), 'orange', 'Save failed');
     }
     return;
   }
@@ -2366,7 +2388,7 @@ $('#assignmentForm').addEventListener('submit', async event => {
     if (uploadedPaths.length) { try { await db.storage.from('mathside-assignment-images').remove(uploadedPaths); } catch {} }
     const createdIds = createdAssignments.map(assignment => assignment.id).filter(Boolean);
     if (createdIds.length) { try { await db.from('mathside_assignments').delete().in('id', createdIds); } catch {} }
-    toast(error.message || 'Could not post the assignment.', 'orange', 'Posting failed');
+    toast(friendlyErrorMessage(error, 'Could not post the assignment.'), 'orange', 'Posting failed');
   }
 });
 
@@ -2567,25 +2589,42 @@ function openAssignmentDeleteModal(ids) {
   if (!uniqueIds.length) return;
   pendingAssignmentDeleteIds = uniqueIds;
   pendingAssignmentDeleteId = uniqueIds.length === 1 ? uniqueIds[0] : null;
+
+  const assignments = uniqueIds.map(id => assignmentById(id)).filter(Boolean);
+  const allPerformance = assignments.length > 0 && assignments.every(isPerformanceTask);
+  const kindSingular = allPerformance ? 'performance task' : 'activity';
+  const kindPlural = allPerformance ? 'performance tasks' : 'activities';
+  const deleteModal = $('#deleteAssignmentModal');
+  const eyebrow = $('.eyebrow', deleteModal);
+  const choiceTitle = $('.delete-choice h3', deleteModal);
+  const choiceText = $('.delete-choice p', deleteModal);
+  if (eyebrow) eyebrow.textContent = allPerformance ? 'DELETE PERFORMANCE TASK' : 'DELETE ACTIVITY';
+  if (choiceTitle) choiceTitle.textContent = `Permanently delete this ${kindSingular}?`;
+  if (choiceText) choiceText.textContent = allPerformance
+    ? 'This removes the performance task, team setup, student submissions, participation ratings, and uploaded task/output files from Supabase Storage. This cannot be undone.'
+    : 'This removes the activity, its questions and answer keys, student submissions, and uploaded assignment/proof files from Supabase Storage. This cannot be undone.';
+
   if (uniqueIds.length === 1) {
-    const assignment = assignmentById(uniqueIds[0]);
+    const assignment = assignments[0];
     const section = sectionById(assignment.section_id);
-    $('#deleteAssignmentTitle').textContent = assignment.title || 'Assignment';
+    $('#deleteAssignmentTitle').textContent = assignment.title || (allPerformance ? 'Performance Task' : 'Activity');
     $('#deleteAssignmentClass').textContent = sectionLabel(section);
-    $('#confirmDeleteAssignmentBtn').textContent = 'Delete activity permanently';
+    $('#confirmDeleteAssignmentBtn').textContent = `Delete ${kindSingular} permanently`;
   } else {
-    const first = assignmentById(uniqueIds[0]);
+    const first = assignments[0];
     const displayGroup = first ? assignmentDisplayGroupForId(first.id) : [];
     const isOneSharedAssignment = displayGroup.length === uniqueIds.length && displayGroup.every(item => uniqueIds.includes(item.id));
     if (isOneSharedAssignment) {
       const labels = assignmentGroupSectionLabels(displayGroup);
-      $('#deleteAssignmentTitle').textContent = first?.title || 'Shared assignment';
-      $('#deleteAssignmentClass').textContent = `This shared activity will be deleted from: ${labels.join(', ')}.`;
+      $('#deleteAssignmentTitle').textContent = first?.title || (allPerformance ? 'Shared performance task' : 'Shared activity');
+      $('#deleteAssignmentClass').textContent = `This shared ${kindSingular} will be deleted from: ${labels.join(', ')}.`;
       $('#confirmDeleteAssignmentBtn').textContent = `Delete from ${labels.length} classes`;
     } else {
-      $('#deleteAssignmentTitle').textContent = `${uniqueIds.length} activities selected`;
-      $('#deleteAssignmentClass').textContent = 'Multiple assignments may belong to different classes.';
-      $('#confirmDeleteAssignmentBtn').textContent = `Delete ${uniqueIds.length} activities permanently`;
+      $('#deleteAssignmentTitle').textContent = `${uniqueIds.length} ${kindPlural} selected`;
+      $('#deleteAssignmentClass').textContent = allPerformance
+        ? 'The selected performance tasks may belong to different classes.'
+        : 'The selected activities may belong to different classes.';
+      $('#confirmDeleteAssignmentBtn').textContent = `Delete ${uniqueIds.length} ${kindPlural} permanently`;
     }
   }
   openDialog('deleteAssignmentModal');
@@ -2620,34 +2659,59 @@ async function deleteAssignmentThroughFunction(assignmentId, accessToken) {
 $('#confirmDeleteAssignmentBtn')?.addEventListener('click', async () => {
   const ids = pendingAssignmentDeleteIds.filter(id => assignmentById(id));
   if (!ids.length) return;
+  const assignments = ids.map(id => assignmentById(id)).filter(Boolean);
+  const allPerformance = assignments.length > 0 && assignments.every(isPerformanceTask);
+  const kindSingular = allPerformance ? 'performance task' : 'activity';
+  const kindPlural = allPerformance ? 'performance tasks' : 'activities';
+  const targetView = allPerformance ? 'performance' : 'assignments';
   const failures = [];
   closeDialog('deleteAssignmentModal');
   try {
-    await withLoading(`Deleting ${ids.length === 1 ? 'activity' : `${ids.length} activities`}…`, 'Removing assignments, submissions, and related Supabase Storage files.', async () => {
-      const { data: sessionData, error: sessionError } = await db.auth.getSession();
-      if (sessionError) throw sessionError;
-      const accessToken = sessionData?.session?.access_token;
-      if (!accessToken) throw new Error('Your teacher session has expired. Please sign in again.');
-      for (const id of ids) {
-        const assignment = assignmentById(id);
-        try {
-          await deleteAssignmentThroughFunction(id, accessToken);
-        } catch (error) {
-          failures.push({ title: assignment?.title || 'Assignment', error: error.message || 'Delete failed' });
+    await withLoading(
+      `Deleting ${ids.length === 1 ? kindSingular : `${ids.length} ${kindPlural}`}…`,
+      allPerformance
+        ? 'Removing the performance task, team setup, submissions, ratings, and related uploaded files.'
+        : 'Removing the activity, submissions, and related Supabase Storage files.',
+      async () => {
+        const { data: sessionData, error: sessionError } = await db.auth.getSession();
+        if (sessionError) throw sessionError;
+        const accessToken = sessionData?.session?.access_token;
+        if (!accessToken) throw new Error('Your teacher session has expired. Please sign in again.');
+        for (const id of ids) {
+          const assignment = assignmentById(id);
+          try {
+            await deleteAssignmentThroughFunction(id, accessToken);
+          } catch (error) {
+            failures.push({ title: assignment?.title || (allPerformance ? 'Performance Task' : 'Activity'), error: error.message || 'Delete failed' });
+          }
         }
+        pendingAssignmentDeleteIds = [];
+        pendingAssignmentDeleteId = null;
+        selectedAssignmentIds.clear();
+        await refreshTeacher();
+        showTeacherView(targetView);
       }
-      pendingAssignmentDeleteIds = [];
-      pendingAssignmentDeleteId = null;
-      selectedAssignmentIds.clear();
-      await refreshTeacher();
-      showTeacherView('assignments');
-    });
+    );
     const successCount = ids.length - failures.length;
-    if (successCount) toast(`${successCount} activit${successCount === 1 ? 'y was' : 'ies were'} deleted with related uploaded files.`, 'success', 'Activity deleted');
-    if (failures.length) toast(`${failures.length} activit${failures.length === 1 ? 'y' : 'ies'} could not be deleted.\n\n${failures.map(item => `${item.title}: ${item.error}`).join('\n')}`, 'orange', 'Some deletes failed');
+    if (successCount) {
+      const successMessage = allPerformance
+        ? `${successCount} performance task${successCount === 1 ? ' was' : 's were'} deleted with related uploaded files.`
+        : `${successCount} activit${successCount === 1 ? 'y was' : 'ies were'} deleted with related uploaded files.`;
+      toast(successMessage, 'success', allPerformance ? 'Performance task deleted' : 'Activity deleted');
+    }
+    if (failures.length) {
+      const failedLabel = allPerformance
+        ? `${failures.length} performance task${failures.length === 1 ? '' : 's'}`
+        : `${failures.length} activit${failures.length === 1 ? 'y' : 'ies'}`;
+      toast(`${failedLabel} could not be deleted.\n\n${failures.map(item => `${item.title}: ${item.error}`).join('\n')}`, 'orange', 'Some deletes failed');
+    }
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not delete the selected activities. Deploy the delete-assignment Edge Function first.', 'orange', 'Delete failed');
+    toast(
+      friendlyErrorMessage(error, allPerformance ? 'Could not delete the selected performance task. Please try again.' : 'Could not delete the selected activities. Please try again.'),
+      'orange',
+      'Delete failed'
+    );
   }
 });
 
@@ -3002,7 +3066,7 @@ async function openStudentResponsePreview(submissionId) {
     const resultText = effectiveCorrect === true ? 'Correct' : effectiveCorrect === false ? (hasManual ? 'Wrong' : 'Needs review') : 'Recorded';
     const pointLabel = hasManual ? 'Teacher points' : 'Auto points';
     const teacherComment = String(answer?.teacher_comment || '').trim();
-    return `<article class="answer-question student-preview-answer ${effectiveCorrect === true ? 'correct' : effectiveCorrect === false ? 'needs-review' : ''}"><div class="student-preview-question-head"><h3>${i + 1}. ${richMath(q.question_text)}</h3><span>${esc(resultText)}</span></div><p><b>Your answer:</b> <span class="math-content">${richMath(answer?.answer_text || 'No answer')}</span></p><p><b>${pointLabel}:</b> ${shownPoints}/${Number(q.max_points || 0)}</p>${teacherComment ? `<p><b>Teacher comment:</b> ${esc(teacherComment)}</p>` : ''}</article>`;
+    return `<article class="answer-question student-preview-answer ${effectiveCorrect === true ? 'correct' : effectiveCorrect === false ? 'needs-review' : ''}"><div class="student-preview-question-head"><h3>${i + 1}. ${richMath(q.question_text)}</h3><span>${esc(resultText)}</span></div><p><b>Your answer:</b> <span class="math-content">${richStudentAnswer(answer?.answer_text || '')}</span></p><p><b>${pointLabel}:</b> ${shownPoints}/${Number(q.max_points || 0)}</p>${teacherComment ? `<p><b>Teacher comment:</b> ${esc(teacherComment)}</p>` : ''}</article>`;
   }).join('') || '<div class="assignment-empty">No answer details are available for this submission.</div>';
   const proofWrap = $('#studentResponseProofWrap');
   const proofPaths = submissionProofPaths(submission);
@@ -3032,7 +3096,7 @@ document.addEventListener('click', async event => {
     });
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not open your submitted response.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not open your submitted response.'), 'orange');
   }
 });
 
@@ -3058,7 +3122,7 @@ document.addEventListener('click', event => {
       const options = Array.isArray(q.options) ? q.options : [];
       return `<article class="answer-question"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3>${options.map(opt => `<label><input type="radio" name="answer_${q.id}" value="${esc(opt)}"> <span class="math-content">${richMath(opt)}</span></label>`).join('')}</article>`;
     }
-    return `<article class="answer-question"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3><div class="student-math-answer-wrap"><div class="student-answer-input-stack"><input name="answer_${q.id}" placeholder="Type your final answer" autocomplete="off"><div class="student-answer-rendered-preview" data-student-answer-preview hidden><span>Formatted answer</span><math-field class="student-answer-preview-field" read-only math-virtual-keyboard-policy="manual" aria-label="Formatted answer preview"></math-field></div><small class="student-answer-format-hint">You can type letters/numbers normally or use Math Keyboard. Both are auto-checked the same way.</small></div><button type="button" class="math-keyboard-btn" data-math-keyboard data-math-label="Your answer for question ${i+1}">∑ Math Keyboard</button></div></article>`;
+    return `<article class="answer-question"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3><div class="student-math-answer-wrap student-math-answer-only"><div class="student-answer-input-stack"><input type="hidden" name="answer_${q.id}" value=""><div class="student-answer-rendered-preview is-empty" data-student-answer-preview><span>Your answer</span><div class="student-answer-screen" data-student-answer-screen aria-live="polite"><span class="student-answer-screen-placeholder">Your answer will appear here</span></div></div></div><button type="button" class="math-keyboard-btn student-answer-keyboard-btn" data-math-keyboard data-math-label="Your answer for question ${i+1}">∑ Math Keyboard</button></div></article>`;
   }).join('');
   $('#studentSolutionImage').value = '';
   openDialog('answerModal');
@@ -3121,7 +3185,7 @@ $('#answerForm').addEventListener('submit', async event => {
   } catch (error) {
     console.error(error);
     if (uploadedPaths.length) { try { await db.storage.from('mathside-submission-proofs').remove(uploadedPaths); } catch {} }
-    toast(error.message || 'Could not submit your answers.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not submit your answers.'), 'orange');
   }
 });
 
@@ -3247,7 +3311,7 @@ async function openSubmissionReview(submissionId) {
         const maxPoints = Number(q.max_points || 0);
         return `<article class="answer-question review-answer ${effectiveCorrect ? 'correct' : 'needs-review'}" data-review-question="${q.id}">
           <div class="review-answer-heading"><h3>${i+1}. ${richMath(q.question_text)}</h3><label class="manual-answer-check"><input type="checkbox" data-manual-correct data-question-id="${q.id}" data-max-points="${maxPoints}" data-auto-correct="${autoCorrect ? 'true' : 'false'}" data-manual-existing="${hasManual ? 'true' : 'false'}" ${effectiveCorrect ? 'checked' : ''}><span>Correct</span></label></div>
-          <p><b>Student:</b> <span class="math-content">${richMath(answer?.answer_text || 'No answer')}</span></p>
+          <p><b>Student:</b> <span class="math-content">${richStudentAnswer(answer?.answer_text || '')}</span></p>
           <p><b>Answer key:</b> <span class="math-content">${richMath(key?.correct_answer || '—')}</span></p>
           <div class="review-answer-points"><span><b>Auto points:</b> ${autoPoints}/${maxPoints}</span><span class="manual-review-source" data-manual-status>${hasManual ? `Manual check: ${effectiveCorrect ? 'Correct' : 'Wrong'}` : `Auto-check: ${autoCorrect ? 'Correct' : 'Wrong'}`}</span></div>
           <label class="question-comment-field"><span>Question comment</span><textarea data-question-comment data-question-id="${q.id}" rows="3" placeholder="Write a short comment for this question">${esc(answer?.teacher_comment || '')}</textarea></label>
@@ -3284,7 +3348,7 @@ async function openSubmissionReview(submissionId) {
     });
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not load this submission.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not load this submission.'), 'orange');
   }
 }
 
@@ -3365,11 +3429,13 @@ $('#allowResubmissionBtn')?.addEventListener('click', () => {
   if (!submission) return;
   const assignment = assignmentById(submission.assignment_id);
   const student = studentById(submission.student_id);
-  if (!assignment?.allow_resubmission) return toast('Resubmission is not enabled for this activity.', 'orange');
+  if (!assignment?.allow_resubmission) return toast(`Resubmission is not enabled for this ${isPerformanceTask(assignment) ? 'performance task' : 'activity'}.`, 'orange');
   if (submission.resubmit_allowed) return toast('This student is already allowed to submit again.', 'orange');
   pendingResubmissionId = activeSubmissionId;
   const text = $('#resubmissionConfirmText');
-  if (text) text.textContent = `Allow ${student?.display_name || 'this student'} to submit one new attempt for “${assignment.title}”? The student will be notified and must upload a new solution image before submitting.`;
+  if (text) text.textContent = isPerformanceTask(assignment)
+    ? `Allow ${student?.display_name || 'this student'} to submit one new attempt for “${assignment.title}”? The student will be notified and must upload new output pictures before submitting.`
+    : `Allow ${student?.display_name || 'this student'} to submit one new attempt for “${assignment.title}”? The student will be notified and must upload a new solution image before submitting.`;
   openDialog('resubmissionConfirmModal');
 });
 
@@ -3385,7 +3451,7 @@ $('#confirmAllowResubmissionBtn')?.addEventListener('click', async () => {
   const assignment = assignmentById(submission.assignment_id);
   if (!assignment?.allow_resubmission) {
     closeDialog('resubmissionConfirmModal');
-    return toast('Resubmission is not enabled for this activity.', 'orange');
+    return toast(`Resubmission is not enabled for this ${isPerformanceTask(assignment) ? 'performance task' : 'activity'}.`, 'orange');
   }
   try {
     closeDialog('resubmissionConfirmModal');
@@ -3402,7 +3468,7 @@ $('#confirmAllowResubmissionBtn')?.addEventListener('click', async () => {
     toast('The student can now submit one new attempt.', 'success');
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not allow another attempt.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not allow another attempt.'), 'orange');
   } finally {
     pendingResubmissionId = null;
   }
@@ -3437,7 +3503,7 @@ $('#gradeForm').addEventListener('submit', async event => {
     toast('Grade, manual checks, and feedback saved.', 'success');
   } catch (error) {
     console.error(error);
-    toast(error.message || 'Could not save the grade.', 'orange');
+    toast(friendlyErrorMessage(error, 'Could not save the grade.'), 'orange');
   }
 });
 

@@ -8,6 +8,7 @@
   let editingPerformanceTaskId = null;
   let editingPerformanceTaskIds = [];
   let activePerformanceTaskId = null;
+  const performanceLeaderSelections = new Map();
 
   const originalOpenAssignmentPreview = openAssignmentPreview;
   const originalOpenSubmissionReview = openSubmissionReview;
@@ -33,6 +34,9 @@
       publish: a.publish_at || null,
       resubmit: Boolean(a.allow_resubmission),
       points: Number(a.max_points || 0),
+      collaboration: a.collaboration_mode || 'individual',
+      groupingCreator: a.grouping_creator || 'teacher',
+      groupCount: Number(a.group_count || 0),
       type: 'performance_task'
     });
   }
@@ -157,7 +161,199 @@
     return $$('input[name="performance_sections"]:checked', $('#performanceSectionChecklist')).map(n => n.value);
   }
 
+  function performanceMode() {
+    return $('input[name="performance_mode"]:checked')?.value || 'individual';
+  }
+
+  function performanceGroupingCreator() {
+    return $('input[name="grouping_creator"]:checked')?.value || 'teacher';
+  }
+
+  function performanceGroupCount() {
+    const value = Number($('#performanceGroupCount')?.value || 0);
+    return Number.isFinite(value) && value > 0 ? Math.floor(value) : null;
+  }
+
+  function syncPerformanceTeamOptions() {
+    const mode = performanceMode();
+    const grouped = mode !== 'individual';
+    const creator = performanceGroupingCreator();
+    if ($('#performanceGroupingOptions')) $('#performanceGroupingOptions').hidden = !grouped;
+    if ($('#performanceGroupCountWrap')) $('#performanceGroupCountWrap').hidden = mode !== 'group';
+    if ($('#performanceTeacherGroupingTools')) $('#performanceTeacherGroupingTools').hidden = !grouped || creator !== 'teacher';
+    if (!grouped && $('#performanceTeamPreview')) $('#performanceTeamPreview').innerHTML = '';
+  }
+
+  function teamPreviewForSection(sectionId, mode, requestedGroupCount) {
+    const students = studentsForSection(sectionId).slice().sort((a,b) => {
+      const byName = String(a.display_name || '').localeCompare(String(b.display_name || ''), undefined, { sensitivity:'base' });
+      return byName || String(a.id || '').localeCompare(String(b.id || ''));
+    });
+    if (!students.length) return [];
+    const count = mode === 'pair' ? Math.ceil(students.length / 2) : Math.max(1, Math.min(students.length, Number(requestedGroupCount || 1)));
+    const groups = Array.from({length: count}, (_, index) => ({ name: mode === 'pair' ? `Pair ${index + 1}` : `Group ${index + 1}`, members: [] }));
+    students.forEach((student, index) => groups[index % count].members.push(student));
+    return groups.filter(group => group.members.length);
+  }
+
+  function performanceLeaderKey(sectionId, groupName) {
+    return `${sectionId}::${groupName}`;
+  }
+
+  function selectedLeaderForGroup(sectionId, group) {
+    const key = performanceLeaderKey(sectionId, group.name);
+    const current = performanceLeaderSelections.get(key);
+    if (current && group.members.some(member => member.id === current)) return current;
+    const fallback = group.members[0]?.id || '';
+    if (fallback) performanceLeaderSelections.set(key, fallback);
+    return fallback;
+  }
+
+  function leaderAssignmentsForSection(sectionId, mode = performanceMode(), requestedGroupCount = performanceGroupCount()) {
+    return teamPreviewForSection(sectionId, mode, requestedGroupCount).map(group => ({
+      group_name: group.name,
+      leader_id: selectedLeaderForGroup(sectionId, group)
+    })).filter(item => item.leader_id);
+  }
+
+  function renderPerformanceTeamPreview() {
+    const box = $('#performanceTeamPreview');
+    if (!box) return;
+    const mode = performanceMode();
+    const creator = performanceGroupingCreator();
+    if (mode === 'individual' || creator !== 'teacher') { box.innerHTML = ''; return; }
+    const sectionIds = selectedPerformanceSections();
+    if (!sectionIds.length) { box.innerHTML = '<p class="muted">Select at least one class first.</p>'; return; }
+    if (mode === 'group' && !performanceGroupCount()) { box.innerHTML = '<p class="muted">Enter how many groups you want for each class.</p>'; return; }
+    box.innerHTML = sectionIds.map(sectionId => {
+      const section = sectionById(sectionId);
+      const groups = teamPreviewForSection(sectionId, mode, performanceGroupCount());
+      if (!groups.length) return `<article><h4>${esc(section?.name || 'Class')}</h4><p class="muted">No students are enrolled yet.</p></article>`;
+      return `<article data-team-preview-section="${esc(sectionId)}"><div class="performance-team-preview-head"><h4>${esc(section?.name || 'Class')} <small>Grade ${esc(section?.grade_level || '')}</small></h4><button type="button" class="btn btn-light performance-download-team-image" data-download-performance-team-image="${esc(sectionId)}">Download image</button></div><div class="performance-team-preview-grid">${groups.map(group => { const leaderId = selectedLeaderForGroup(sectionId, group); return `<div><b>${esc(group.name)}</b><label class="performance-leader-picker"><span>Team leader</span><select data-performance-leader-select data-section-id="${esc(sectionId)}" data-group-name="${esc(group.name)}">${group.members.map(member => `<option value="${esc(member.id)}" ${member.id===leaderId?'selected':''}>${esc(member.display_name)}</option>`).join('')}</select></label><div class="performance-team-members">${group.members.map(member => `<span>${member.id === leaderId ? '<strong>Leader</strong> ' : ''}${esc(member.display_name)}</span>`).join('')}</div></div>`; }).join('')}</div></article>`;
+    }).join('');
+  }
+
+  function safeImageFileName(value) {
+    return String(value || 'class').trim().replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '') || 'class';
+  }
+
+  function canvasRoundedRect(ctx, x, y, width, height, radius) {
+    const r = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+    if (typeof ctx.roundRect === 'function') { ctx.roundRect(x, y, width, height, r); return; }
+    ctx.moveTo(x + r, y); ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r); ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height); ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r); ctx.quadraticCurveTo(x, y, x + r, y);
+  }
+
+  function wrapCanvasText(ctx, text, maxWidth) {
+    const words = String(text || '').split(/\s+/).filter(Boolean);
+    const lines = [];
+    let current = '';
+    words.forEach(word => {
+      const test = current ? `${current} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth && current) { lines.push(current); current = word; }
+      else current = test;
+    });
+    if (current) lines.push(current);
+    return lines.length ? lines : [''];
+  }
+
+  function downloadPerformanceGroupingImage(sectionId) {
+    const section = sectionById(sectionId);
+    if (!section) return toast('Class not found.', 'orange');
+    const mode = performanceMode();
+    const groups = teamPreviewForSection(sectionId, mode, performanceGroupCount());
+    if (!groups.length) return toast('There are no students to include in this grouping.', 'orange');
+
+    const width = 1200, margin = 70, cardGap = 24, colCount = 2;
+    const cardWidth = (width - (margin * 2) - cardGap) / colCount;
+    const ctxProbe = document.createElement('canvas').getContext('2d');
+    ctxProbe.font = '28px Arial';
+    const groupHeights = groups.map(group => 84 + group.members.reduce((sum, member) => {
+      const lines = wrapCanvasText(ctxProbe, `${member.display_name || 'Student'}`, cardWidth - 54);
+      return sum + Math.max(38, lines.length * 32);
+    }, 0) + 24);
+    const rows = Math.ceil(groups.length / colCount);
+    let contentHeight = 0;
+    for (let r=0; r<rows; r+=1) contentHeight += Math.max(...groupHeights.slice(r*colCount, r*colCount+colCount)) + cardGap;
+    const height = Math.max(620, 230 + contentHeight + 80);
+    const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fffaf5'; ctx.fillRect(0,0,width,height);
+    ctx.fillStyle = '#ff6b00'; ctx.fillRect(0,0,width,18);
+    ctx.fillStyle = '#2f241d'; ctx.font = '700 50px Arial'; ctx.fillText('Mathside Team Grouping', margin, 92);
+    ctx.fillStyle = '#a94d0e'; ctx.font = '700 27px Arial'; ctx.fillText(`${section.name} · Grade ${section.grade_level}`, margin, 140);
+    ctx.fillStyle = '#75685f'; ctx.font = '24px Arial'; ctx.fillText(mode === 'pair' ? 'Pair Performance Task' : 'Group Performance Task', margin, 178);
+
+    let y = 220;
+    for (let r=0; r<rows; r+=1) {
+      const rowGroups = groups.slice(r*colCount, r*colCount+colCount);
+      const rowHeight = Math.max(...groupHeights.slice(r*colCount, r*colCount+colCount));
+      rowGroups.forEach((group, c) => {
+        const x = margin + c * (cardWidth + cardGap);
+        ctx.fillStyle = '#ffffff'; ctx.strokeStyle = '#ead8c9'; ctx.lineWidth = 3;
+        ctx.beginPath(); canvasRoundedRect(ctx,x,y,cardWidth,rowHeight,24); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#fff0e3'; ctx.beginPath(); canvasRoundedRect(ctx,x+20,y+20,cardWidth-40,56,14); ctx.fill();
+        ctx.fillStyle = '#b94b0b'; ctx.font = '700 27px Arial'; ctx.fillText(group.name, x+38, y+58);
+        let my = y + 108;
+        const leaderId = selectedLeaderForGroup(sectionId, group);
+        group.members.forEach((member) => {
+          const isLeader = member.id === leaderId;
+          ctx.fillStyle = isLeader ? '#28734a' : '#40362f'; ctx.font = isLeader ? '700 25px Arial' : '25px Arial';
+          const prefix = isLeader ? 'Leader — ' : '';
+          const lines = wrapCanvasText(ctx, prefix + (member.display_name || 'Student'), cardWidth - 74);
+          lines.forEach((line, li) => ctx.fillText(line, x+38, my + li*31));
+          my += Math.max(38, lines.length * 32);
+        });
+      });
+      y += rowHeight + cardGap;
+    }
+    ctx.fillStyle = '#9a8c82'; ctx.font = '18px Arial'; ctx.fillText('Generated by Mathside', margin, height - 38);
+    canvas.toBlob(blob => {
+      if (!blob) return toast('Could not create the grouping image.', 'orange');
+      const url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = `Mathside-${safeImageFileName(section.name)}-${mode}-grouping.png`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1200);
+      toast(`Grouping image downloaded for ${section.name}.`, 'success');
+    }, 'image/png');
+  }
+
+  document.addEventListener('change', event => {
+    const select = event.target.closest('[data-performance-leader-select]');
+    if (!select) return;
+    performanceLeaderSelections.set(performanceLeaderKey(select.dataset.sectionId, select.dataset.groupName), select.value);
+    renderPerformanceTeamPreview();
+  });
+
+  document.addEventListener('click', event => {
+    const btn = event.target.closest('[data-download-performance-team-image]');
+    if (!btn) return;
+    event.preventDefault();
+    downloadPerformanceGroupingImage(btn.dataset.downloadPerformanceTeamImage);
+  });
+
+  async function applyStoredPerformanceGrouping(task) {
+    if (!task || task.collaboration_mode === 'individual') return;
+    if ((task.grouping_creator || 'teacher') !== 'teacher') return;
+    const { error } = await db.rpc('mathside_generate_performance_groups', {
+      p_assignment_id: task.id,
+      p_group_count: task.collaboration_mode === 'pair' ? null : Number(task.group_count || performanceGroupCount() || 1)
+    });
+    if (error) throw error;
+    const leaders = leaderAssignmentsForSection(task.section_id, task.collaboration_mode, task.group_count || performanceGroupCount());
+    if (leaders.length) {
+      const leaderUpdate = await db.rpc('mathside_set_performance_group_leaders', {
+        p_assignment_id: task.id,
+        p_leaders: leaders
+      });
+      if (leaderUpdate.error) throw leaderUpdate.error;
+    }
+  }
+
   function resetPerformanceForm() {
+    performanceLeaderSelections.clear();
     const form = $('#performanceTaskForm');
     form?.reset();
     if (form?.elements?.max_points) form.elements.max_points.value = '100';
@@ -167,9 +363,11 @@
     $('#removePerformanceImagesWrap').hidden = true;
     $('#removePerformanceRubricWrap').hidden = true;
     $('#performancePublishAtWrap').hidden = true;
+    if ($('#performanceTeamPreview')) $('#performanceTeamPreview').innerHTML = '';
     editingPerformanceTaskId = null;
     editingPerformanceTaskIds = [];
     populatePerformanceSections();
+    syncPerformanceTeamOptions();
   }
 
   function syncPerformancePublishFields() {
@@ -197,7 +395,12 @@
       form.elements.due_at.value = formatDateTimeLocalInput(task.due_at);
       form.elements.reminder_hours_before.value = String(Number(task.reminder_hours_before || 0));
       form.elements.allow_resubmission.checked = Boolean(task.allow_resubmission);
+      $$('input[name="performance_mode"]').forEach(input => { input.checked = input.value === (task.collaboration_mode || 'individual'); });
+      $$('input[name="grouping_creator"]').forEach(input => { input.checked = input.value === (task.grouping_creator || 'teacher'); });
+      if ($('#performanceGroupCount')) $('#performanceGroupCount').value = String(Number(task.group_count || 4));
       syncPerformancePublishFields();
+      syncPerformanceTeamOptions();
+      if ((task.collaboration_mode || 'individual') !== 'individual' && (task.grouping_creator || 'teacher') === 'teacher') renderPerformanceTeamPreview();
       const sectionIds = new Set((group.length ? group : [task]).map(item => item.section_id));
       $$('input[name="performance_sections"]', $('#performanceSectionChecklist')).forEach(input => { input.checked = sectionIds.has(input.value); input.disabled = true; input.closest('.class-check-option')?.classList.toggle('editing-class-option', input.checked); });
       const existingImages = assignmentTaskImages(task);
@@ -222,6 +425,18 @@
 
   $('#postPerformanceTaskBtn')?.addEventListener('click', () => openPerformanceTaskModal());
   $('#performancePublishMode')?.addEventListener('change', syncPerformancePublishFields);
+  $('#performanceWorkMode')?.addEventListener('change', event => {
+    const input = event.target.closest('input[name="performance_mode"]');
+    if (!input) return;
+    if (!input.checked) { input.checked = true; return; }
+    $$('input[name="performance_mode"]').forEach(other => { if (other !== input) other.checked = false; });
+    syncPerformanceTeamOptions();
+    renderPerformanceTeamPreview();
+  });
+  $$('input[name="grouping_creator"]').forEach(input => input.addEventListener('change', () => { syncPerformanceTeamOptions(); renderPerformanceTeamPreview(); }));
+  $('#performanceGroupCount')?.addEventListener('input', renderPerformanceTeamPreview);
+  $('#performanceSectionChecklist')?.addEventListener('change', renderPerformanceTeamPreview);
+  $('#generatePerformanceTeamsBtn')?.addEventListener('click', renderPerformanceTeamPreview);
   $('#performanceImages')?.addEventListener('change', event => {
     const files = [...(event.currentTarget.files || [])].slice(0, 8);
     $('#performanceImagePreview').innerHTML = files.map((file,i)=>`<figure><img src="${URL.createObjectURL(file)}" alt="Selected task picture ${i+1}"><figcaption>${esc(file.name)}</figcaption></figure>`).join('');
@@ -255,14 +470,23 @@
         await removeStoragePaths('mathside-assignment-images', [rubricPath]);
         rubricPath = null;
       }
+      const nextMode = performanceMode();
+      const nextCreator = nextMode === 'individual' ? 'teacher' : performanceGroupingCreator();
+      const nextGroupCount = nextMode === 'group' ? performanceGroupCount() : null;
+      const setupChanged = (task.collaboration_mode || 'individual') !== nextMode
+        || (task.grouping_creator || 'teacher') !== nextCreator
+        || Number(task.group_count || 0) !== Number(nextGroupCount || 0);
       const update = await db.from('mathside_assignments').update({
         title: String(form.get('title') || '').trim(), instructions: String(form.get('instructions') || '').trim(),
         work_type:'performance_task', max_points:Number(form.get('max_points') || 100),
         due_at:schedule.dueAt, reminder_hours_before:schedule.dueAt ? schedule.reminderHours : 0,
         status:schedule.status, publish_at:schedule.publishAt, allow_resubmission:form.get('allow_resubmission') === 'on',
+        collaboration_mode:nextMode, grouping_creator:nextCreator, group_count:nextGroupCount,
         image_path:imagePaths[0] || null, image_paths:imagePaths, rubric_path:rubricPath
       }).eq('id', task.id);
       if (update.error) throw update.error;
+      const freshTask = { ...task, collaboration_mode:nextMode, grouping_creator:nextCreator, group_count:nextGroupCount };
+      if (setupChanged && freshTask.collaboration_mode !== 'individual' && freshTask.grouping_creator === 'teacher') await applyStoredPerformanceGrouping(freshTask);
     } catch (error) {
       if (uploaded.length) await removeStoragePaths('mathside-assignment-images', uploaded);
       throw error;
@@ -298,35 +522,40 @@
     if (!Number.isFinite(maxPoints) || maxPoints <= 0) return toast('Total points must be greater than zero.', 'orange');
     const sectionIds = selectedPerformanceSections();
     if (!sectionIds.length) return toast('Select at least one class for this performance task.', 'orange');
+    const mode = performanceMode();
+    const groupingCreator = mode === 'individual' ? 'teacher' : performanceGroupingCreator();
+    const groupCount = mode === 'group' ? performanceGroupCount() : null;
+    if (mode === 'group' && !groupCount) return toast('Enter how many groups you want for each class.', 'orange');
     const taskImages = [...($('#performanceImages')?.files || [])];
     if (taskImages.length > 8) return toast('Upload up to 8 reference pictures.', 'orange');
     if (taskImages.some(file => !String(file.type || '').startsWith('image/'))) return toast('Reference pictures must be image files.', 'orange');
     const rubricFile = $('#performanceRubric')?.files?.[0] || null;
     let schedule;
     try { schedule = readPerformanceSchedule(form); }
-    catch (error) { return toast(error.message, 'orange', 'Check performance task'); }
+    catch (error) { return toast(friendlyErrorMessage(error, 'Could not check this performance task.'), 'orange', 'Check performance task'); }
 
     if (editingPerformanceTaskId) {
       const copies = editingPerformanceTaskIds.map(id => assignmentById(id)).filter(Boolean);
       try {
-        await withLoading(copies.length > 1 ? `Saving in ${copies.length} classes…` : 'Saving performance task…', 'Updating instructions, deadline, pictures, rubric, and score settings.', async () => {
+        await withLoading(copies.length > 1 ? `Saving performance task in ${copies.length} classes…` : 'Saving performance task…', 'Updating instructions, deadline, pictures, rubric, and score settings.', async () => {
           for (const task of copies) await savePerformanceCopy(task, form, schedule, taskImages, rubricFile, $('#removePerformanceImages')?.checked, $('#removePerformanceRubric')?.checked);
           closeDialog('performanceTaskModal'); editingPerformanceTaskId = null; editingPerformanceTaskIds = [];
           await refreshTeacher(); showTeacherView('performance');
         });
         toast(schedule.status === 'draft' ? `Performance task scheduled for ${formatDeadlineDate(schedule.publishAt)}.` : 'Performance task updated.', 'success');
-      } catch (error) { console.error(error); toast(error.message || 'Could not save the performance task.', 'orange'); }
+      } catch (error) { console.error(error); toast(friendlyErrorMessage(error, 'Could not save the performance task.'), 'orange'); }
       return;
     }
 
     const created = [], uploaded = [];
     try {
-      await withLoading(`Posting to ${sectionIds.length} class${sectionIds.length===1?'':'es'}…`, 'Creating the performance task, pictures, rubric, deadline, and notifications.', async () => {
+      await withLoading(`Creating performance task for ${sectionIds.length} class${sectionIds.length===1?'':'es'}…`, 'Saving the performance task, pictures, rubric, deadline, team settings, and notifications.', async () => {
         for (const sectionId of sectionIds) {
           const insert = await db.from('mathside_assignments').insert({
             section_id:sectionId, teacher_id:state.user.id, title, instructions, work_type:'performance_task', max_points:maxPoints,
             due_at:schedule.dueAt, reminder_hours_before:schedule.dueAt ? schedule.reminderHours : 0,
-            status:'draft', publish_at:schedule.publishAt, allow_resubmission:form.get('allow_resubmission') === 'on', image_paths:[]
+            status:'draft', publish_at:schedule.publishAt, allow_resubmission:form.get('allow_resubmission') === 'on', image_paths:[],
+            collaboration_mode:mode, grouping_creator:groupingCreator, group_count:groupCount
           }).select().single();
           if (insert.error) throw insert.error;
           const task = insert.data; created.push(task);
@@ -336,6 +565,7 @@
           if (rubricFile) { [rubricPath] = await uploadTeacherFiles(task.id, [rubricFile], 'rubric'); uploaded.push(rubricPath); }
           const update = await db.from('mathside_assignments').update({ image_path:imagePaths[0] || null, image_paths:imagePaths, rubric_path:rubricPath, status:schedule.status, publish_at:schedule.publishAt }).eq('id', task.id);
           if (update.error) throw update.error;
+          if (mode !== 'individual' && groupingCreator === 'teacher') await applyStoredPerformanceGrouping({ ...task, collaboration_mode:mode, grouping_creator:groupingCreator, group_count:groupCount });
         }
         closeDialog('performanceTaskModal'); await refreshTeacher(); showTeacherView('performance');
       });
@@ -344,7 +574,7 @@
       console.error(error);
       if (uploaded.length) await removeStoragePaths('mathside-assignment-images', uploaded);
       const ids = created.map(x=>x.id); if (ids.length) try { await db.from('mathside_assignments').delete().in('id',ids); } catch {}
-      toast(error.message || 'Could not post the performance task.', 'orange');
+      toast(friendlyErrorMessage(error, 'Could not post the performance task.'), 'orange');
     }
   });
 
@@ -362,14 +592,84 @@
       const archived = group.every(item => item.status === 'archived');
       const images = assignmentTaskImages(a);
       const classList = labels.length > 1 ? `<div class="assignment-class-list">${labels.map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : '';
-      return `<article class="assignment-card performance-task-card ${scheduled?'assignment-scheduled':''} ${archived?'assignment-archived':''}">
+      return `<article class="assignment-card assignment-group-card performance-task-card performance-group-card ${scheduled?'assignment-scheduled':''} ${archived?'assignment-archived':''}">
         <div class="assignment-thumb performance-thumb">${a.image_url?`<img src="${esc(a.image_url)}" alt="Performance task picture" data-assignment-storage-path="${esc(a.image_path||'')}">`:'▣'}</div>
-        <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(a.title)}</h3>${group.length>1?'<span class="shared-assignment-badge">Shared performance task</span>':''}${scheduled?'<span class="scheduled-badge">Scheduled</span>':''}${archived?'<span class="archived-badge">Archived</span>':''}</div><p>${esc(a.instructions || 'Performance task')}</p>${classList}<div class="assignment-meta"><span class="meta-chip">${labels.length===1?esc(labels[0]):`${labels.length} classes`}</span><span class="meta-chip">${Number(a.max_points||0)} pts</span>${a.due_at?`<span class="meta-chip">Due ${esc(formatDeadlineDate(a.due_at))}</span>`:''}${images.length?`<span class="meta-chip">${images.length} picture${images.length===1?'':'s'}</span>`:''}${a.rubric_path?'<span class="meta-chip rubric-chip">Rubric attached</span>':''}${scheduled?`<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(a.publish_at))}</span>`:''}</div></div>
+        <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(a.title)}</h3>${group.length>1?'<span class="shared-assignment-badge">Shared performance task</span>':''}${scheduled?'<span class="scheduled-badge">Scheduled</span>':''}${archived?'<span class="archived-badge">Archived</span>':''}</div><p>${esc(a.instructions || 'Performance task')}</p>${classList}<div class="assignment-meta"><span class="meta-chip">${labels.length===1?esc(labels[0]):`${labels.length} classes`}</span><span class="meta-chip">${Number(a.max_points||0)} pts</span><span class="meta-chip">${esc(collaborationLabel(a))}</span>${a.due_at?`<span class="meta-chip">Due ${esc(formatDeadlineDate(a.due_at))}</span>`:''}${images.length?`<span class="meta-chip">${images.length} picture${images.length===1?'':'s'}</span>`:''}${a.rubric_path?'<span class="meta-chip rubric-chip">Rubric attached</span>':''}${scheduled?`<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(a.publish_at))}</span>`:''}</div></div>
         <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${a.id}">Preview</button>${archived?'':`<button class="btn btn-light" data-edit-performance-task="${a.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(ids.join(','))}">Archive</button>`}<button class="btn btn-danger-outline" data-delete-assignment-group="${esc(ids.join(','))}">Delete</button></div>
       </article>`;
     }).join('');
   }
   window.renderPerformanceTasks = renderPerformanceTasks;
+
+  async function getTeacherPerformanceGroups(assignmentId) {
+    const result = await db.rpc('mathside_get_performance_groups_for_teacher', { p_assignment_id: assignmentId });
+    if (result.error) throw result.error;
+    return result.data || { groups: [], ungrouped: [] };
+  }
+
+  async function renderStudentCreatedTeamLeaderManager(linkedTasks) {
+    const box = $('#performancePreviewTeamManager');
+    if (!box) return;
+    const relevant = (linkedTasks || []).filter(task =>
+      (task.collaboration_mode || 'individual') !== 'individual' &&
+      (task.grouping_creator || 'teacher') === 'students'
+    );
+    if (!relevant.length) {
+      box.hidden = true;
+      box.innerHTML = '';
+      return;
+    }
+    box.hidden = false;
+    box.innerHTML = '<div class="performance-team-manager-loading"><span class="loading-mini-spinner"></span><p>Loading student-created teams…</p></div>';
+    try {
+      const rows = await Promise.all(relevant.map(async task => ({
+        task,
+        data: await getTeacherPerformanceGroups(task.id)
+      })));
+      box.innerHTML = `<div class="performance-team-manager-head"><div><p class="eyebrow">TEAM LEADERS</p><h3>Choose the leader for each student-created team</h3><p>Students may form their own pair or group, but no one can submit until you choose a leader.</p></div></div>${rows.map(({task,data}) => {
+        const section = sectionById(task.section_id);
+        const groups = Array.isArray(data.groups) ? data.groups : [];
+        const ungrouped = Array.isArray(data.ungrouped) ? data.ungrouped : [];
+        return `<section class="performance-formed-team-section" data-team-manager-assignment="${esc(task.id)}"><div class="performance-formed-team-section-head"><div><b>${esc(section?.name || 'Class')}</b><small>Grade ${esc(section?.grade_level || '')}</small></div><span>${groups.length} team${groups.length===1?'':'s'} formed</span></div>${groups.length ? `<div class="performance-formed-team-grid">${groups.map(group => {
+          const members = Array.isArray(group.members) ? group.members : [];
+          return `<article class="performance-formed-team-card"><div class="performance-formed-team-title"><b>${esc(group.name || 'Team')}</b>${group.leader_id ? '<span>Leader selected</span>' : '<span class="needs-leader">Needs leader</span>'}</div><label class="performance-leader-picker"><span>Team leader</span><select data-student-team-leader-select data-assignment-id="${esc(task.id)}" data-group-id="${esc(group.id)}"><option value="">Choose leader</option>${members.map(member => `<option value="${esc(member.id)}" ${member.id===group.leader_id?'selected':''}>${esc(member.display_name || 'Student')}</option>`).join('')}</select></label><div class="performance-team-members">${members.map(member => `<span>${member.id===group.leader_id?'<strong>Leader</strong> ':''}${esc(member.display_name || 'Student')}</span>`).join('')}</div></article>`;
+        }).join('')}</div>` : '<p class="muted performance-no-formed-teams">No teams have been formed in this class yet.</p>'}${ungrouped.length ? `<div class="performance-ungrouped-students"><b>Still without a team</b><span>${ungrouped.map(student => esc(student.display_name || 'Student')).join(', ')}</span></div>` : ''}</section>`;
+      }).join('')}<div class="performance-team-manager-actions"><button type="button" class="btn btn-orange" data-save-student-team-leaders>Save team leaders</button></div>`;
+    } catch (error) {
+      console.error(error);
+      box.innerHTML = `<div class="performance-team-manager-error"><b>Could not load the teams.</b><p>${esc(friendlyErrorMessage(error, 'Check your connection, then reopen this preview.'))}</p></div>`;
+    }
+  }
+
+  document.addEventListener('click', async event => {
+    const btn = event.target.closest('[data-save-student-team-leaders]');
+    if (!btn) return;
+    const box = $('#performancePreviewTeamManager');
+    const selects = $$('[data-student-team-leader-select]', box);
+    if (!selects.length) return toast('There are no formed teams to update yet.', 'orange');
+    if (selects.some(select => !select.value)) return toast('Choose a leader for every formed team before saving.', 'orange');
+    const byAssignment = new Map();
+    selects.forEach(select => {
+      const assignmentId = select.dataset.assignmentId;
+      if (!byAssignment.has(assignmentId)) byAssignment.set(assignmentId, []);
+      byAssignment.get(assignmentId).push({ group_id: select.dataset.groupId, leader_id: select.value });
+    });
+    try {
+      await withLoading('Saving team leaders…','Updating who can submit each team output.', async () => {
+        for (const [assignmentId, leaders] of byAssignment.entries()) {
+          const result = await db.rpc('mathside_set_performance_group_leaders', { p_assignment_id: assignmentId, p_leaders: leaders });
+          if (result.error) throw result.error;
+        }
+      });
+      toast('Team leaders saved. The selected leaders can now submit.', 'success');
+      const activeTask = assignmentById(activePerformanceTaskId);
+      const group = activeTask ? performanceGroupForId(activeTask.id) : [];
+      await renderStudentCreatedTeamLeaderManager(group.length ? group : (activeTask ? [activeTask] : []));
+    } catch (error) {
+      console.error(error);
+      toast(friendlyErrorMessage(error, 'Could not save the team leaders.'), 'orange');
+    }
+  });
 
   // ---------------------------------------------------------------
   // PREVIEW
@@ -377,18 +677,32 @@
   openAssignmentPreview = async function(id) {
     const task = assignmentById(id);
     if (!task || !isPerformanceTask(task)) {
-      const questionSection = $('.assignment-preview-questions', $('#assignmentPreviewModal'));
+      const previewModal = $('#assignmentPreviewModal');
+      const topEyebrow = $(':scope > .modal-box > .eyebrow', previewModal);
+      const detailsHeading = $('.assignment-preview-details h3', previewModal);
+      if (topEyebrow) topEyebrow.textContent = 'ACTIVITY PREVIEW';
+      if (detailsHeading) detailsHeading.textContent = 'Activity information';
+      const questionSection = $('.assignment-preview-questions', previewModal);
       if (questionSection) questionSection.hidden = false;
       const resources = $('#performancePreviewResources');
       if (resources) resources.hidden = true;
+      if ($('#performancePreviewTeamManager')) { $('#performancePreviewTeamManager').hidden = true; $('#performancePreviewTeamManager').innerHTML = ''; }
       return originalOpenAssignmentPreview(id);
     }
     const group = performanceGroupForId(id); const linked = group.length ? group : [task];
+    activePerformanceTaskId = id;
+    const previewModal = $('#assignmentPreviewModal');
+    const topEyebrow = $(':scope > .modal-box > .eyebrow', previewModal);
+    const detailsHeading = $('.assignment-preview-details h3', previewModal);
+    if (topEyebrow) topEyebrow.textContent = 'PERFORMANCE TASK PREVIEW';
+    if (detailsHeading) detailsHeading.textContent = 'Performance task information';
     $('#assignmentPreviewTitle').textContent = task.title || 'Performance Task';
     $('#assignmentPreviewInstructions').textContent = task.instructions || 'No additional instructions were provided.';
     const scheduled = task.status === 'draft' && task.publish_at;
     const details = [
       ['Type','Performance Task'], ['Classes',groupSectionLabels(linked).join(', ') || 'No class selected'],
+      ['Work setup',collaborationLabel(task)],
+      ...((task.collaboration_mode || 'individual') !== 'individual' ? [['Team creation',(task.grouping_creator || 'teacher') === 'teacher' ? 'Teacher creates teams' : 'Students create teams']] : []),
       ['Posting',scheduled?`Scheduled for ${formatDeadlineDate(task.publish_at)}`:'Posted immediately'],
       ['Deadline',task.due_at?formatDeadlineDate(task.due_at):'No deadline'],
       ['Student reminder',task.due_at?reminderLabel(task.reminder_hours_before):'No reminder'],
@@ -403,11 +717,13 @@
       const url = await signedUrl('mathside-assignment-images', task.rubric_path, 1800);
       $('#performancePreviewRubric').innerHTML = url ? `<a class="btn btn-light" href="${esc(url)}" target="_blank" rel="noopener">Open rubric</a>` : '<p class="muted">Rubric file is unavailable.</p>';
     } else $('#performancePreviewRubric').innerHTML = '<p class="muted">No rubric attached.</p>';
+    await renderStudentCreatedTeamLeaderManager(linked);
     openDialog('assignmentPreviewModal');
   };
   $('#assignmentPreviewModal')?.addEventListener('close', () => {
     const q = $('.assignment-preview-questions', $('#assignmentPreviewModal')); if (q) q.hidden = false;
     if ($('#performancePreviewResources')) $('#performancePreviewResources').hidden = true;
+    if ($('#performancePreviewTeamManager')) { $('#performancePreviewTeamManager').hidden = true; $('#performancePreviewTeamManager').innerHTML = ''; }
   });
 
   // ---------------------------------------------------------------
@@ -443,7 +759,7 @@
 
   function submissionCard(s) {
     const a = assignmentById(s.assignment_id), student = studentById(s.student_id), section = sectionById(a?.section_id), total = totalPoints(a?.id), graded = s.status === 'graded';
-    const shown = graded ? Number(s.teacher_score ?? s.auto_score ?? 0) : (isPerformanceTask(a) ? null : Number(s.auto_score || 0));
+    const shown = graded ? Number(s.teacher_score ?? 0) : (isPerformanceTask(a) ? null : Number(s.auto_score || 0));
     const genderClass = student?.gender === 'Male' ? 'submission-male' : student?.gender === 'Female' ? 'submission-female' : 'submission-other';
     return `<article class="submission-card ${genderClass}"><div class="submission-status-icon">${graded?iconSvg('check','assignment-line-icon'):iconSvg('inbox','assignment-line-icon')}</div><div class="submission-card-body"><div class="submission-student-row"><button type="button" class="submission-student-name" data-track-student-from-submissions="${student?.id||''}" data-track-section="${section?.id||''}">${esc(student?.display_name||'Student')}</button><span class="gender-pill">${esc(student?.gender||'Not specified')}</span></div><div class="submission-meta-grid"><span><small>Status</small><b>${esc(s.status)}</b></span><span><small>Score</small><b>${shown===null?'Pending':`${shown}/${total}`}</b></span><span><small>Attempt</small><b>${Number(s.attempt_count||1)}</b></span><span><small>Submitted</small><b>${esc(formatStudentDate(s.submitted_at)||'')}</b></span></div></div><button class="btn btn-orange submission-review-btn" data-review-submission="${s.id}">Review</button></article>`;
   }
@@ -457,7 +773,7 @@
     const uniqueStudents = new Set(rows.map(s=>s.student_id)).size;
     const selectedSection = submissionSectionId === 'all' ? null : sectionById(submissionSectionId);
     const typeLabel = submissionWorkType === 'performance_task' ? 'Performance Tasks' : 'Activities';
-    $('#submissionSectionSummary').innerHTML = `<span><b>${rows.length}</b> submission${rows.length===1?'':'s'}</span><span><b>${uniqueStudents}</b> learner${uniqueStudents===1?'':'s'}</span><span><b>${typeLabel}</b></span>${selectedSection?`<span><b>${esc(selectedSection.name)}</b> · Grade ${esc(selectedSection.grade_level)}</span>`:'<span>Grouped by section, then activity</span>'}`;
+    $('#submissionSectionSummary').innerHTML = `<span><b>${rows.length}</b> submission${rows.length===1?'':'s'}</span><span><b>${uniqueStudents}</b> learner${uniqueStudents===1?'':'s'}</span><span><b>${typeLabel}</b></span>${selectedSection?`<span><b>${esc(selectedSection.name)}</b> · Grade ${esc(selectedSection.grade_level)}</span>`:`<span>Grouped by section, then ${submissionWorkType === 'performance_task' ? 'performance task' : 'activity'}</span>`}`;
     if (!rows.length) { list.innerHTML = `<div class="assignment-empty v9-empty"><b>No ${typeLabel.toLowerCase()} submissions yet</b><p>Student work will appear here after submission.</p></div>`; return; }
     const sectionMap = new Map();
     rows.forEach(sub => {
@@ -473,7 +789,7 @@
       const assignmentIds = [...assignmentMap.keys()].sort((a,b)=>String(assignmentById(a)?.title||'').localeCompare(String(assignmentById(b)?.title||''),undefined,{sensitivity:'base'}));
       const groups = assignmentIds.map(assignmentId => {
         const assignment = assignmentById(assignmentId), subs = sortSubmissionRows(assignmentMap.get(assignmentId));
-        return `<section class="submission-activity-group"><header><div><span>${isPerformanceTask(assignment)?'PERFORMANCE TASK':'ACTIVITY'}</span><h3>${esc(assignment?.title||'Activity')}</h3></div><div><b>${subs.length}</b><small>submission${subs.length===1?'':'s'}</small></div></header><div class="submission-activity-list">${subs.map(submissionCard).join('')}</div></section>`;
+        return `<section class="submission-activity-group"><header><div><span>${isPerformanceTask(assignment)?'PERFORMANCE TASK':'ACTIVITY'}</span><h3>${esc(assignment?.title || (isPerformanceTask(assignment) ? 'Performance Task' : 'Activity'))}</h3></div><div><b>${subs.length}</b><small>submission${subs.length===1?'':'s'}</small></div></header><div class="submission-activity-list">${subs.map(submissionCard).join('')}</div></section>`;
       }).join('');
       return `<section class="submission-section-group"><div class="submission-section-group-title"><span>${iconSvg('class','btn-icon')}</span><div><p>SECTION</p><h2>${esc(section?.name||'Class')}</h2><small>Grade ${esc(section?.grade_level||'')}</small></div></div>${groups}</section>`;
     }).join('');
@@ -485,11 +801,103 @@
   });
 
   // ---------------------------------------------------------------
+  // PERFORMANCE TASK TEAMWORK
+  // ---------------------------------------------------------------
+  async function getPerformanceTeamInfo(assignmentId, studentId = null) {
+    const args = { p_assignment_id: assignmentId, p_student_id: studentId || null };
+    const result = await db.rpc('mathside_get_performance_team', args);
+    if (result.error) throw result.error;
+    return result.data || { mode:'individual', group:null, members:[], is_leader:false };
+  }
+
+  async function getPerformanceParticipationRatings(assignmentId, groupId) {
+    if (!groupId) return [];
+    const result = await db.rpc('mathside_get_participation_ratings', { p_assignment_id:assignmentId, p_group_id:groupId });
+    if (result.error) throw result.error;
+    return Array.isArray(result.data) ? result.data : [];
+  }
+
+  function collaborationLabel(a) {
+    const mode = a?.collaboration_mode || 'individual';
+    return mode === 'pair' ? 'Pair task' : mode === 'group' ? 'Group task' : 'Individual task';
+  }
+
+  function renderTeamMembers(team) {
+    const members = Array.isArray(team?.members) ? team.members : [];
+    return members.map(member => `<li><span>${esc(member.display_name || 'Student')}</span>${member.id === team?.leader_id ? '<b>Leader</b>' : ''}</li>`).join('');
+  }
+
+  async function renderStudentTeamBuilder(a) {
+    const box = $('#performanceStudentTeamBuilder');
+    if (!box) return;
+    box.hidden = false;
+    box.innerHTML = '<p class="muted">Loading classmates…</p>';
+    const result = await db.rpc('mathside_get_available_groupmates', { p_assignment_id:a.id });
+    if (result.error) throw result.error;
+    const data = result.data || {};
+    const peers = Array.isArray(data.students) ? data.students : [];
+    const maxMembers = Number(data.max_members || (a.collaboration_mode === 'pair' ? 2 : 4));
+    const need = a.collaboration_mode === 'pair' ? 1 : Math.max(1, maxMembers - 1);
+    box.innerHTML = `<div class="performance-team-builder-head"><p class="eyebrow">CREATE YOUR ${a.collaboration_mode === 'pair' ? 'PAIR' : 'GROUP'}</p><h3>Choose your teammate${a.collaboration_mode === 'pair' ? '' : 's'}</h3><p>Select ${a.collaboration_mode === 'pair' ? 'one classmate' : `up to ${need} classmates`} to form your team. Your teacher will choose the team leader after the team is created.</p></div>${peers.length ? `<div class="performance-peer-list">${peers.map(peer => `<label><input type="checkbox" name="performance_peer" value="${esc(peer.id)}"><span>${esc(peer.display_name)}</span></label>`).join('')}</div><button type="button" class="btn btn-orange" data-create-performance-team data-max-members="${maxMembers}">Create team</button>` : '<p class="muted">No classmates are currently available to form a team.</p>'}`;
+  }
+
+  async function renderLeaderParticipationRatings(a, team) {
+    const box = $('#performanceParticipationRatings');
+    if (!box) return;
+    const members = (team?.members || []).filter(member => member.id !== team.leader_id);
+    if (!members.length) { box.hidden = true; box.innerHTML = ''; return; }
+    let existing = [];
+    try { existing = await getPerformanceParticipationRatings(a.id, team.group?.id); } catch (_) {}
+    const byMember = new Map(existing.map(row => [row.member_id, Number(row.rating || 0)]));
+    box.hidden = false;
+    box.innerHTML = `<div class="performance-rating-head"><p class="eyebrow">MEMBER PARTICIPATION</p><h3>Rate each member from 1 to 5</h3><p>Only you and your teacher can see these ratings.</p></div><div class="performance-rating-list">${members.map(member => `<label><span>${esc(member.display_name)}</span><select data-participation-member="${esc(member.id)}" required><option value="">Choose</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${byMember.get(member.id)===n?'selected':''}>${n}</option>`).join('')}</select></label>`).join('')}</div>`;
+  }
+
+  async function saveLeaderParticipationRatings(a, team) {
+    if ((a.collaboration_mode || 'individual') === 'individual' || !team?.is_leader || !team?.group?.id) return;
+    const selects = $$('[data-participation-member]', $('#performanceParticipationRatings'));
+    const ratings = selects.map(select => ({ member_id:select.dataset.participationMember, rating:Number(select.value || 0) }));
+    if (ratings.some(item => item.rating < 1 || item.rating > 5)) throw new Error('Rate every team member from 1 to 5 before submitting.');
+    const result = await db.rpc('mathside_save_participation_ratings', { p_assignment_id:a.id, p_group_id:team.group.id, p_ratings:ratings });
+    if (result.error) throw result.error;
+  }
+
+  document.addEventListener('change', event => {
+    const input = event.target.closest('input[name="performance_peer"]');
+    if (!input) return;
+    const a = assignmentById(activePerformanceTaskId);
+    const checked = $$('input[name="performance_peer"]:checked', $('#performanceStudentTeamBuilder'));
+    const max = Number($('#performanceStudentTeamBuilder [data-create-performance-team]')?.dataset.maxMembers || 2) - 1;
+    if (a?.collaboration_mode === 'pair' && checked.length > 1) checked.slice(0,-1).forEach(x => { x.checked = false; });
+    else if (checked.length > max) { input.checked = false; toast(`Choose up to ${max} teammate${max===1?'':'s'}.`, 'orange'); }
+  });
+
+  document.addEventListener('click', async event => {
+    const btn = event.target.closest('[data-create-performance-team]');
+    if (!btn) return;
+    const a = assignmentById(activePerformanceTaskId); if (!a) return;
+    const memberIds = $$('input[name="performance_peer"]:checked', $('#performanceStudentTeamBuilder')).map(input => input.value);
+    if (a.collaboration_mode === 'pair' && memberIds.length !== 1) return toast('Choose one classmate for your pair.', 'orange');
+    if (a.collaboration_mode === 'group' && memberIds.length < 1) return toast('Choose at least one classmate for your group.', 'orange');
+    try {
+      await withLoading('Creating your team…','Saving your selected teammates.', async () => {
+        const result = await db.rpc('mathside_create_student_performance_team', { p_assignment_id:a.id, p_member_ids:memberIds });
+        if (result.error) throw result.error;
+      });
+      toast('Your team is ready. Your teacher will choose the leader.', 'success');
+      await openStudentPerformanceTask(a.id);
+    } catch (error) { toast(friendlyErrorMessage(error, 'Could not create the team.'), 'orange'); }
+  });
+
+  // ---------------------------------------------------------------
   // REVIEW PERFORMANCE TASK
   // ---------------------------------------------------------------
   openSubmissionReview = async function(submissionId) {
     const submission = state.submissions.find(s=>s.id===submissionId), a = assignmentById(submission?.assignment_id);
-    if (!submission || !isPerformanceTask(a)) return originalOpenSubmissionReview(submissionId);
+    if (!submission || !isPerformanceTask(a)) {
+      if ($('#reviewPerformanceTeamInfo')) { $('#reviewPerformanceTeamInfo').hidden = true; $('#reviewPerformanceTeamInfo').innerHTML = ''; }
+      return originalOpenSubmissionReview(submissionId);
+    }
     activeSubmissionId = submissionId;
     const student = studentById(submission.student_id), total = totalPoints(a.id);
     await withLoading('Opening performance task…','Loading the student output pictures.', async () => {
@@ -497,6 +905,17 @@
       if ($('#reviewSubmissionStudentName')) $('#reviewSubmissionStudentName').textContent = student?.display_name || 'Student';
       $('#reviewSubmissionMeta').textContent = `${sectionLabel(sectionById(a.section_id))} · Performance Task · Submitted ${formatStudentDate(submission.submitted_at)||''}`;
       $('#reviewSubmissionAnswers').innerHTML = `<article class="answer-question review-answer"><p class="eyebrow">TASK INSTRUCTIONS</p><p>${esc(a.instructions||'No additional instructions.')}</p></article>`;
+      const teamBox = $('#reviewPerformanceTeamInfo');
+      if (teamBox) { teamBox.hidden = true; teamBox.innerHTML = ''; }
+      if ((a.collaboration_mode || 'individual') !== 'individual' && teamBox) {
+        try {
+          const team = await getPerformanceTeamInfo(a.id, submission.student_id);
+          const ratings = team?.group?.id ? await getPerformanceParticipationRatings(a.id, team.group.id) : [];
+          const ratingMap = new Map(ratings.map(row => [row.member_id, Number(row.rating || 0)]));
+          teamBox.hidden = false;
+          teamBox.innerHTML = `<p class="eyebrow">PRIVATE TEAM INFORMATION</p><h3>${esc(team?.group?.name || collaborationLabel(a))}</h3><p class="muted">Participation ratings are visible only to the teacher and team leader.</p><div class="review-team-member-list">${(team.members || []).map(member => `<div><span>${esc(member.display_name || 'Student')}${member.id===team.leader_id?' · Leader':''}</span><b>${member.id===team.leader_id?'—':(ratingMap.get(member.id) ? `${ratingMap.get(member.id)}/5` : 'Not rated')}</b></div>`).join('')}</div>`;
+        } catch (error) { console.warn('Could not load private team details', error); }
+      }
       $('#manualReviewSummary').hidden = true;
       $('#teacherScoreInput').readOnly = false;
       $('#teacherScoreInput').max = String(total);
@@ -562,21 +981,68 @@
     activePerformanceTaskId = id;
     $('#performanceStudentTitle').textContent = a.title;
     $('#performanceStudentInstructions').textContent = a.instructions || '';
-    $('#performanceStudentMeta').innerHTML = `<span class="meta-chip">${esc(sectionLabel(sectionById(a.section_id)))}</span><span class="meta-chip">${Number(a.max_points||0)} pts</span>${a.due_at?`<span class="meta-chip">Due ${esc(formatDeadlineDate(a.due_at))}</span>`:''}`;
+    $('#performanceStudentMeta').innerHTML = `<span class="meta-chip">${esc(sectionLabel(sectionById(a.section_id)))}</span><span class="meta-chip">${Number(a.max_points||0)} pts</span><span class="meta-chip">${esc(collaborationLabel(a))}</span>${a.due_at?`<span class="meta-chip">Due ${esc(formatDeadlineDate(a.due_at))}</span>`:''}`;
     const pictures = await signedLinks('mathside-assignment-images', assignmentTaskImages(a), 1800);
     $('#performanceStudentPictures').innerHTML = pictures.map((x,i)=>`<a href="${esc(x.url)}" target="_blank" rel="noopener"><img src="${esc(x.url)}" alt="Performance task picture ${i+1}"></a>`).join('');
     if (a.rubric_path) {
       const url = await signedUrl('mathside-assignment-images', a.rubric_path, 1800);
       $('#performanceStudentRubric').innerHTML = url ? `<p class="eyebrow">RUBRIC</p><a class="btn btn-light" href="${esc(url)}" target="_blank" rel="noopener">Open rubric</a>` : '';
     } else $('#performanceStudentRubric').innerHTML = '<p class="muted">No rubric file was attached.</p>';
+
+    const teamPanel = $('#performanceTeamPanel');
+    const teamBuilder = $('#performanceStudentTeamBuilder');
+    const form = $('#performanceSubmitForm');
+    const upload = form?.querySelector('.performance-output-upload');
+    const ratingsBox = $('#performanceParticipationRatings');
+    if (teamPanel) { teamPanel.hidden = true; teamPanel.innerHTML = ''; }
+    if (teamBuilder) { teamBuilder.hidden = true; teamBuilder.innerHTML = ''; }
+    if (ratingsBox) { ratingsBox.hidden = true; ratingsBox.innerHTML = ''; }
+    if (form) form.hidden = false;
+    if (upload) upload.hidden = false;
+
+    let team = null;
+    const mode = a.collaboration_mode || 'individual';
+    if (mode !== 'individual') {
+      try { team = await getPerformanceTeamInfo(a.id); }
+      catch (error) { return toast(friendlyErrorMessage(error, 'Could not load your team.'), 'orange'); }
+      if (!team?.group) {
+        if ((a.grouping_creator || 'teacher') === 'students') {
+          if (form) form.hidden = true;
+          await renderStudentTeamBuilder(a);
+        } else {
+          if (form) form.hidden = true;
+          if (teamPanel) {
+            teamPanel.hidden = false;
+            teamPanel.innerHTML = '<p class="eyebrow">TEAM SETUP</p><h3>Your team is not ready yet.</h3><p class="muted">Your teacher is still preparing the pairings or groups. You can still view the task instructions and resources.</p>';
+          }
+        }
+      } else {
+        if (teamPanel) {
+          teamPanel.hidden = false;
+          const leaderMessage = !team.leader_id
+            ? '<p class="team-member-note waiting-leader-note">Your teacher has not chosen the team leader yet. You can still view this task and its resources.</p>'
+            : team.is_leader
+              ? '<p class="team-leader-note">You are the leader. Only you can submit the team output.</p>'
+              : '<p class="team-member-note">Your team leader will submit the final output. You can still view this task and its resources.</p>';
+          teamPanel.innerHTML = `<p class="eyebrow">YOUR TEAM</p><h3>${esc(team.group.name || collaborationLabel(a))}</h3><ul class="performance-team-member-list">${renderTeamMembers(team)}</ul>${leaderMessage}`;
+        }
+        if (!team.is_leader && form) form.hidden = true;
+        if (team.is_leader) await renderLeaderParticipationRatings(a, team);
+      }
+    }
+
     const existing = submissionFor(a.id), oldPaths = submissionOutputPaths(existing);
     $('#performanceOutputImages').value = '';
     const submitBtn = $('#performanceSubmitForm button[type="submit"]');
-    const allowed = a.status !== 'archived' && (!existing || existing.resubmit_allowed);
-    if (submitBtn) { submitBtn.disabled = !allowed; submitBtn.textContent = a.status === 'archived' ? 'Archived' : existing && !existing.resubmit_allowed ? 'Waiting for teacher approval' : 'Submit performance task'; }
+    const allowed = a.status !== 'archived' && (!existing || existing.resubmit_allowed) && (mode === 'individual' || Boolean(team?.is_leader));
+    if (submitBtn) {
+      submitBtn.disabled = !allowed;
+      submitBtn.textContent = a.status === 'archived' ? 'Archived' : existing && !existing.resubmit_allowed ? 'Waiting for teacher approval' : 'Submit performance task';
+    }
     $('#performanceOutputHint').textContent = a.status === 'archived' ? 'This performance task is archived. You can view it, but you cannot upload a new output.' : existing && !existing.resubmit_allowed ? `You already submitted ${oldPaths.length} picture${oldPaths.length===1?'':'s'}. Ask your teacher to allow another attempt.` : existing ? `You already submitted ${oldPaths.length} picture${oldPaths.length===1?'':'s'}. Upload a new set for your approved attempt.` : 'Upload one or more clear pictures of your output.';
     openDialog('performanceSubmitModal');
   }
+
 
   document.addEventListener('click', event => {
     const btn = event.target.closest('[data-submit-performance]');
@@ -594,6 +1060,14 @@
     if (!requireSupabase() || state.profile?.role !== 'student') return;
     const a = assignmentById(activePerformanceTaskId); if (!a) return;
     const existing = submissionFor(a.id);
+    let team = null;
+    if ((a.collaboration_mode || 'individual') !== 'individual') {
+      try { team = await getPerformanceTeamInfo(a.id); }
+      catch (error) { return toast(friendlyErrorMessage(error, 'Could not verify your team.'), 'orange'); }
+      if (!team?.is_leader) return toast('Only your team leader can submit this performance task.', 'orange');
+      try { await saveLeaderParticipationRatings(a, team); }
+      catch (error) { return toast(friendlyErrorMessage(error, 'Rate every team member before submitting.'), 'orange'); }
+    }
     if (a.status === 'archived') return toast('This performance task has been archived.', 'orange');
     if (existing && !existing.resubmit_allowed) return toast('Your teacher must allow another attempt before you can resubmit.', 'orange');
     const files = [...($('#performanceOutputImages')?.files || [])];
@@ -617,7 +1091,7 @@
       toast('Performance task submitted.', 'success');
     } catch (error) {
       console.error(error); if (newPaths.length) await removeStoragePaths('mathside-submission-proofs', newPaths);
-      toast(error.message || 'Could not submit the performance task.', 'orange');
+      toast(friendlyErrorMessage(error, 'Could not submit the performance task.'), 'orange');
     }
   });
 

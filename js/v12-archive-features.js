@@ -81,9 +81,16 @@
   function populateArchivedImportOptions(preselect = '') {
     const select = document.getElementById('importArchivedSection');
     if (!select) return;
-    const archived = archivedSections();
-    select.innerHTML = `<option value="">No — start with an empty class</option>` + archived.map(section => `<option value="${section.id}">${esc(section.name)} · Grade ${esc(section.grade_level)} · ${studentsForSection(section.id).length} students</option>`).join('');
-    if (preselect && archived.some(section => section.id === preselect)) select.value = preselect;
+    const sources = [...(state.sections || [])].sort((a,b) => {
+      const aa = a.archived_at ? 1 : 0, bb = b.archived_at ? 1 : 0;
+      if (aa !== bb) return aa - bb;
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+    select.innerHTML = `<option value="">No — start with an empty class</option>` + sources.map(section => {
+      const status = section.archived_at ? 'Archived' : 'Active';
+      return `<option value="${section.id}">${esc(section.name)} · Grade ${esc(section.grade_level)} · ${studentsForSection(section.id).length} students · ${status}</option>`;
+    }).join('');
+    if (preselect && sources.some(section => section.id === preselect)) select.value = preselect;
   }
 
   populateAssignmentSections = function() {
@@ -144,7 +151,7 @@
     if (!name) return toast('Enter a class name.', 'orange');
     try {
       let created;
-      await withLoading('Creating class…', sourceSectionId ? 'Creating the class and reusing existing student accounts.' : `Setting up ${name} for Grade ${grade}.`, async () => {
+      await withLoading('Creating class…', sourceSectionId ? 'Creating the class and enrolling existing student accounts.' : `Setting up ${name} for Grade ${grade}.`, async () => {
         const { data, error } = await db.from('mathside_sections').insert({
           teacher_id: state.user.id,
           grade_level: grade,
@@ -169,7 +176,7 @@
       toast(sourceSectionId ? `Class created. ${Number(created?.imported_count || 0)} existing student account${Number(created?.imported_count || 0) === 1 ? '' : 's'} enrolled.` : 'Class created.', 'success');
     } catch (error) {
       console.error(error);
-      toast(error.message || 'Could not create the class.', 'orange');
+      toast(friendlyErrorMessage(error, 'Could not create the class.'), 'orange');
     }
   }, true);
 
@@ -262,7 +269,10 @@
   async function buildArchiveWorkbook(assignmentIds, archiveLabel = 'Activity Archive') {
     if (!window.ExcelJS) throw new Error('Excel export could not load. Check your internet connection and try again.');
     const assignments = assignmentIds.map(assignmentById).filter(Boolean);
-    if (!assignments.length) throw new Error('No activities were found to archive.');
+    const allPerformance = assignments.length > 0 && assignments.every(isPerformanceTask);
+    const recordSingular = allPerformance ? 'performance task' : 'activity';
+    const recordPlural = allPerformance ? 'performance tasks' : 'activities';
+    if (!assignments.length) throw new Error(`No ${recordPlural} were found to archive.`);
     const submissionIds = state.submissions.filter(s => assignmentIds.includes(s.assignment_id)).map(s => s.id);
     let answerRows = [];
     if (submissionIds.length) {
@@ -286,11 +296,11 @@
     general.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B00' } };
     general.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
     general.mergeCells('A2:J2');
-    general.getCell('A2').value = `Archived ${new Date().toLocaleString()} · ${assignments.length} activity record${assignments.length === 1 ? '' : 's'}`;
+    general.getCell('A2').value = `Archived ${new Date().toLocaleString()} · ${assignments.length} ${recordSingular} record${assignments.length === 1 ? '' : 's'}`;
     general.getCell('A2').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
     general.getCell('A2').font = { bold: true, color: { argb: 'FF7C2D00' } };
     const gh = general.getRow(4);
-    gh.values = ['Section', 'Grade', 'Activity', 'Items', 'Total Points', 'Students', 'Submitted', 'Graded', 'Total Earned Scores', 'Average Final Score'];
+    gh.values = ['Section', 'Grade', allPerformance ? 'Performance Task' : 'Activity', 'Items', 'Total Points', 'Students', 'Submitted', 'Graded', 'Total Earned Scores', 'Average Final Score'];
     styleHeaderRow(gh);
     let grow = 5;
     const usedSheetNames = new Set(['General']);
@@ -306,7 +316,7 @@
       row.values = [section?.name || '', section?.grade_level || '', assignment.title || '', questions.length, totalPoints(assignment.id), sectionStudents.length, subs.length, subs.filter(s => s.status === 'graded').length, scored.reduce((sum, value) => sum + value, 0), avg == null ? '' : Number(avg.toFixed(2))];
       row.eachCell(cell => { cell.border = archiveBorders(); cell.alignment = { vertical: 'middle', wrapText: true }; });
 
-      let baseName = safeSheetName(`${section?.name || 'Class'} - ${assignment.title || 'Activity'}`);
+      let baseName = safeSheetName(`${section?.name || 'Class'} - ${assignment.title || (allPerformance ? 'Performance Task' : 'Activity')}`);
       let sheetName = baseName;
       let n = 2;
       while (usedSheetNames.has(sheetName)) sheetName = safeSheetName(`${baseName.slice(0,26)} ${n++}`);
@@ -317,7 +327,7 @@
       const allCols = [...fixedCols, ...questionCols];
       sheet.mergeCells(1,1,1,allCols.length);
       const title = sheet.getCell(1,1);
-      title.value = assignment.title || 'Activity';
+      title.value = assignment.title || (allPerformance ? 'Performance Task' : 'Activity');
       title.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
       title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B00' } };
       sheet.mergeCells(2,1,2,allCols.length);
@@ -362,14 +372,25 @@
 
   function openArchiveAssignments(ids) {
     const valid = [...new Set((ids || []).filter(id => assignmentById(id) && assignmentById(id).status !== 'archived'))];
-    if (!valid.length) return toast('The selected activity is already archived.', 'orange');
+    const assignments = valid.map(id => assignmentById(id)).filter(Boolean);
+    const allPerformance = assignments.length > 0 && assignments.every(isPerformanceTask);
+    if (!valid.length) return toast(allPerformance ? 'The selected performance task is already archived.' : 'The selected activity is already archived.', 'orange');
     archiveState.assignmentIds = valid;
-    const first = assignmentById(valid[0]);
-    const title = valid.length === 1 ? first?.title || 'Activity' : `${valid.length} activities`;
+    const first = assignments[0];
+    const kindSingular = allPerformance ? 'performance task' : 'activity';
+    const kindPlural = allPerformance ? 'performance tasks' : 'activities';
+    const title = valid.length === 1 ? first?.title || (allPerformance ? 'Performance Task' : 'Activity') : `${valid.length} ${kindPlural}`;
+    const modal = $('#archiveAssignmentModal');
+    const eyebrow = $('.eyebrow', modal);
+    const warning = $('.archive-warning span', modal);
+    if (eyebrow) eyebrow.textContent = allPerformance ? 'ARCHIVE PERFORMANCE TASK' : 'ARCHIVE ACTIVITY';
+    if (warning) warning.textContent = allPerformance
+      ? 'Mathside will download an Excel archive containing the performance task summary, student submissions, scores, and available team information. Students can still view the archived performance task, but they cannot upload or submit anything to it.'
+      : 'Mathside will download an Excel archive containing the activity summary, student submissions, scores, and answer details. Students can still view the archived activity, but they cannot upload or submit anything to it.';
     $('#archiveAssignmentTitle').textContent = `Archive ${title}?`;
     $('#archiveAssignmentText').textContent = valid.length === 1
-      ? `Mathside will save “${first?.title || 'this activity'}” to Excel before marking it archived.`
-      : `Mathside will save ${valid.length} selected activity records to one Excel workbook before marking them archived.`;
+      ? `Mathside will save “${first?.title || `this ${kindSingular}`}” to Excel before marking it archived.`
+      : `Mathside will save ${valid.length} selected ${kindSingular} records to one Excel workbook before marking them archived.`;
     openDialog('archiveAssignmentModal');
   }
 
@@ -385,23 +406,39 @@
   $('#confirmArchiveAssignmentBtn')?.addEventListener('click', async () => {
     const ids = archiveState.assignmentIds.filter(id => assignmentById(id)?.status !== 'archived');
     if (!ids.length) return closeDialog('archiveAssignmentModal');
+    const assignments = ids.map(id => assignmentById(id)).filter(Boolean);
+    const allPerformance = assignments.length > 0 && assignments.every(isPerformanceTask);
+    const kindSingular = allPerformance ? 'performance task' : 'activity';
+    const targetView = allPerformance ? 'performance' : 'assignments';
     try {
       closeDialog('archiveAssignmentModal');
-      await withLoading('Archiving activity…', 'Building the Excel archive and locking the activity for students.', async () => {
-        const workbook = await buildArchiveWorkbook(ids, 'Activity Archive');
-        const first = assignmentById(ids[0]);
-        await downloadWorkbook(workbook, `Mathside-Archive-${archiveFileName(first?.title || 'Activities')}-${nowStamp()}.xlsx`);
-        const { error } = await db.from('mathside_assignments').update({ status: 'archived', archived_at: new Date().toISOString() }).in('id', ids);
-        if (error) throw error;
-        selectedAssignmentIds.clear();
-        archiveState.assignmentIds = [];
-        await refreshTeacher();
-        showTeacherView('assignments');
-      });
-      toast('Activity archived. Students can still view it, but submissions are locked.', 'success', 'Archive complete');
+      await withLoading(
+        allPerformance ? 'Archiving performance task…' : 'Archiving activity…',
+        allPerformance
+          ? 'Building the Excel archive and locking the performance task for students.'
+          : 'Building the Excel archive and locking the activity for students.',
+        async () => {
+          const workbook = await buildArchiveWorkbook(ids, allPerformance ? 'Performance Task Archive' : 'Activity Archive');
+          const first = assignments[0];
+          await downloadWorkbook(workbook, `Mathside-Archive-${archiveFileName(first?.title || (allPerformance ? 'Performance-Task' : 'Activities'))}-${nowStamp()}.xlsx`);
+          const { error } = await db.from('mathside_assignments').update({ status: 'archived', archived_at: new Date().toISOString() }).in('id', ids);
+          if (error) throw error;
+          selectedAssignmentIds.clear();
+          archiveState.assignmentIds = [];
+          await refreshTeacher();
+          showTeacherView(targetView);
+        }
+      );
+      toast(
+        allPerformance
+          ? 'Performance task archived. Students can still view it, but submissions are locked.'
+          : 'Activity archived. Students can still view it, but submissions are locked.',
+        'success',
+        'Archive complete'
+      );
     } catch (error) {
       console.error(error);
-      toast(error.message || 'Could not archive the selected activity.', 'orange', 'Archive failed');
+      toast(friendlyErrorMessage(error, `Could not archive the selected ${kindSingular}.`), 'orange', 'Archive failed');
     }
   });
 
@@ -458,7 +495,7 @@
       toast('Class archived. Student accounts were kept and can be reused in a new class.', 'success', 'Class archived');
     } catch (error) {
       console.error(error);
-      toast(error.message || 'Could not archive this class.', 'orange', 'Archive failed');
+      toast(friendlyErrorMessage(error, 'Could not archive this class.'), 'orange', 'Archive failed');
     }
   });
 
@@ -471,7 +508,13 @@
     const assignment = assignmentById(submission.assignment_id);
     const student = studentById(submission.student_id);
     archiveState.clearSubmissionId = submission.id;
-    $('#clearSubmissionText').textContent = `Clear ${student?.display_name || 'this student'}’s submission for “${assignment?.title || 'this activity'}”?`;
+    const isPerformance = isPerformanceTask(assignment);
+    const itemKind = isPerformance ? 'performance task' : 'activity';
+    $('#clearSubmissionText').textContent = `Clear ${student?.display_name || 'this student'}’s submission for “${assignment?.title || `this ${itemKind}`}”?`;
+    const warning = $('.archive-warning span', $('#clearSubmissionModal'));
+    if (warning) warning.textContent = isPerformance
+      ? 'The student’s submitted output pictures, score, feedback, and submission record will be cleared. The performance task itself is not deleted, so the team leader can submit again if the task is still open.'
+      : 'The student’s submitted answers, score, feedback, and uploaded solution image will be cleared. The activity itself is not deleted, so the student can submit again if the activity is still open.';
     openDialog('clearSubmissionModal');
   });
 
@@ -482,7 +525,13 @@
     try {
       closeDialog('clearSubmissionModal');
       closeDialog('reviewSubmissionModal');
-      await withLoading('Clearing submission…', 'Removing the student response, score, feedback, and uploaded solution.', async () => {
+      const assignment = assignmentById(submission.assignment_id);
+      await withLoading(
+        'Clearing submission…',
+        isPerformanceTask(assignment)
+          ? 'Removing the performance task submission, score, feedback, and uploaded output pictures.'
+          : 'Removing the student response, score, feedback, and uploaded solution.',
+        async () => {
         const { error } = await db.rpc('mathside_clear_submission', { p_submission_id: submission.id });
         if (error) throw error;
         if (proofPaths.length) {
@@ -494,10 +543,10 @@
         await refreshTeacher();
         showTeacherView('submissions');
       });
-      toast('The student submission was cleared. The activity remains available if it is still open.', 'success', 'Submission cleared');
+      toast(`The student submission was cleared. The ${isPerformanceTask(assignment) ? 'performance task' : 'activity'} remains available if it is still open.`, 'success', 'Submission cleared');
     } catch (error) {
       console.error(error);
-      toast(error.message || 'Could not clear this submission.', 'orange', 'Clear failed');
+      toast(friendlyErrorMessage(error, 'Could not clear this submission.'), 'orange', 'Clear failed');
     }
   });
 

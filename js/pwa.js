@@ -16,6 +16,10 @@
       || (platform === 'MacIntel' && Number(navigator.maxTouchPoints || 0) > 1);
   };
 
+  const isAndroid = () => /android/i.test(navigator.userAgent || '');
+
+  const isSamsungBrowser = () => /SamsungBrowser/i.test(navigator.userAgent || '');
+
   const isSafari = () => {
     const ua = navigator.userAgent || '';
     return /safari/i.test(ua)
@@ -128,6 +132,44 @@
       }
 
       dialog.querySelector('#pwaIosInstallCloseBtn').addEventListener('click', () => dialog.close());
+    }
+
+    if (!document.getElementById('pwaAndroidInstallDialog')) {
+      const dialog = document.createElement('dialog');
+      dialog.id = 'pwaAndroidInstallDialog';
+      dialog.className = 'pwa-dialog';
+      dialog.setAttribute('aria-labelledby', 'pwaAndroidInstallTitle');
+      const samsung = isSamsungBrowser();
+      dialog.innerHTML = `
+        <div class="pwa-card pwa-ios-card">
+          <div class="pwa-card-icon" aria-hidden="true">⇩</div>
+          <div class="pwa-card-eyebrow">INSTALL MATHSIDE ON ANDROID</div>
+          <h2 id="pwaAndroidInstallTitle">Add Mathside like an app</h2>
+          <p class="pwa-ios-intro">Mathside detected an Android device. Follow these steps if the browser does not show its install prompt automatically.</p>
+          <div class="pwa-ios-step-list">
+            <div class="pwa-ios-step"><span class="pwa-ios-step-number">1</span><div><strong>Open the browser menu</strong><span>${samsung ? 'Tap the browser menu button.' : 'Tap the three-dot menu ⋮ in your browser.'}</span></div></div>
+            <div class="pwa-ios-step"><span class="pwa-ios-step-number">2</span><div><strong>${samsung ? 'Add page to Home screen' : 'Choose Install app'}</strong><span>${samsung ? 'Choose Add page to, then Home screen.' : 'Choose Install app or Add to Home screen.'}</span></div></div>
+            <div class="pwa-ios-step"><span class="pwa-ios-step-number">3</span><div><strong>Confirm</strong><span>Tap Install or Add. Mathside will appear with your other apps.</span></div></div>
+          </div>
+          <div class="pwa-ios-result"><span class="pwa-ios-result-icon">✓</span><span>After installation, open Mathside from your Home screen for the app-style experience.</span></div>
+          <div class="pwa-card-actions">
+            <button id="pwaAndroidGuideCloseBtn" type="button" class="pwa-btn pwa-btn-light">Not now</button>
+            <button id="pwaAndroidInstallNowBtn" type="button" class="pwa-btn pwa-btn-orange">Install now</button>
+          </div>
+        </div>`;
+      document.body.appendChild(dialog);
+      dialog.querySelector('#pwaAndroidGuideCloseBtn').addEventListener('click', () => dialog.close());
+      dialog.querySelector('#pwaAndroidInstallNowBtn').addEventListener('click', async () => {
+        if (deferredInstallPrompt) {
+          dialog.close();
+          deferredInstallPrompt.prompt();
+          try { await deferredInstallPrompt.userChoice; } catch (_) {}
+          deferredInstallPrompt = null;
+          return;
+        }
+        const btn = dialog.querySelector('#pwaAndroidInstallNowBtn');
+        btn.textContent = samsung ? 'Use browser menu' : 'Use ⋮ browser menu';
+      });
     }
 
     if (!document.getElementById('pwaInstallHelpDialog')) {
@@ -273,6 +315,12 @@
     button.addEventListener('click', async () => {
       if (isIos()) {
         const dialog = document.getElementById('pwaIosInstallDialog');
+        if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+        return;
+      }
+
+      if (isAndroid()) {
+        const dialog = document.getElementById('pwaAndroidInstallDialog');
         if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
         return;
       }
