@@ -1326,3 +1326,22 @@ html,body{max-width:100%;overflow-x:hidden}
   .student-answer-preview-field{min-height:44px;font-size:23px}
   .student-answer-format-hint{font-size:10.5px}
 }
+
+
+/* =====================================================================
+   MATHSIDE STEP 6.9.5 — SIMPLE STUDENT MATH ANSWER ENTRY
+   ===================================================================== */
+#answerAssignmentTitle{font-size:clamp(28px,4vw,42px)!important;line-height:1.02!important;letter-spacing:-1px!important}
+.student-math-answer-only{grid-template-columns:1fr!important;gap:10px!important}
+.student-math-answer-only .student-answer-input-stack{width:100%}
+.student-math-answer-only .student-answer-rendered-preview{min-height:108px;padding:14px 16px;border:2px solid #e4ccb8;border-radius:16px;background:#fffaf5}
+.student-math-answer-only .student-answer-rendered-preview>span{font-size:10px;letter-spacing:.12em}
+.student-math-answer-only .student-answer-preview-field{min-height:56px;font-size:28px;padding:4px 0}
+.student-math-answer-only .student-answer-empty-note{color:#8d7d72;font-size:12px;line-height:1.4}
+.student-math-answer-only .student-answer-rendered-preview:not(.is-empty) .student-answer-empty-note{display:none}
+.student-answer-keyboard-btn{width:100%;min-height:50px;justify-content:center}
+@media(max-width:780px){
+  #answerAssignmentTitle{font-size:30px!important;line-height:1.04!important}
+  .student-math-answer-only .student-answer-rendered-preview{min-height:96px;padding:12px 14px}
+  .student-math-answer-only .student-answer-preview-field{min-height:50px;font-size:26px}
+}
