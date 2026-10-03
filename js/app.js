@@ -182,6 +182,86 @@ function safeFileName(name = 'file') {
     .replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(-100) || 'file';
 }
 
+// Compress phone photos in the browser before they are sent to Supabase Storage.
+// This keeps written work readable while greatly reducing the amount of storage used.
+async function compressImageForUpload(file, options = {}) {
+  if (!file || !String(file.type || '').startsWith('image/')) return file;
+  const supportedInput = new Set(['image/jpeg', 'image/png', 'image/webp']);
+  if (!supportedInput.has(String(file.type || '').toLowerCase())) return file;
+
+  const maxDimension = Math.max(800, Number(options.maxDimension || 1800));
+  const targetBytes = Math.max(200 * 1024, Number(options.targetBytes || 700 * 1024));
+  const initialQuality = Math.min(0.92, Math.max(0.60, Number(options.quality || 0.82)));
+  const minQuality = Math.min(initialQuality, Math.max(0.48, Number(options.minQuality || 0.58)));
+
+  let bitmap = null;
+  let objectUrl = '';
+  try {
+    if ('createImageBitmap' in window) {
+      try { bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+      catch { bitmap = await createImageBitmap(file); }
+    } else {
+      objectUrl = URL.createObjectURL(file);
+      bitmap = await new Promise((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = () => reject(new Error('Could not read the selected image.'));
+        image.src = objectUrl;
+      });
+    }
+
+    const sourceWidth = Number(bitmap.width || bitmap.naturalWidth || 0);
+    const sourceHeight = Number(bitmap.height || bitmap.naturalHeight || 0);
+    if (!sourceWidth || !sourceHeight) return file;
+
+    let scale = Math.min(1, maxDimension / Math.max(sourceWidth, sourceHeight));
+    let width = Math.max(1, Math.round(sourceWidth * scale));
+    let height = Math.max(1, Math.round(sourceHeight * scale));
+    let bestBlob = null;
+
+    const encode = (w, h, quality) => new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const context = canvas.getContext('2d', { alpha: true });
+      if (!context) return reject(new Error('Image compression is not available in this browser.'));
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = 'high';
+      context.drawImage(bitmap, 0, 0, w, h);
+      canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not compress the selected image.')), 'image/webp', quality);
+    });
+
+    // First lower JPEG/WebP quality a little, then reduce dimensions if a very
+    // large phone photo is still above the target size.
+    for (let resizeRound = 0; resizeRound < 3; resizeRound += 1) {
+      for (let quality = initialQuality; quality >= minQuality - 0.001; quality -= 0.08) {
+        const blob = await encode(width, height, Math.max(minQuality, quality));
+        if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
+        if (blob.size <= targetBytes) break;
+      }
+      if (bestBlob?.size <= targetBytes || Math.max(width, height) <= 1100) break;
+      width = Math.max(1, Math.round(width * 0.84));
+      height = Math.max(1, Math.round(height * 0.84));
+    }
+
+    if (!bestBlob || (bestBlob.size >= file.size && file.size <= targetBytes)) return file;
+    const originalName = String(file.name || 'image').replace(/\.[^.]+$/, '') || 'image';
+    const outputType = String(bestBlob.type || 'image/webp').toLowerCase();
+    const extension = outputType === 'image/png' ? 'png' : outputType === 'image/jpeg' ? 'jpg' : 'webp';
+    return new File([bestBlob], `${originalName}-compressed.${extension}`, {
+      type: outputType,
+      lastModified: Date.now()
+    });
+  } catch (error) {
+    console.warn('Image compression skipped; the original file will be uploaded.', error);
+    return file;
+  } finally {
+    if (bitmap && typeof bitmap.close === 'function') bitmap.close();
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+  }
+}
+window.compressImageForUpload = compressImageForUpload;
+
 function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 function startLoading(title, message) {
@@ -2196,8 +2276,9 @@ async function updateExistingAssignment(assignment, form, questions, dueAt, remi
   let newImagePath = assignment.image_path || null;
   let uploadedNewPath = null;
   if (imageFile) {
-    uploadedNewPath = `${state.user.id}/${assignment.id}/${Date.now()}-${safeFileName(imageFile.name)}`;
-    const uploadRes = await db.storage.from('mathside-assignment-images').upload(uploadedNewPath, imageFile, { upsert: false });
+    const preparedImage = await compressImageForUpload(imageFile, { maxDimension: 1800, targetBytes: 700 * 1024 });
+    uploadedNewPath = `${state.user.id}/${assignment.id}/${Date.now()}-${safeFileName(preparedImage.name)}`;
+    const uploadRes = await db.storage.from('mathside-assignment-images').upload(uploadedNewPath, preparedImage, { upsert: false });
     if (uploadRes.error) throw uploadRes.error;
     newImagePath = uploadedNewPath;
   }
@@ -2327,6 +2408,9 @@ $('#assignmentForm').addEventListener('submit', async event => {
       'Creating the assignment, questions, answer keys, and image copies.',
       async () => {
         const imageFile = $('#assignmentImage').files[0];
+        const preparedImageFile = imageFile
+          ? await compressImageForUpload(imageFile, { maxDimension: 1800, targetBytes: 700 * 1024 })
+          : null;
         for (const sectionId of sectionIds) {
           const { data, error } = await db.from('mathside_assignments').insert({
             section_id: sectionId,
@@ -2343,9 +2427,9 @@ $('#assignmentForm').addEventListener('submit', async event => {
           const assignment = data;
           createdAssignments.push(assignment);
 
-          if (imageFile) {
-            const uploadedPath = `${state.user.id}/${assignment.id}/${Date.now()}-${safeFileName(imageFile.name)}`;
-            const uploadRes = await db.storage.from('mathside-assignment-images').upload(uploadedPath, imageFile, { upsert: false });
+          if (preparedImageFile) {
+            const uploadedPath = `${state.user.id}/${assignment.id}/${Date.now()}-${safeFileName(preparedImageFile.name)}`;
+            const uploadRes = await db.storage.from('mathside-assignment-images').upload(uploadedPath, preparedImageFile, { upsert: false });
             if (uploadRes.error) throw uploadRes.error;
             uploadedPaths.push(uploadedPath);
             const updateRes = await db.from('mathside_assignments').update({ image_path: uploadedPath }).eq('id', assignment.id);
@@ -3161,7 +3245,7 @@ $('#answerForm').addEventListener('submit', async event => {
     let rpcResult;
     await withLoading('Submitting your answers…', `Uploading ${proofFiles.length} solution picture${proofFiles.length === 1 ? '' : 's'} and saving your answers.`, async () => {
       for (let index = 0; index < proofFiles.length; index += 1) {
-        const proofFile = proofFiles[index];
+        const proofFile = await compressImageForUpload(proofFiles[index], { maxDimension: 1800, targetBytes: 650 * 1024 });
         const proofPath = `${state.user.id}/${activeStudentAssignment.id}/${Date.now()}-${index + 1}-${safeFileName(proofFile.name)}`;
         const uploadRes = await db.storage.from('mathside-submission-proofs').upload(proofPath, proofFile, { upsert: false });
         if (uploadRes.error) throw uploadRes.error;
@@ -3474,6 +3558,32 @@ $('#confirmAllowResubmissionBtn')?.addEventListener('click', async () => {
   }
 });
 
+async function cleanupGradedSubmissionProofs(submission) {
+  const proofPaths = submissionProofPaths(submission);
+  if (!proofPaths.length) return { deleted: 0, warning: '' };
+
+  try {
+    const removeResult = await db.storage.from('mathside-submission-proofs').remove(proofPaths);
+    if (removeResult.error) throw removeResult.error;
+
+    const clearResult = await db.rpc('mathside_clear_submission_proofs', {
+      p_submission_id: submission.id
+    });
+    if (clearResult.error) throw clearResult.error;
+
+    submission.proof_path = null;
+    submission.proof_paths = [];
+    for (const path of proofPaths) signedUrlCache.delete(`mathside-submission-proofs:${path}`);
+    return { deleted: proofPaths.length, warning: '' };
+  } catch (error) {
+    console.warn('Grade saved, but solution image cleanup could not finish.', error);
+    return {
+      deleted: 0,
+      warning: 'The grade was saved, but the solution pictures could not be removed yet. Run the new V23 storage-optimization SQL file in Supabase, then future graded submissions will clean up automatically.'
+    };
+  }
+}
+
 $('#gradeForm').addEventListener('submit', async event => {
   event.preventDefault();
   if (!activeSubmissionId) return;
@@ -3488,7 +3598,8 @@ $('#gradeForm').addEventListener('submit', async event => {
   const effectiveScore = hasManualAnswerReview ? calculateManualReviewScore() : score;
   if (effectiveScore != null && (!Number.isFinite(effectiveScore) || effectiveScore < 0 || effectiveScore > total)) return toast(`Enter a score from 0 to ${total}, or leave it blank to use the auto-check score.`, 'orange');
   try {
-    await withLoading('Saving grade…', hasManualAnswerReview ? 'Saving manual answer checks and recomputing the student score.' : 'Updating the student score and feedback.', async () => {
+    let cleanupResult = { deleted: 0, warning: '' };
+    await withLoading('Saving grade…', hasManualAnswerReview ? 'Saving manual answer checks, recomputing the score, and clearing reviewed solution pictures.' : 'Updating the student score, feedback, and clearing reviewed solution pictures.', async () => {
       const { error } = await db.rpc('mathside_save_submission_review', {
         p_submission_id: activeSubmissionId,
         p_teacher_score: hasManualAnswerReview ? null : score,
@@ -3496,11 +3607,21 @@ $('#gradeForm').addEventListener('submit', async event => {
         p_answer_reviews: answerReviews
       });
       if (error) throw error;
+
+      // Once the teacher has saved the final grade, the uploaded proof pictures
+      // are no longer needed for checking. Delete them to keep Supabase Storage small.
+      cleanupResult = await cleanupGradedSubmissionProofs(submission);
       closeDialog('reviewSubmissionModal');
       await refreshTeacher();
       showTeacherView('submissions');
     });
-    toast('Grade, manual checks, and feedback saved.', 'success');
+    if (cleanupResult.warning) {
+      toast(cleanupResult.warning, 'orange', 'Grade saved · storage cleanup pending');
+    } else if (cleanupResult.deleted > 0) {
+      toast(`Grade saved. ${cleanupResult.deleted} reviewed solution picture${cleanupResult.deleted === 1 ? '' : 's'} removed from Storage to save space.`, 'success');
+    } else {
+      toast('Grade, manual checks, and feedback saved.', 'success');
+    }
   } catch (error) {
     console.error(error);
     toast(friendlyErrorMessage(error, 'Could not save the grade.'), 'orange');

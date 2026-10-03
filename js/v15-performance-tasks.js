@@ -81,7 +81,10 @@
   async function uploadTeacherFiles(taskId, files, prefix) {
     const paths = [];
     for (let i = 0; i < files.length; i += 1) {
-      const file = files[i];
+      const originalFile = files[i];
+      const file = String(originalFile.type || '').startsWith('image/')
+        ? await compressImageForUpload(originalFile, { maxDimension: 1800, targetBytes: 700 * 1024 })
+        : originalFile;
       const path = `${state.user.id}/${taskId}/${prefix}-${Date.now()}-${i + 1}-${safeFileName(file.name)}`;
       const result = await db.storage.from('mathside-assignment-images').upload(path, file, { upsert: false });
       if (result.error) throw result.error;
@@ -1078,7 +1081,8 @@
     try {
       await withLoading('Submitting performance task…','Uploading your output pictures and saving your submission.', async () => {
         for (let i=0; i<files.length; i+=1) {
-          const f = files[i], path = `${state.user.id}/${a.id}/${Date.now()}-${i+1}-${safeFileName(f.name)}`;
+          const f = await compressImageForUpload(files[i], { maxDimension: 1800, targetBytes: 650 * 1024 });
+          const path = `${state.user.id}/${a.id}/${Date.now()}-${i+1}-${safeFileName(f.name)}`;
           const up = await db.storage.from('mathside-submission-proofs').upload(path, f, {upsert:false});
           if (up.error) throw up.error;
           newPaths.push(path);
