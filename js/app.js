@@ -50,6 +50,11 @@ let studentTaskSort = 'newest';
 let studentTaskSearch = '';
 let activeStudentPanel = 'overview';
 let studentGradeWatchTimer = null;
+let studentWorkspacePollBusy = false;
+let studentWorkspaceSignature = '';
+let studentWorkspaceFullRefreshAt = 0;
+const STUDENT_WORKSPACE_POLL_MS = 60000;
+const STUDENT_WORKSPACE_FULL_REFRESH_MS = 15 * 60 * 1000;
 let studentLoginAlertsShownFor = null;
 let activeRosterSectionId = null;
 let studentRosterSearch = '';
@@ -326,6 +331,9 @@ function requireSupabase() {
 function resetState() {
   stopStudentGradeWatcher();
   studentLoginAlertsShownFor = null;
+  studentWorkspacePollBusy = false;
+  studentWorkspaceSignature = '';
+  studentWorkspaceFullRefreshAt = 0;
   state.user = null;
   state.profile = null;
   state.sections = [];
@@ -498,23 +506,69 @@ function notifyUnseenStudentGrades() {
   writeSeenGradeNotices(seen);
 }
 
+function latestWorkspaceItem(items = []) {
+  return [...items].sort((a, b) => new Date(b?.updated_at || b?.created_at || 0).getTime() - new Date(a?.updated_at || a?.created_at || 0).getTime())[0] || null;
+}
+
+function studentWorkspaceSignatureFromState() {
+  const assignment = latestWorkspaceItem(state.assignments.filter(a => a.status === 'published'));
+  const submission = latestWorkspaceItem(state.submissions);
+  return [
+    assignment ? `${assignment.id}:${assignment.updated_at || assignment.created_at || ''}` : 'no-assignment',
+    submission ? `${submission.id}:${submission.updated_at || submission.submitted_at || ''}` : 'no-submission'
+  ].join('|');
+}
+
+async function fetchStudentWorkspaceSignature() {
+  if (!db || !state.user?.id) return studentWorkspaceSignature;
+  const studentId = state.user.id;
+  const [assignmentRes, submissionRes] = await Promise.all([
+    db.from('mathside_assignments')
+      .select('id,updated_at,created_at,status')
+      .eq('status', 'published')
+      .order('updated_at', { ascending: false })
+      .limit(1),
+    db.from('mathside_submissions')
+      .select('id,updated_at,submitted_at,status,graded_at')
+      .eq('student_id', studentId)
+      .order('updated_at', { ascending: false })
+      .limit(1)
+  ]);
+  if (assignmentRes.error) throw assignmentRes.error;
+  if (submissionRes.error) throw submissionRes.error;
+  const assignment = assignmentRes.data?.[0] || null;
+  const submission = submissionRes.data?.[0] || null;
+  return [
+    assignment ? `${assignment.id}:${assignment.updated_at || assignment.created_at || ''}` : 'no-assignment',
+    submission ? `${submission.id}:${submission.updated_at || submission.submitted_at || ''}` : 'no-submission'
+  ].join('|');
+}
+
 async function checkStudentGradeUpdates() {
   if (!db || state.profile?.role !== 'student' || !state.user?.id) return;
+  if (studentWorkspacePollBusy || document.visibilityState !== 'visible' || !navigator.onLine) return;
+  studentWorkspacePollBusy = true;
   try {
-    // Reload the student workspace so newly scheduled assignments also appear
-    // automatically after Supabase Cron publishes them.
+    // Keep the 60-second schedule responsiveness, but only ask Supabase for the
+    // newest assignment/submission timestamps. A full workspace reload happens
+    // only when something actually changed.
+    const remoteSignature = await fetchStudentWorkspaceSignature();
+    const periodicRefreshDue = !studentWorkspaceFullRefreshAt || Date.now() - studentWorkspaceFullRefreshAt >= STUDENT_WORKSPACE_FULL_REFRESH_MS;
+    if (remoteSignature === studentWorkspaceSignature && !periodicRefreshDue) return;
     await loadStudentData();
     notifyUnseenStudentGrades();
     renderStudentDashboard();
     showStudentPanel(activeStudentPanel);
   } catch (error) {
     console.warn('Student workspace refresh skipped:', error?.message || error);
+  } finally {
+    studentWorkspacePollBusy = false;
   }
 }
 
 function startStudentGradeWatcher() {
   stopStudentGradeWatcher();
-  studentGradeWatchTimer = window.setInterval(checkStudentGradeUpdates, 60000);
+  studentGradeWatchTimer = window.setInterval(checkStudentGradeUpdates, STUDENT_WORKSPACE_POLL_MS);
 }
 
 function stopStudentGradeWatcher() {
@@ -708,7 +762,6 @@ $('#studentSignout').addEventListener('click', () => signOut('See you next time.
 
 // ---------- DATA LOADING ----------
 async function loadTeacherData() {
-  signedUrlCache.clear();
   const teacherId = state.user.id;
   const [sectionsRes, membersRes, studentsRes, assignmentsRes] = await Promise.all([
     db.from('mathside_sections').select('*').eq('teacher_id', teacherId).order('grade_level').order('name'),
@@ -751,7 +804,6 @@ async function loadTeacherData() {
 }
 
 async function loadStudentData() {
-  signedUrlCache.clear();
   const studentId = state.user.id;
   const [sectionsRes, membersRes, assignmentsRes, submissionsRes] = await Promise.all([
     db.from('mathside_sections').select('*').order('grade_level').order('name'),
@@ -788,6 +840,8 @@ async function loadStudentData() {
       ? await signedUrl('mathside-assignment-images', assignment.image_path)
       : '';
   }));
+  studentWorkspaceSignature = studentWorkspaceSignatureFromState();
+  studentWorkspaceFullRefreshAt = Date.now();
 }
 
 async function refreshTeacher() {
@@ -1947,9 +2001,15 @@ $('#questionBuilder').addEventListener('click', event => {
 let mathKeyboardTarget = null;
 let mathKeyboardSelection = { start: 0, end: 0 };
 let mathKeyboardGeometryBound = false;
+let mathKeyboardTouchHandledAt = 0;
+let mathKeyboardFallbackMode = false;
 
 function isTouchMathDevice() {
   return Boolean(window.matchMedia?.('(pointer: coarse)').matches || navigator.maxTouchPoints > 0);
+}
+
+function isMathLiveReady() {
+  return Boolean(window.customElements?.get?.('math-field'));
 }
 
 function syncMathKeyboardViewport() {
@@ -1959,9 +2019,9 @@ function syncMathKeyboardViewport() {
 }
 
 function showMobileMathKeyboard(field) {
-  if (!field || !isTouchMathDevice()) return;
-  // Mathside uses its own 123 / ABC keypad on phones. This avoids relying on
-  // whether a mobile browser chooses to display MathLive's virtual keyboard.
+  if (!field || !isTouchMathDevice() || !isMathLiveReady()) return;
+  // Mathside uses its own 123 / ABC keypad on phones. Do not depend on the
+  // browser deciding whether MathLive's own keyboard should appear.
   try {
     field.mathVirtualKeyboardPolicy = 'manual';
     const vk = window.mathVirtualKeyboard;
@@ -1976,31 +2036,199 @@ function showMobileMathKeyboard(field) {
   }
 }
 
+function openMathKeyboardDialog() {
+  const dialog = $('#mathKeyboardModal');
+  if (!dialog) return false;
+  document.body.classList.add('math-keyboard-open');
+  try {
+    if (typeof dialog.showModal === 'function') {
+      if (!dialog.open) dialog.showModal();
+      dialog.classList.remove('math-dialog-fallback-open');
+      return true;
+    }
+  } catch (error) {
+    console.warn('Native dialog unavailable; using Mathside compatibility modal.', error);
+  }
+  // iOS Safari before 15.4 has no HTMLDialogElement.showModal(). Keep the
+  // keyboard usable by presenting the same element as a fixed overlay.
+  dialog.setAttribute('open', '');
+  dialog.classList.add('math-dialog-fallback-open');
+  return true;
+}
+
+function closeMathKeyboardDialog() {
+  const dialog = $('#mathKeyboardModal');
+  if (!dialog) return;
+  try {
+    if (typeof dialog.close === 'function' && dialog.open && !dialog.classList.contains('math-dialog-fallback-open')) {
+      dialog.close();
+    } else {
+      dialog.removeAttribute('open');
+    }
+  } catch (_) {
+    dialog.removeAttribute('open');
+  }
+  dialog.classList.remove('math-dialog-fallback-open');
+  document.body.classList.remove('math-keyboard-open');
+}
+
+function setMathKeyboardEditorMode(useMathLive, initialValue = '') {
+  const field = $('#mathKeyboardField');
+  const fallback = $('#mathKeyboardFallbackField');
+  const note = $('#mathKeyboardCompatibilityNote');
+  mathKeyboardFallbackMode = !useMathLive;
+
+  if (useMathLive && field) {
+    field.hidden = false;
+    if (fallback) fallback.hidden = true;
+    if (note) note.hidden = true;
+    try {
+      field.value = String(initialValue || '');
+      field.inlineShortcuts = { ...field.inlineShortcuts, infty: '\\infty', theta: '\\theta', pi: '\\pi' };
+      field.mathVirtualKeyboardPolicy = 'manual';
+    } catch (error) {
+      console.warn('MathLive editor could not initialize; switching to compatibility mode.', error);
+      return setMathKeyboardEditorMode(false, initialValue);
+    }
+    return field;
+  }
+
+  if (field) field.hidden = true;
+  if (fallback) {
+    fallback.hidden = false;
+    fallback.value = String(initialValue || '');
+  }
+  if (note) note.hidden = false;
+  return fallback;
+}
+
+function currentMathKeyboardEditor() {
+  if (!mathKeyboardFallbackMode && isMathLiveReady()) return $('#mathKeyboardField');
+  return $('#mathKeyboardFallbackField');
+}
+
+function focusMathKeyboardEditor() {
+  const editor = currentMathKeyboardEditor();
+  try { editor?.focus?.({ preventScroll: true }); } catch (_) { try { editor?.focus?.(); } catch (_) {} }
+  if (!mathKeyboardFallbackMode) showMobileMathKeyboard(editor);
+}
+
+function fallbackInsertText(text, selectionMode = '') {
+  const editor = $('#mathKeyboardFallbackField');
+  if (!editor) return;
+  const raw = String(text || '');
+  const value = String(editor.value || '');
+  const start = Number.isInteger(editor.selectionStart) ? editor.selectionStart : value.length;
+  const end = Number.isInteger(editor.selectionEnd) ? editor.selectionEnd : start;
+
+  // MathLive templates use \placeholder{}. In compatibility mode convert them
+  // to ordinary empty LaTeX groups and place the caret in the first group.
+  let inserted = raw.replace(/\\placeholder\s*\{\s*\}/g, '{}');
+  const firstEmpty = inserted.indexOf('{}');
+  editor.value = value.slice(0, start) + inserted + value.slice(end);
+  let caret = start + inserted.length;
+  if (selectionMode === 'placeholder' && firstEmpty >= 0) caret = start + firstEmpty + 1;
+  try { editor.setSelectionRange(caret, caret); } catch (_) {}
+  editor.dispatchEvent(new Event('input', { bubbles: true }));
+  focusMathKeyboardEditor();
+}
+
+function insertIntoMathKeyboard(text, options = {}) {
+  const editor = currentMathKeyboardEditor();
+  if (!editor) return;
+  if (!mathKeyboardFallbackMode && typeof editor.insert === 'function') {
+    try {
+      editor.insert(String(text || ''), options);
+      focusMathKeyboardEditor();
+      return;
+    } catch (error) {
+      console.warn('MathLive insert failed; using compatibility editor.', error);
+      const current = String(editor.value || '');
+      setMathKeyboardEditorMode(false, current);
+    }
+  }
+  fallbackInsertText(text, options.selectionMode || '');
+}
+
+function executeMathKeyboardCommand(command) {
+  const editor = currentMathKeyboardEditor();
+  if (!editor) return;
+  if (!mathKeyboardFallbackMode && typeof editor.executeCommand === 'function') {
+    try { editor.executeCommand(command); focusMathKeyboardEditor(); return; } catch (_) {}
+  }
+  const fallback = $('#mathKeyboardFallbackField');
+  if (!fallback) return;
+  const value = String(fallback.value || '');
+  const start = Number.isInteger(fallback.selectionStart) ? fallback.selectionStart : value.length;
+  const end = Number.isInteger(fallback.selectionEnd) ? fallback.selectionEnd : start;
+  let next = start;
+  if (command === 'deleteBackward') {
+    if (start !== end) {
+      fallback.value = value.slice(0, start) + value.slice(end);
+      next = start;
+    } else if (start > 0) {
+      fallback.value = value.slice(0, start - 1) + value.slice(end);
+      next = start - 1;
+    }
+  } else if (command === 'moveToPreviousChar') {
+    next = Math.max(0, start - 1);
+  } else if (command === 'moveToNextChar') {
+    next = Math.min(value.length, end + 1);
+  }
+  try { fallback.setSelectionRange(next, next); } catch (_) {}
+  fallback.dispatchEvent(new Event('input', { bubbles: true }));
+  focusMathKeyboardEditor();
+}
+
+function promoteMathKeyboardToMathLive() {
+  if (!mathKeyboardFallbackMode || !isMathLiveReady()) return;
+  const dialog = $('#mathKeyboardModal');
+  if (!dialog?.hasAttribute('open')) return;
+  const fallback = $('#mathKeyboardFallbackField');
+  const value = String(fallback?.value || '');
+  const field = setMathKeyboardEditorMode(true, value);
+  try { field?.focus?.({ preventScroll: true }); } catch (_) {}
+}
+
+// If MathLive finishes loading after an iPhone user has already opened the
+// compatibility keyboard, upgrade the editor without closing the modal.
+try {
+  window.customElements?.whenDefined?.('math-field')?.then(promoteMathKeyboardToMathLive).catch?.(() => {});
+} catch (_) {}
+
 function openMathKeyboard(target, label = 'Math field') {
   if (!target) return;
-  if (!window.customElements?.get('math-field')) {
-    return toast('The Math Keyboard library is still loading. Try again in a moment.', 'orange', 'Math Keyboard');
-  }
   mathKeyboardTarget = target;
   mathKeyboardSelection = {
     start: Number.isInteger(target.selectionStart) ? target.selectionStart : String(target.value || '').length,
     end: Number.isInteger(target.selectionEnd) ? target.selectionEnd : String(target.value || '').length
   };
-  const field = $('#mathKeyboardField');
   const isStudentAnswer = Boolean(target.closest?.('.student-math-answer-wrap'));
-  field.value = isStudentAnswer ? studentAnswerLatex(target.value) : '';
-  field.inlineShortcuts = { ...field.inlineShortcuts, infty: '\\infty', theta: '\\theta', pi: '\\pi' };
+  const initialValue = isStudentAnswer ? studentAnswerLatex(target.value) : '';
+  setMathKeyboardEditorMode(isMathLiveReady(), initialValue);
   $('#mathKeyboardTargetLabel').textContent = `Insert formatted mathematics into: ${label}.`;
-  openDialog('mathKeyboardModal');
-  setTimeout(() => {
-    field.focus();
-    showMobileMathKeyboard(field);
-  }, 80);
+  openMathKeyboardDialog();
+
+  // Reset to the numeric keypad every time so a reopened keyboard is predictable.
+  const panelRoot = $('#mathMobileEntryPanel');
+  $$('.math-entry-tab', panelRoot).forEach(btn => {
+    const active = btn.dataset.mathEntryTab === 'numbers';
+    btn.classList.toggle('is-active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  $$('[data-math-entry-panel]', panelRoot).forEach(panel => {
+    panel.hidden = panel.dataset.mathEntryPanel !== 'numbers';
+  });
+
+  // iOS can ignore an immediate focus during a modal transition. Focus on the
+  // next frame and once more shortly after; the Mathside keypad remains usable
+  // even if iOS refuses to open its native software keyboard.
+  requestAnimationFrame(() => focusMathKeyboardEditor());
+  setTimeout(focusMathKeyboardEditor, 120);
 }
 
 function closeMathKeyboard() {
-  const dialog = $('#mathKeyboardModal');
-  if (dialog?.open) dialog.close();
+  closeMathKeyboardDialog();
   try {
     window.mathVirtualKeyboard?.hide?.();
     if (window.mathVirtualKeyboard && 'visible' in window.mathVirtualKeyboard) {
@@ -2010,25 +2238,47 @@ function closeMathKeyboard() {
   document.documentElement.style.setProperty('--math-vk-height', '0px');
 }
 
-document.addEventListener('click', event => {
-  const button = event.target.closest('[data-math-keyboard]');
-  if (!button) return;
+function mathKeyboardTriggerFromEvent(event) {
+  const button = event.target?.closest?.('[data-math-keyboard]');
+  if (!button) return false;
   const wrap = button.closest('.math-entry-wrap, .student-math-answer-wrap');
   const target = wrap?.querySelector('input, textarea');
-  openMathKeyboard(target, button.dataset.mathLabel || target?.placeholder || 'Math field');
+  if (!target) return false;
+  event.preventDefault?.();
+  openMathKeyboard(target, button.dataset.mathLabel || target.placeholder || 'Math field');
+  return true;
+}
+
+// Older iOS Safari can occasionally suppress the synthetic click after a tap,
+// especially inside scrollable modal/card content. Handle touchend as a direct
+// fallback, then ignore the duplicate click generated by the same tap.
+document.addEventListener('touchend', event => {
+  const button = event.target?.closest?.('[data-math-keyboard]');
+  if (!button) return;
+  mathKeyboardTouchHandledAt = Date.now();
+  mathKeyboardTriggerFromEvent(event);
+}, { passive: false, capture: true });
+
+document.addEventListener('click', event => {
+  if (!event.target?.closest?.('[data-math-keyboard]')) return;
+  if (Date.now() - mathKeyboardTouchHandledAt < 700) {
+    event.preventDefault?.();
+    return;
+  }
+  mathKeyboardTriggerFromEvent(event);
 });
 
 document.addEventListener('click', event => {
   const key = event.target.closest('[data-math-insert]');
   if (!key) return;
-  const field = $('#mathKeyboardField');
-  field.insert(key.dataset.mathInsert || '', { selectionMode: 'placeholder', focus: true });
-  showMobileMathKeyboard(field);
+  event.preventDefault();
+  insertIntoMathKeyboard(key.dataset.mathInsert || '', { selectionMode: 'placeholder', focus: true });
 });
 
 document.addEventListener('click', event => {
   const tab = event.target.closest('[data-math-entry-tab]');
   if (!tab) return;
+  event.preventDefault();
   const panelRoot = $('#mathMobileEntryPanel');
   const mode = tab.dataset.mathEntryTab;
   $$('.math-entry-tab', panelRoot).forEach(btn => {
@@ -2039,38 +2289,40 @@ document.addEventListener('click', event => {
   $$('[data-math-entry-panel]', panelRoot).forEach(panel => {
     panel.hidden = panel.dataset.mathEntryPanel !== mode;
   });
-  $('#mathKeyboardField')?.focus();
+  focusMathKeyboardEditor();
 });
 
 document.addEventListener('click', event => {
   const key = event.target.closest('[data-math-type]');
   if (!key) return;
-  const field = $('#mathKeyboardField');
-  if (!field) return;
-  field.focus();
-  field.insert(String(key.dataset.mathType || ''), { focus: true });
+  event.preventDefault();
+  insertIntoMathKeyboard(String(key.dataset.mathType || ''), { focus: true });
 });
 
 document.addEventListener('click', event => {
   const key = event.target.closest('[data-math-command]');
   if (!key) return;
-  const field = $('#mathKeyboardField');
-  if (!field) return;
-  field.focus();
-  try { field.executeCommand(key.dataset.mathCommand); } catch (_) {}
+  event.preventDefault();
+  executeMathKeyboardCommand(key.dataset.mathCommand);
 });
 
 $('#mathKeyboardClearBtn')?.addEventListener('click', () => {
-  const field = $('#mathKeyboardField');
-  field.value = '';
-  field.focus();
-  showMobileMathKeyboard(field);
+  const editor = currentMathKeyboardEditor();
+  if (!editor) return;
+  editor.value = '';
+  try { editor.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+  focusMathKeyboardEditor();
 });
 $('#mathKeyboardCancelBtn')?.addEventListener('click', closeMathKeyboard);
 $('#mathKeyboardCloseBtn')?.addEventListener('click', closeMathKeyboard);
+$('#mathKeyboardModal')?.addEventListener('cancel', event => {
+  event.preventDefault();
+  closeMathKeyboard();
+});
 $('#mathKeyboardInsertBtn')?.addEventListener('click', () => {
   if (!mathKeyboardTarget) return closeMathKeyboard();
-  const latex = String($('#mathKeyboardField')?.value || '').trim();
+  const editor = currentMathKeyboardEditor();
+  const latex = String(editor?.value || '').trim();
   if (!latex) return toast('Enter your answer in the Math Keyboard first.', 'orange', 'Math Keyboard');
   if (/\\placeholder\s*\{\s*\}/i.test(latex) || /^\s*\^/.test(latex)) {
     return toast('Your math answer is incomplete. Fill every blank in the Math Keyboard before inserting it.', 'orange', 'Complete your answer');
@@ -2078,16 +2330,13 @@ $('#mathKeyboardInsertBtn')?.addEventListener('click', () => {
   const current = String(mathKeyboardTarget.value || '');
   const start = Math.max(0, Math.min(mathKeyboardSelection.start, current.length));
   const end = Math.max(start, Math.min(mathKeyboardSelection.end, current.length));
-  // Student answers are Math Keyboard only: replace the hidden stored answer with
-  // exactly what is visible in the formatted Math Keyboard. Teacher/question
-  // fields keep the \( ... \) wrapper for rich text rendering elsewhere.
   const isStudentAnswer = Boolean(mathKeyboardTarget.closest?.('.student-math-answer-wrap'));
   const block = isStudentAnswer ? latex : `\\(${latex}\\)`;
   mathKeyboardTarget.value = isStudentAnswer ? block : current.slice(0, start) + block + current.slice(end);
   mathKeyboardTarget.dispatchEvent(new Event('input', { bubbles: true }));
   const caret = isStudentAnswer ? block.length : start + block.length;
   try { mathKeyboardTarget.setSelectionRange(caret, caret); } catch (_) {}
-  mathKeyboardTarget.focus();
+  try { mathKeyboardTarget.focus?.({ preventScroll: true }); } catch (_) { try { mathKeyboardTarget.focus?.(); } catch (_) {} }
   closeMathKeyboard();
 });
 
