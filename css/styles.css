@@ -1345,3 +1345,49 @@ html,body{max-width:100%;overflow-x:hidden}
   .student-math-answer-only .student-answer-rendered-preview{min-height:96px;padding:12px 14px}
   .student-math-answer-only .student-answer-preview-field{min-height:50px;font-size:26px}
 }
+
+
+/* =====================================================================
+   MATHSIDE V23.3 — iOS-safe Math Keyboard compatibility layer
+   Supports iOS Safari/PWA even when native <dialog> or MathLive is absent.
+   ===================================================================== */
+body.math-keyboard-open{overflow:hidden!important;touch-action:none}
+.math-keyboard-fallback-field{
+  display:block;width:100%;min-height:82px;margin:18px 0 10px;padding:12px 14px;
+  border:2px solid #e7cdb9;border-radius:15px;background:#fff;color:#2d241f;
+  font:700 18px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  box-sizing:border-box;resize:none;-webkit-appearance:none;appearance:none
+}
+.math-keyboard-fallback-field:focus{outline:none;border-color:#ff7a1a;box-shadow:0 0 0 4px rgba(255,107,0,.10)}
+.math-keyboard-compat-note{margin:-2px 0 12px;padding:8px 10px;border-radius:10px;background:#fff1e5;color:#7b4a28;font-size:10px;line-height:1.4}
+.math-keyboard-field[hidden],.math-keyboard-fallback-field[hidden],.math-keyboard-compat-note[hidden]{display:none!important}
+
+/* Safari on iOS 15.3 and earlier has no dialog.showModal(). This class is
+   applied only as a runtime fallback and recreates a modal without that API. */
+.math-keyboard-modal.math-dialog-fallback-open{
+  display:flex!important;position:fixed!important;inset:0!important;z-index:2147483000!important;
+  width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;
+  margin:0!important;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))!important;
+  align-items:center!important;justify-content:center!important;overflow:hidden!important;
+  background:rgba(40,24,12,.58)!important;box-sizing:border-box!important
+}
+.math-keyboard-modal.math-dialog-fallback-open .math-keyboard-box{
+  width:min(760px,calc(100vw - 16px))!important;
+  max-height:calc(100vh - 20px)!important;
+  max-height:calc(100dvh - 20px)!important;
+  overflow:auto!important;-webkit-overflow-scrolling:touch!important
+}
+
+@media (pointer:coarse), (max-width:780px){
+  .math-keyboard-modal{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+  .math-keyboard-box{
+    max-height:calc(100vh - var(--math-vk-height, 0px) - 14px)!important;
+    max-height:calc(100dvh - var(--math-vk-height, 0px) - 14px)!important;
+    padding-bottom:max(20px,env(safe-area-inset-bottom))!important;
+    -webkit-overflow-scrolling:touch
+  }
+  .math-keyboard-fallback-field{min-height:76px;font-size:16px}
+  .math-mobile-keypad button,.math-key-grid button,.math-entry-tab,.math-keyboard-actions .btn{
+    -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation
+  }
+}
