@@ -22,11 +22,18 @@ function slugifyName(name: string) {
 }
 
 function randomPassword() {
-  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
-  const bytes = new Uint8Array(10)
+  // Easy-to-type temporary student password: 8 lowercase letters with a
+  // consonant/vowel pattern (example: "navetomi"). It avoids symbols,
+  // capitals and number-row switching while keeping each password random.
+  const consonants = 'bcdfghjkmnpqrstvwxyz'
+  const vowels = 'aeiou'
+  const bytes = new Uint8Array(8)
   crypto.getRandomValues(bytes)
-  let value = 'M!'
-  for (const byte of bytes) value += alphabet[byte % alphabet.length]
+  let value = ''
+  for (let index = 0; index < bytes.length; index += 1) {
+    const alphabet = index % 2 === 0 ? consonants : vowels
+    value += alphabet[bytes[index] % alphabet.length]
+  }
   return value
 }
 

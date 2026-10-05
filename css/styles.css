@@ -1391,3 +1391,18 @@ body.math-keyboard-open{overflow:hidden!important;touch-action:none}
     -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation
   }
 }
+
+
+/* V23.4 — Submissions review filters + low-query grading workflow */
+.submission-toolbar{grid-template-columns:1fr;align-items:stretch}
+.submission-section-control{min-width:0}
+.submission-filter-grid{display:grid;grid-template-columns:minmax(260px,1.4fr) minmax(190px,.8fr) minmax(190px,.8fr);gap:10px;align-items:end}
+.submission-review-filter{min-width:0}.submission-review-tabs{display:flex;gap:6px;margin-top:5px;padding:4px;background:#f7eee7;border:1px solid #ead7c8;border-radius:14px}
+.submission-review-tab{flex:1 1 0;border:0;background:transparent;border-radius:10px;min-height:40px;padding:8px 9px;font-weight:900;color:#6d5b4f;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer}
+.submission-review-tab span{min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#fff;color:#8a5d3d;display:grid;place-items:center;font-size:10px}
+.submission-review-tab.active{background:#2e211b;color:#fff;box-shadow:0 5px 14px rgba(46,33,27,.14)}.submission-review-tab.active span{background:#ff7a16;color:#fff}
+.submission-review-pill{font-size:9px;font-weight:1000;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:4px 7px}.submission-review-pill.is-new{background:#fff1df;color:#a84d0b}.submission-review-pill.is-checked{background:#e7f7ed;color:#257347}
+.submission-combined-list{display:grid;gap:10px}.submission-section-flat-list{border:1px solid #ead9cb;border-top:0;border-radius:0 0 18px 18px;background:#fff}.submission-section-group>.submission-section-group-title{border-radius:16px 16px 0 0}
+.submission-assignment-title{margin:6px 0 2px!important;font-size:15px!important}.submission-class-label{margin:0 0 8px!important}
+@media(max-width:900px){.submission-filter-grid{grid-template-columns:1fr 1fr}.submission-review-filter{grid-column:1/-1}}
+@media(max-width:560px){.submission-filter-grid{grid-template-columns:1fr}.submission-review-filter{grid-column:auto}.submission-review-tabs{display:grid;grid-template-columns:repeat(3,1fr)}.submission-review-tab{padding:7px 5px;font-size:11px}.submission-review-tab span{min-width:20px;height:20px}.submission-section-flat-list{padding:7px}}

@@ -1,4 +1,4 @@
-/* Mathside V15 — Performance Tasks + submission categories.
+/* Mathside V15.8 — Performance Tasks + submission filters/categories.
    Adapted from the established EduCore performance-task workflow while
    preserving Mathside archive, manual review and controlled resubmission. */
 (() => {
@@ -750,57 +750,81 @@
 
   function sortSubmissionRows(rows) {
     return [...rows].sort((a,b) => {
-      if (submissionSort === 'oldest') return new Date(a.submitted_at||0)-new Date(b.submitted_at||0);
-      if (submissionSort === 'name') return String(studentById(a.student_id)?.display_name||'').localeCompare(String(studentById(b.student_id)?.display_name||''));
-      if (submissionSort === 'gender') {
-        const order={Male:0,Female:1,'Prefer not to say':2,'Not specified':3},sa=studentById(a.student_id),sb=studentById(b.student_id);
-        return ((order[sa?.gender]??9)-(order[sb?.gender]??9)) || String(sa?.display_name||'').localeCompare(String(sb?.display_name||''));
-      }
+      const nameA = String(studentById(a.student_id)?.display_name || '');
+      const nameB = String(studentById(b.student_id)?.display_name || '');
+      if (submissionSort === 'name') return nameA.localeCompare(nameB, undefined, { sensitivity:'base' });
+      if (submissionSort === 'name-desc') return nameB.localeCompare(nameA, undefined, { sensitivity:'base' });
       return new Date(b.submitted_at||0)-new Date(a.submitted_at||0);
     });
   }
 
   function submissionCard(s) {
     const a = assignmentById(s.assignment_id), student = studentById(s.student_id), section = sectionById(a?.section_id), total = totalPoints(a?.id), graded = s.status === 'graded';
-    const shown = graded ? Number(s.teacher_score ?? 0) : (isPerformanceTask(a) ? null : Number(s.auto_score || 0));
+    const shown = isPerformanceTask(a)
+      ? (graded && s.teacher_score != null ? Number(s.teacher_score) : null)
+      : Number(s.teacher_score ?? s.auto_score ?? 0);
     const genderClass = student?.gender === 'Male' ? 'submission-male' : student?.gender === 'Female' ? 'submission-female' : 'submission-other';
-    return `<article class="submission-card ${genderClass}"><div class="submission-status-icon">${graded?iconSvg('check','assignment-line-icon'):iconSvg('inbox','assignment-line-icon')}</div><div class="submission-card-body"><div class="submission-student-row"><button type="button" class="submission-student-name" data-track-student-from-submissions="${student?.id||''}" data-track-section="${section?.id||''}">${esc(student?.display_name||'Student')}</button><span class="gender-pill">${esc(student?.gender||'Not specified')}</span></div><div class="submission-meta-grid"><span><small>Status</small><b>${esc(s.status)}</b></span><span><small>Score</small><b>${shown===null?'Pending':`${shown}/${total}`}</b></span><span><small>Attempt</small><b>${Number(s.attempt_count||1)}</b></span><span><small>Submitted</small><b>${esc(formatStudentDate(s.submitted_at)||'')}</b></span></div></div><button class="btn btn-orange submission-review-btn" data-review-submission="${s.id}">Review</button></article>`;
+    return `<article class="submission-card ${genderClass}"><div class="submission-status-icon">${graded?iconSvg('check','assignment-line-icon'):iconSvg('inbox','assignment-line-icon')}</div><div class="submission-card-body"><div class="submission-student-row"><button type="button" class="submission-student-name" data-track-student-from-submissions="${student?.id||''}" data-track-section="${section?.id||''}">${esc(student?.display_name||'Student')}</button><span class="gender-pill">${esc(student?.gender||'Not specified')}</span><span class="submission-review-pill ${graded?'is-checked':'is-new'}">${graded?'Checked':'New'}</span></div><h3 class="submission-assignment-title">${esc(a?.title || (isPerformanceTask(a)?'Performance Task':'Activity'))}</h3><p class="submission-class-label">${esc(sectionLabel(section))}</p><div class="submission-meta-grid"><span><small>Status</small><b>${graded?'Checked':'New'}</b></span><span><small>Score</small><b>${shown===null?'Pending':`${shown}/${total}`}</b></span><span><small>Attempt</small><b>${Number(s.attempt_count||1)}</b></span><span><small>Submitted</small><b>${esc(formatStudentDate(s.submitted_at)||'')}</b></span></div></div><button class="btn btn-orange submission-review-btn" data-review-submission="${s.id}">${graded?'Review again':'Review'}</button></article>`;
   }
 
   renderSubmissions = function() {
     const list = $('#submissionList'); if (!list) return;
-    submissionSort = submissionSort || 'newest';
+    submissionSort = ['newest','name','name-desc'].includes(submissionSort) ? submissionSort : 'newest';
+    submissionReviewFilter = ['all','new','checked'].includes(submissionReviewFilter) ? submissionReviewFilter : 'all';
+    submissionGroupMode = submissionGroupMode === 'combined' ? 'combined' : 'section';
     renderTypeTabs(); renderSubmissionSectionTabs();
     if ($('#submissionSort')) $('#submissionSort').value = submissionSort;
-    let rows = state.submissions.filter(s => workType(assignmentById(s.assignment_id)) === submissionWorkType && (submissionSectionId === 'all' || assignmentById(s.assignment_id)?.section_id === submissionSectionId));
+    if ($('#submissionGroupMode')) $('#submissionGroupMode').value = submissionGroupMode;
+
+    const scopedRows = state.submissions.filter(s => workType(assignmentById(s.assignment_id)) === submissionWorkType && (submissionSectionId === 'all' || assignmentById(s.assignment_id)?.section_id === submissionSectionId));
+    const statusCounts = {
+      all: scopedRows.length,
+      new: scopedRows.filter(s => s.status !== 'graded').length,
+      checked: scopedRows.filter(s => s.status === 'graded').length
+    };
+    $$('#submissionReviewTabs [data-submission-review-filter]').forEach(btn => {
+      const key = btn.dataset.submissionReviewFilter || 'all';
+      btn.classList.toggle('active', key === submissionReviewFilter);
+      const count = btn.querySelector('[data-review-count]');
+      if (count) count.textContent = String(statusCounts[key] || 0);
+    });
+
+    let rows = scopedRows.filter(s => submissionReviewFilter === 'all' || (submissionReviewFilter === 'checked' ? s.status === 'graded' : s.status !== 'graded'));
+    rows = sortSubmissionRows(rows);
     const uniqueStudents = new Set(rows.map(s=>s.student_id)).size;
     const selectedSection = submissionSectionId === 'all' ? null : sectionById(submissionSectionId);
     const typeLabel = submissionWorkType === 'performance_task' ? 'Performance Tasks' : 'Activities';
-    $('#submissionSectionSummary').innerHTML = `<span><b>${rows.length}</b> submission${rows.length===1?'':'s'}</span><span><b>${uniqueStudents}</b> learner${uniqueStudents===1?'':'s'}</span><span><b>${typeLabel}</b></span>${selectedSection?`<span><b>${esc(selectedSection.name)}</b> · Grade ${esc(selectedSection.grade_level)}</span>`:`<span>Grouped by section, then ${submissionWorkType === 'performance_task' ? 'performance task' : 'activity'}</span>`}`;
-    if (!rows.length) { list.innerHTML = `<div class="assignment-empty v9-empty"><b>No ${typeLabel.toLowerCase()} submissions yet</b><p>Student work will appear here after submission.</p></div>`; return; }
+    const reviewLabel = submissionReviewFilter === 'new' ? 'New only' : submissionReviewFilter === 'checked' ? 'Checked only' : 'All review statuses';
+    const viewLabel = submissionGroupMode === 'section' ? 'Separated by section' : 'Combined list';
+    $('#submissionSectionSummary').innerHTML = `<span><b>${rows.length}</b> shown</span><span><b>${uniqueStudents}</b> learner${uniqueStudents===1?'':'s'}</span><span><b>${typeLabel}</b></span><span>${reviewLabel}</span><span>${viewLabel}</span>${selectedSection?`<span><b>${esc(selectedSection.name)}</b> · Grade ${esc(selectedSection.grade_level)}</span>`:'<span>All sections</span>'}`;
+    if (!rows.length) {
+      const emptyLabel = submissionReviewFilter === 'new' ? 'new submissions' : submissionReviewFilter === 'checked' ? 'checked submissions' : `${typeLabel.toLowerCase()} submissions`;
+      list.innerHTML = `<div class="assignment-empty v9-empty"><b>No ${emptyLabel}</b><p>Try another review-status or section filter.</p></div>`;
+      return;
+    }
+
+    if (submissionGroupMode === 'combined') {
+      list.innerHTML = `<section class="submission-combined-list">${rows.map(submissionCard).join('')}</section>`;
+      return;
+    }
+
     const sectionMap = new Map();
     rows.forEach(sub => {
       const assignment = assignmentById(sub.assignment_id); if (!assignment) return;
-      if (!sectionMap.has(assignment.section_id)) sectionMap.set(assignment.section_id, new Map());
-      const assignmentMap = sectionMap.get(assignment.section_id);
-      if (!assignmentMap.has(assignment.id)) assignmentMap.set(assignment.id, []);
-      assignmentMap.get(assignment.id).push(sub);
+      if (!sectionMap.has(assignment.section_id)) sectionMap.set(assignment.section_id, []);
+      sectionMap.get(assignment.section_id).push(sub);
     });
-    const sectionIds = [...sectionMap.keys()].sort((a,b)=>sectionLabel(sectionById(a)).localeCompare(sectionLabel(sectionById(b))));
+    const sectionIds = [...sectionMap.keys()].sort((a,b)=>sectionLabel(sectionById(a)).localeCompare(sectionLabel(sectionById(b)),undefined,{sensitivity:'base'}));
     list.innerHTML = sectionIds.map(sectionId => {
-      const section = sectionById(sectionId), assignmentMap = sectionMap.get(sectionId);
-      const assignmentIds = [...assignmentMap.keys()].sort((a,b)=>String(assignmentById(a)?.title||'').localeCompare(String(assignmentById(b)?.title||''),undefined,{sensitivity:'base'}));
-      const groups = assignmentIds.map(assignmentId => {
-        const assignment = assignmentById(assignmentId), subs = sortSubmissionRows(assignmentMap.get(assignmentId));
-        return `<section class="submission-activity-group"><header><div><span>${isPerformanceTask(assignment)?'PERFORMANCE TASK':'ACTIVITY'}</span><h3>${esc(assignment?.title || (isPerformanceTask(assignment) ? 'Performance Task' : 'Activity'))}</h3></div><div><b>${subs.length}</b><small>submission${subs.length===1?'':'s'}</small></div></header><div class="submission-activity-list">${subs.map(submissionCard).join('')}</div></section>`;
-      }).join('');
-      return `<section class="submission-section-group"><div class="submission-section-group-title"><span>${iconSvg('class','btn-icon')}</span><div><p>SECTION</p><h2>${esc(section?.name||'Class')}</h2><small>Grade ${esc(section?.grade_level||'')}</small></div></div>${groups}</section>`;
+      const section = sectionById(sectionId);
+      const sectionRows = sortSubmissionRows(sectionMap.get(sectionId));
+      return `<section class="submission-section-group"><div class="submission-section-group-title"><span>${iconSvg('class','btn-icon')}</span><div><p>SECTION</p><h2>${esc(section?.name||'Class')}</h2><small>Grade ${esc(section?.grade_level||'')} · ${sectionRows.length} submission${sectionRows.length===1?'':'s'}</small></div></div><div class="submission-activity-list submission-section-flat-list">${sectionRows.map(submissionCard).join('')}</div></section>`;
     }).join('');
   };
 
   $('#submissionTypeTabs')?.addEventListener('click', event => {
     const btn = event.target.closest('[data-submission-type]'); if (!btn) return;
-    submissionWorkType = btn.dataset.submissionType || 'written_work'; submissionSectionId = 'all'; renderSubmissions();
+    submissionWorkType = btn.dataset.submissionType || 'written_work'; submissionSectionId = 'all'; submissionReviewFilter = 'all'; renderSubmissions();
   });
 
   // ---------------------------------------------------------------
@@ -1076,12 +1100,12 @@
     const files = [...($('#performanceOutputImages')?.files || [])];
     if (!files.length) return toast('Upload at least one picture of your output.', 'orange');
     if (files.length > 10) return toast('Choose up to 10 output pictures.', 'orange');
-    if (files.some(f => !String(f.type||'').startsWith('image/'))) return toast('Performance task outputs must be image files.', 'orange');
+    if (files.some(f => !String(f.type||'').startsWith('image/') && !isHeicImage(f))) return toast('Performance task outputs must be image files.', 'orange');
     const oldPaths = submissionOutputPaths(existing), newPaths = [];
     try {
       await withLoading('Submitting performance task…','Uploading your output pictures and saving your submission.', async () => {
         for (let i=0; i<files.length; i+=1) {
-          const f = await compressImageForUpload(files[i], { maxDimension: 1800, targetBytes: 650 * 1024 });
+          const f = await compressImageForUpload(files[i], { maxDimension: 1600, targetBytes: 450 * 1024, hardLimitBytes: 500 * 1024, quality: 0.80, minQuality: 0.50, minLongEdge: 900 });
           const path = `${state.user.id}/${a.id}/${Date.now()}-${i+1}-${safeFileName(f.name)}`;
           const up = await db.storage.from('mathside-submission-proofs').upload(path, f, {upsert:false});
           if (up.error) throw up.error;

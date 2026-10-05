@@ -1,0 +1,19 @@
+MATHSIDE V23.5 — SIMPLE STUDENT PASSWORDS + iPHONE HEIC UPLOAD FIX
+
+1. Student temporary passwords are now 8 easy-to-type lowercase letters in a consonant/vowel pattern.
+   Example format: navetomi
+   - no ! symbol
+   - no uppercase letters
+   - no numbers
+   - avoids switching phone keyboard modes
+
+2. iPhone/iPad HEIC/HEIF photos are converted to JPEG in the browser before upload.
+   This prevents Supabase Storage's raw "mime type image/heic is not supported" error for student solution photos and performance-task images.
+
+3. If HEIC conversion cannot run, Mathside shows a friendly in-app Mathside popup instead of the raw storage error.
+
+4. Existing V23.4 submission filters, query optimizations and V23.3 iOS Math Keyboard fixes are preserved.
+
+IMPORTANT: The simpler password generator runs inside the Supabase create-students Edge Function.
+Deploy the updated supabase/functions/create-students/index.ts to apply the new password format to newly created student accounts.
+No SQL change is required.

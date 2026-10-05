@@ -8,6 +8,9 @@
 
   const FUNCTION_NAME = 'send-push-notification';
   const PROMPT_KEY = 'mathside_push_prompt_dismissed_v1';
+  const PUSH_SYNC_KEY = 'mathside_push_last_sync_v1';
+  const PUSH_SYNC_TTL_MS = 6 * 60 * 60 * 1000;
+  let pushSyncPromise = null;
   let busy = false;
   let promptTimer = null;
 
@@ -22,8 +25,11 @@
 
   const currentUser = async () => {
     if (typeof db === 'undefined' || !db) return null;
-    const { data } = await db.auth.getUser();
-    return data?.user || null;
+    // This helper only needs the locally persisted session to decide whether the
+    // UI should sync a push subscription. Authorization remains enforced by the
+    // authenticated RPC itself, so avoid an extra Auth network request here.
+    const { data } = await db.auth.getSession();
+    return data?.session?.user || null;
   };
 
   const base64ToUint8Array = (base64String) => {
@@ -66,16 +72,33 @@
     if (error) throw error;
   }
 
-  async function syncExistingSubscription() {
+  async function syncExistingSubscription({ force = false } = {}) {
     if (!supported() || Notification.permission !== 'granted') return false;
     const user = await currentUser();
     if (!user) return false;
     const registration = await getRegistration();
     const subscription = await registration.pushManager.getSubscription();
     if (!subscription) return false;
-    await saveSubscription(subscription);
-    updateUi();
-    return true;
+
+    const lastSync = Number(localStorage.getItem(PUSH_SYNC_KEY) || 0);
+    if (!force && lastSync && Date.now() - lastSync < PUSH_SYNC_TTL_MS) {
+      updateUi();
+      return true;
+    }
+    if (pushSyncPromise) return pushSyncPromise;
+
+    pushSyncPromise = (async () => {
+      await saveSubscription(subscription);
+      localStorage.setItem(PUSH_SYNC_KEY, String(Date.now()));
+      updateUi();
+      return true;
+    })();
+
+    try {
+      return await pushSyncPromise;
+    } finally {
+      pushSyncPromise = null;
+    }
   }
 
   async function enable({ quiet = false } = {}) {
@@ -104,6 +127,7 @@
         });
       }
       await saveSubscription(subscription);
+      localStorage.setItem(PUSH_SYNC_KEY, String(Date.now()));
       localStorage.removeItem(PROMPT_KEY);
       if (!quiet && typeof toast === 'function') toast('App notifications are on. Mathside can alert you even when the installed app is closed.', 'success', 'Notifications enabled');
       updateUi();
@@ -132,6 +156,7 @@
     } catch (error) {
       console.warn('Mathside push cleanup:', error);
     }
+    localStorage.removeItem(PUSH_SYNC_KEY);
     updateUi();
   }
 
@@ -142,6 +167,7 @@
     try {
       await unregisterForCurrentUser({ unsubscribe: true });
       localStorage.setItem(PROMPT_KEY, '1');
+      localStorage.removeItem(PUSH_SYNC_KEY);
       if (typeof toast === 'function') toast('App notifications were turned off on this device.', 'success', 'Notifications off');
     } finally {
       busy = false;

@@ -60,10 +60,13 @@ let activeRosterSectionId = null;
 let studentRosterSearch = '';
 let studentRosterSort = 'gender';
 let submissionSectionId = 'all';
+let submissionReviewFilter = 'all';
+let submissionGroupMode = 'section';
 let submissionSort = 'newest';
 let activeTrackingStudentId = null;
 let loadingDepth = 0;
 const signedUrlCache = new Map();
+const submissionAnswerCache = new Map();
 
 const messageQueue = [];
 let messagePopupOpen = false;
@@ -102,6 +105,13 @@ function friendlyErrorMessage(error, fallback = 'Something went wrong. Please tr
   const raw = String(error?.message || error || '').trim();
   const lower = raw.toLowerCase();
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+
+  // Supabase's raw MIME error is too technical for students. HEIC is the
+  // common iPhone/iPad photo format; Mathside normally converts it to JPEG
+  // before upload. If conversion is unavailable, show a normal Mathside popup.
+  if (lower.includes('image/heic') || lower.includes('image/heif') || lower.includes('heic_conversion')) {
+    return 'This is an iPhone/iPad HEIC photo. Mathside could not convert it to a supported JPG image this time. Check your internet connection and try again, or choose a JPG/PNG photo.';
+  }
   const looksLikeNetworkError = offline
     || lower.includes('failed to fetch')
     || lower.includes('networkerror')
@@ -187,17 +197,50 @@ function safeFileName(name = 'file') {
     .replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(-100) || 'file';
 }
 
-// Compress phone photos in the browser before they are sent to Supabase Storage.
-// This keeps written work readable while greatly reducing the amount of storage used.
+function isHeicImage(file) {
+  if (!file) return false;
+  const type = String(file.type || '').toLowerCase();
+  const name = String(file.name || '').toLowerCase();
+  return type === 'image/heic'
+    || type === 'image/heif'
+    || type === 'image/heic-sequence'
+    || type === 'image/heif-sequence'
+    || /\.(heic|heif)$/.test(name);
+}
+
+async function convertHeicToJpeg(file) {
+  if (!isHeicImage(file)) return file;
+  if (typeof window.heic2any !== 'function') {
+    throw new Error('HEIC_CONVERSION_UNAVAILABLE');
+  }
+  try {
+    const converted = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.90 });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    if (!blob) throw new Error('HEIC conversion returned no image.');
+    const baseName = String(file.name || 'iphone-photo').replace(/\.(heic|heif)$/i, '') || 'iphone-photo';
+    return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+  } catch (error) {
+    console.warn('HEIC conversion failed', error);
+    throw new Error('HEIC_CONVERSION_FAILED');
+  }
+}
+
+// Convert iPhone HEIC photos when needed, then compress phone photos in the
+// browser before they are sent to Supabase Storage. This keeps written work
+// readable while greatly reducing storage usage.
 async function compressImageForUpload(file, options = {}) {
-  if (!file || !String(file.type || '').startsWith('image/')) return file;
+  if (!file || !String(file.type || '').startsWith('image/') && !isHeicImage(file)) return file;
+  file = await convertHeicToJpeg(file);
   const supportedInput = new Set(['image/jpeg', 'image/png', 'image/webp']);
   if (!supportedInput.has(String(file.type || '').toLowerCase())) return file;
 
   const maxDimension = Math.max(800, Number(options.maxDimension || 1800));
   const targetBytes = Math.max(200 * 1024, Number(options.targetBytes || 700 * 1024));
-  const initialQuality = Math.min(0.92, Math.max(0.60, Number(options.quality || 0.82)));
-  const minQuality = Math.min(initialQuality, Math.max(0.48, Number(options.minQuality || 0.58)));
+  const initialQuality = Math.min(0.92, Math.max(0.58, Number(options.quality || 0.82)));
+  const minQuality = Math.min(initialQuality, Math.max(0.46, Number(options.minQuality || 0.56)));
+  const minLongEdge = Math.max(800, Number(options.minLongEdge || 900));
+  const hardLimitBytes = Math.max(targetBytes, Number(options.hardLimitBytes || Math.round(targetBytes * 1.12)));
+  const maxResizeRounds = Math.max(3, Math.min(7, Number(options.maxResizeRounds || 5)));
 
   let bitmap = null;
   let objectUrl = '';
@@ -236,17 +279,41 @@ async function compressImageForUpload(file, options = {}) {
       canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not compress the selected image.')), 'image/webp', quality);
     });
 
-    // First lower JPEG/WebP quality a little, then reduce dimensions if a very
-    // large phone photo is still above the target size.
-    for (let resizeRound = 0; resizeRound < 3; resizeRound += 1) {
-      for (let quality = initialQuality; quality >= minQuality - 0.001; quality -= 0.08) {
+    // First lower WebP quality, then gently reduce dimensions only when the
+    // image is still over the requested target. Student solution photos use a
+    // ~450 KB target; the extra resize rounds make that target much more
+    // reliable without immediately sacrificing handwriting readability.
+    for (let resizeRound = 0; resizeRound < maxResizeRounds; resizeRound += 1) {
+      for (let quality = initialQuality; quality >= minQuality - 0.001; quality -= 0.07) {
         const blob = await encode(width, height, Math.max(minQuality, quality));
         if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
         if (blob.size <= targetBytes) break;
       }
-      if (bestBlob?.size <= targetBytes || Math.max(width, height) <= 1100) break;
-      width = Math.max(1, Math.round(width * 0.84));
-      height = Math.max(1, Math.round(height * 0.84));
+      if (bestBlob?.size <= targetBytes || Math.max(width, height) <= minLongEdge) break;
+      width = Math.max(1, Math.round(width * 0.86));
+      height = Math.max(1, Math.round(height * 0.86));
+    }
+
+    // One final pass near the readability floor provides a small safety buffer
+    // for unusually detailed phone photos. It still never shrinks below the
+    // configured long-edge floor unless the source image was already smaller.
+    if (bestBlob?.size > targetBytes && Math.max(width, height) > minLongEdge) {
+      const lastScale = minLongEdge / Math.max(width, height);
+      width = Math.max(1, Math.round(width * lastScale));
+      height = Math.max(1, Math.round(height * lastScale));
+      const finalBlob = await encode(width, height, minQuality);
+      if (!bestBlob || finalBlob.size < bestBlob.size) bestBlob = finalBlob;
+    }
+
+    // Student-photo calls use a 500 KB hard ceiling. Only unusually detailed
+    // images that remain above it are reduced one last time to an 800 px long
+    // edge; ordinary handwritten pages stay at the larger dimensions above.
+    if (bestBlob?.size > hardLimitBytes && Math.max(width, height) > 800) {
+      const emergencyScale = 800 / Math.max(width, height);
+      const emergencyWidth = Math.max(1, Math.round(width * emergencyScale));
+      const emergencyHeight = Math.max(1, Math.round(height * emergencyScale));
+      const emergencyBlob = await encode(emergencyWidth, emergencyHeight, Math.min(minQuality, 0.48));
+      if (!bestBlob || emergencyBlob.size < bestBlob.size) bestBlob = emergencyBlob;
     }
 
     if (!bestBlob || (bestBlob.size >= file.size && file.size <= targetBytes)) return file;
@@ -348,6 +415,7 @@ function resetState() {
   lastGeneratedSection = null;
   pendingStudentAction = null;
   signedUrlCache.clear();
+  submissionAnswerCache.clear();
 }
 
 async function signedUrl(bucket, path, seconds = 3600) {
@@ -779,6 +847,7 @@ async function loadTeacherData() {
   state.questions = [];
   state.keys = [];
   state.submissions = [];
+  submissionAnswerCache.clear();
   if (assignmentIds.length) {
     const [questionsRes, submissionsRes] = await Promise.all([
       db.from('mathside_questions').select('*').in('assignment_id', assignmentIds).order('position'),
@@ -3485,7 +3554,7 @@ $('#answerForm').addEventListener('submit', async event => {
   });
   const proofFiles = [...($('#studentSolutionImage')?.files || [])];
   if (!proofFiles.length) return toast('Upload at least one clear photo of your written solution before submitting.', 'orange');
-  if (proofFiles.some(file => !String(file.type || '').startsWith('image/'))) return toast('Solution uploads must be image files.', 'orange');
+  if (proofFiles.some(file => !String(file.type || '').startsWith('image/') && !isHeicImage(file))) return toast('Solution uploads must be image files.', 'orange');
   if (proofFiles.length > 10) return toast('Choose up to 10 solution pictures for one submission.', 'orange');
 
   const previousProofPaths = submissionProofPaths(submissionFor(activeStudentAssignment.id));
@@ -3494,7 +3563,7 @@ $('#answerForm').addEventListener('submit', async event => {
     let rpcResult;
     await withLoading('Submitting your answers…', `Uploading ${proofFiles.length} solution picture${proofFiles.length === 1 ? '' : 's'} and saving your answers.`, async () => {
       for (let index = 0; index < proofFiles.length; index += 1) {
-        const proofFile = await compressImageForUpload(proofFiles[index], { maxDimension: 1800, targetBytes: 650 * 1024 });
+        const proofFile = await compressImageForUpload(proofFiles[index], { maxDimension: 1600, targetBytes: 450 * 1024, hardLimitBytes: 500 * 1024, quality: 0.80, minQuality: 0.50, minLongEdge: 900 });
         const proofPath = `${state.user.id}/${activeStudentAssignment.id}/${Date.now()}-${index + 1}-${safeFileName(proofFile.name)}`;
         const uploadRes = await db.storage.from('mathside-submission-proofs').upload(proofPath, proofFile, { upsert: false });
         if (uploadRes.error) throw uploadRes.error;
@@ -3598,6 +3667,16 @@ $('#submissionSectionTabs')?.addEventListener('click', event => {
   submissionSectionId = btn.dataset.submissionSection || 'all';
   renderSubmissions();
 });
+$('#submissionReviewTabs')?.addEventListener('click', event => {
+  const btn = event.target.closest('[data-submission-review-filter]');
+  if (!btn) return;
+  submissionReviewFilter = btn.dataset.submissionReviewFilter || 'all';
+  renderSubmissions();
+});
+$('#submissionGroupMode')?.addEventListener('change', event => {
+  submissionGroupMode = event.currentTarget.value || 'section';
+  renderSubmissions();
+});
 $('#submissionSort')?.addEventListener('change', event => {
   submissionSort = event.currentTarget.value || 'newest';
   renderSubmissions();
@@ -3623,9 +3702,13 @@ async function openSubmissionReview(submissionId) {
   const qs = questionsFor(assignment.id);
   try {
     await withLoading('Opening submission…', 'Loading answers and uploaded work.', async () => {
-      const answersRes = await db.from('mathside_submission_answers').select('*').eq('submission_id', submissionId);
-      if (answersRes.error) throw answersRes.error;
-      const answers = answersRes.data || [];
+      let answers = submissionAnswerCache.get(submissionId);
+      if (!answers) {
+        const answersRes = await db.from('mathside_submission_answers').select('*').eq('submission_id', submissionId);
+        if (answersRes.error) throw answersRes.error;
+        answers = answersRes.data || [];
+        submissionAnswerCache.set(submissionId, answers);
+      }
       $('#reviewSubmissionTitle').textContent = assignment.title;
       $('#reviewSubmissionStudentName').textContent = student?.display_name || 'Student';
       const reviewTotal = totalPoints(assignment.id);
@@ -3849,7 +3932,7 @@ $('#gradeForm').addEventListener('submit', async event => {
   try {
     let cleanupResult = { deleted: 0, warning: '' };
     await withLoading('Saving grade…', hasManualAnswerReview ? 'Saving manual answer checks, recomputing the score, and clearing reviewed solution pictures.' : 'Updating the student score, feedback, and clearing reviewed solution pictures.', async () => {
-      const { error } = await db.rpc('mathside_save_submission_review', {
+      const { data: reviewResult, error } = await db.rpc('mathside_save_submission_review', {
         p_submission_id: activeSubmissionId,
         p_teacher_score: hasManualAnswerReview ? null : score,
         p_feedback: feedback || null,
@@ -3857,11 +3940,34 @@ $('#gradeForm').addEventListener('submit', async event => {
       });
       if (error) throw error;
 
+      // Keep the just-reviewed submission in local state instead of reloading the
+      // teacher's whole workspace. This avoids several unnecessary database reads
+      // after every grade while keeping all dashboard/submission counts accurate.
+      const savedAt = new Date().toISOString();
+      submission.teacher_score = reviewResult?.teacher_score ?? null;
+      submission.feedback = feedback || null;
+      submission.status = 'graded';
+      submission.graded_at = savedAt;
+      submission.updated_at = savedAt;
+
+      const cachedAnswers = submissionAnswerCache.get(activeSubmissionId);
+      if (cachedAnswers) {
+        answerReviews.forEach(review => {
+          const answer = cachedAnswers.find(item => item.question_id === review.question_id);
+          if (!answer) return;
+          if (review.manual_review) {
+            answer.manual_is_correct = Boolean(review.is_correct);
+            const question = state.questions.find(item => item.id === review.question_id);
+            answer.awarded_points = review.is_correct ? Number(question?.max_points || 0) : 0;
+          }
+          answer.teacher_comment = review.teacher_comment || null;
+        });
+      }
+
       // Once the teacher has saved the final grade, the uploaded proof pictures
       // are no longer needed for checking. Delete them to keep Supabase Storage small.
       cleanupResult = await cleanupGradedSubmissionProofs(submission);
       closeDialog('reviewSubmissionModal');
-      await refreshTeacher();
       showTeacherView('submissions');
     });
     if (cleanupResult.warning) {

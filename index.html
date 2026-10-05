@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/mathside-icon.svg?v=12.3" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=12.3" />
+  <link rel="stylesheet" href="css/styles.css?v=12.4" />
   <link rel="stylesheet" href="css/art-theme.css?v=7.0" />
   <link rel="stylesheet" href="css/student-v8.css?v=10.5" />
   <link rel="stylesheet" href="css/design-v9.css?v=9.1">
@@ -212,15 +212,30 @@
             <button type="button" class="submission-kind-tab" data-submission-type="performance_task">Performance Tasks <span id="performanceSubmissionCount">0</span></button>
           </div>
           <div class="submission-toolbar">
-            <div><span class="field-label">Section</span><div id="submissionSectionTabs" class="submission-section-tabs"></div></div>
-            <label class="submission-sort-field">Sort submissions
-              <select id="submissionSort">
-                <option value="newest" selected>Newest submitted</option>
-                <option value="oldest">Oldest submitted</option>
-                <option value="name">Student name A–Z</option>
-                <option value="gender">Gender (Male first), then name</option>
-              </select>
-            </label>
+            <div class="submission-section-control"><span class="field-label">Section</span><div id="submissionSectionTabs" class="submission-section-tabs"></div></div>
+            <div class="submission-filter-grid">
+              <div class="submission-review-filter">
+                <span class="field-label">Review status</span>
+                <div id="submissionReviewTabs" class="submission-review-tabs" role="group" aria-label="Filter submissions by review status">
+                  <button type="button" class="submission-review-tab active" data-submission-review-filter="all">All <span data-review-count="all">0</span></button>
+                  <button type="button" class="submission-review-tab" data-submission-review-filter="new">New <span data-review-count="new">0</span></button>
+                  <button type="button" class="submission-review-tab" data-submission-review-filter="checked">Checked <span data-review-count="checked">0</span></button>
+                </div>
+              </div>
+              <label class="submission-sort-field">View
+                <select id="submissionGroupMode">
+                  <option value="section" selected>Separated by section</option>
+                  <option value="combined">Combined list</option>
+                </select>
+              </label>
+              <label class="submission-sort-field">Order
+                <select id="submissionSort">
+                  <option value="newest" selected>Newest first</option>
+                  <option value="name">Alphabetical A–Z</option>
+                  <option value="name-desc">Alphabetical Z–A</option>
+                </select>
+              </label>
+            </div>
           </div>
           <div id="submissionSectionSummary" class="submission-section-summary"></div>
           <div id="submissionList" class="assignment-list"></div>
@@ -814,14 +829,16 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <!-- Converts iPhone/iPad HEIC photos to JPEG before Supabase upload. -->
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script id="mathliveScript" defer src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
-  <script src="js/app.js?v=15.8"></script>
+  <script src="js/app.js?v=16.1"></script>
   <script src="js/student-v8.js?v=15.0"></script>
   <script src="js/v10-features.js?v=15.2"></script>
 <script src="js/design-v9.js?v=9"></script>
   <script src="js/pwa.js?v=6.9.15"></script>
   <script src="js/push-notifications.js?v=6.10"></script>
   <script src="js/v12-archive-features.js?v=15.3"></script>
-  <script src="js/v15-performance-tasks.js?v=15.7"></script>
+  <script src="js/v15-performance-tasks.js?v=15.9"></script>
 </body>
 </html>

@@ -10,6 +10,9 @@
     draftTimer: null,
     notifications: [],
     notificationCleanupDone: false,
+    notificationFetchedAt: 0,
+    notificationFetchPromise: null,
+    notificationUserId: null,
     pollTimer: null
   };
 
@@ -46,6 +49,8 @@
     if (days <= 7) return { label: `Due in ${days} days`, key: 'soon' };
     return { label: `Due ${formatFullDate(d)}`, key: 'later' };
   };
+  const NOTIFICATION_CACHE_MS = 60000;
+  const NOTIFICATION_POLL_MS = 180000;
   const currentUserId = () => state.user?.id || null;
   const connected = () => Boolean(db && currentUserId());
   const studentAssignments = () => state.assignments.filter(a => a.status === 'published');
@@ -294,7 +299,10 @@
     document.getElementById('v10MarkAllRead')?.addEventListener('click', async () => {
       if (!connected()) return;
       await db.rpc('mathside_mark_notifications_read', { p_ids: null });
-      await refreshNotifications();
+      const readAt = new Date().toISOString();
+      feature.notifications.forEach(note => { note.read_at = note.read_at || readAt; });
+      feature.notificationFetchedAt = Date.now();
+      renderNotifications();
     });
     document.getElementById('v10NotificationList')?.addEventListener('click', async event => {
       const btn = event.target.closest('[data-notification-id]');
@@ -307,8 +315,8 @@
       btn.querySelector(':scope > i')?.remove();
       renderNotifications();
       await db.rpc('mathside_mark_notifications_read', { p_ids: [note.id] });
+      feature.notificationFetchedAt = Date.now();
       document.getElementById('v10NotificationDialog')?.close();
-      await refreshNotifications();
       routeNotification(note);
     });
   }
@@ -329,32 +337,54 @@
     box.innerHTML = feature.notifications.length ? feature.notifications.map(n => `<button type="button" class="v10-notification-row ${n.read_at ? '' : 'unread'}" data-notification-id="${esc(n.id)}"><span class="v10-notification-kind">${notificationIcon(n.type)}</span><span><b>${esc(n.title || 'Mathside update')}</b><small>${esc(n.body || '')}</small><time>${esc(formatDateTime(n.created_at))}</time></span>${n.read_at ? '' : '<i></i>'}</button>`).join('') : featureEmpty('You’re all caught up.', 'New class updates will appear here.');
   }
 
-  async function refreshNotifications() {
+  async function refreshNotifications({ force = false } = {}) {
     if (!connected()) return;
-
-    // Notifications are retained for seven days only. The RPC removes expired
-    // database rows; the date filter also guarantees that an expired item never
-    // appears in the UI while an older deployment is being upgraded.
-    if (!feature.notificationCleanupDone) {
-      const { error: cleanupError } = await db.rpc('mathside_cleanup_old_notifications');
-      if (cleanupError && !String(cleanupError.message || '').toLowerCase().includes('could not find')) {
-        console.warn('Notification cleanup:', cleanupError.message || cleanupError);
-      }
-      feature.notificationCleanupDone = true;
+    const userId = currentUserId();
+    if (feature.notificationUserId !== userId) {
+      feature.notificationUserId = userId;
+      feature.notifications = [];
+      feature.notificationFetchedAt = 0;
+      feature.notificationCleanupDone = false;
+      feature.notificationFetchPromise = null;
     }
-    const retentionCutoff = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString();
-    const { data, error } = await db.from('mathside_notifications')
-      .select('*')
-      .eq('user_id', currentUserId())
-      .gte('created_at', retentionCutoff)
-      .order('created_at', { ascending: false })
-      .limit(60);
-    if (error) {
-      console.warn('Notifications not ready:', error.message || error);
+    if (feature.notificationFetchPromise) return feature.notificationFetchPromise;
+    if (!force && feature.notificationFetchedAt && Date.now() - feature.notificationFetchedAt < NOTIFICATION_CACHE_MS) {
+      renderNotifications();
       return;
     }
-    feature.notifications = data || [];
-    renderNotifications();
+
+    feature.notificationFetchPromise = (async () => {
+      // Notifications are retained for seven days only. The RPC removes expired
+      // database rows; the date filter also guarantees that an expired item never
+      // appears in the UI while an older deployment is being upgraded.
+      if (!feature.notificationCleanupDone) {
+        const { error: cleanupError } = await db.rpc('mathside_cleanup_old_notifications');
+        if (cleanupError && !String(cleanupError.message || '').toLowerCase().includes('could not find')) {
+          console.warn('Notification cleanup:', cleanupError.message || cleanupError);
+        }
+        feature.notificationCleanupDone = true;
+      }
+      const retentionCutoff = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString();
+      const { data, error } = await db.from('mathside_notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .gte('created_at', retentionCutoff)
+        .order('created_at', { ascending: false })
+        .limit(60);
+      if (error) {
+        console.warn('Notifications not ready:', error.message || error);
+        return;
+      }
+      feature.notifications = data || [];
+      feature.notificationFetchedAt = Date.now();
+      renderNotifications();
+    })();
+
+    try {
+      return await feature.notificationFetchPromise;
+    } finally {
+      feature.notificationFetchPromise = null;
+    }
   }
 
   async function openNotifications() {
@@ -750,7 +780,7 @@
   window.addEventListener('focus', () => syncWorkspace().catch(() => {}));
   feature.pollTimer = setInterval(() => {
     if (document.visibilityState === 'visible' && connected() && state.profile) refreshNotifications().catch(() => {});
-  }, 45000);
+  }, NOTIFICATION_POLL_MS);
 
   window.MathsideV10 = {
     renderStudentPanel,
