@@ -3341,16 +3341,17 @@ function renderStudentAssignments() {
     const taskState = studentAssignmentState(a);
     const due = formatDeadlineDate(a.due_at);
     const overdue = !submitted && a.due_at && new Date(a.due_at).getTime() < Date.now();
+    const lateSubmission = Boolean(submitted && a.due_at && submitted.submitted_at && new Date(submitted.submitted_at).getTime() > new Date(a.due_at).getTime());
     let status = overdue ? 'Missed' : 'Ongoing';
     let statusClass = overdue ? 'status-overdue' : 'status-todo';
     if (a.status === 'archived') {
       status = submitted ? 'Submitted · Archived' : 'Archived';
       statusClass = 'status-submitted';
     } else if (submitted) {
-      status = 'Submitted';
-      statusClass = 'status-submitted';
+      status = lateSubmission ? 'Submitted Late' : 'Submitted';
+      statusClass = lateSubmission ? 'status-late' : 'status-submitted';
       if (submitted.resubmit_allowed) {
-        status = 'Submitted · New attempt allowed';
+        status = `${lateSubmission ? 'Submitted Late' : 'Submitted'} · New attempt allowed`;
         statusClass = 'status-todo';
       }
     }
@@ -3365,7 +3366,7 @@ function renderStudentAssignments() {
         <div class="assignment-meta">
           ${section?.grade_level ? `<span class="meta-chip">Grade ${esc(section.grade_level)}</span>` : ''}
           <span class="meta-chip">${qs.length} question${qs.length === 1 ? '' : 's'}</span>
-          ${due ? `<span class="meta-chip deadline-chip ${overdue ? 'meta-overdue' : ''}">${overdue ? 'Past due' : 'Deadline'} ${esc(due)}</span>` : `<span class="meta-chip deadline-chip no-deadline">No deadline</span>`}
+          ${due ? `<span class="meta-chip deadline-chip ${(overdue || lateSubmission) ? 'meta-overdue' : ''}">${lateSubmission ? 'Submitted late · Deadline' : overdue ? 'Past due' : 'Deadline'} ${esc(due)}</span>` : `<span class="meta-chip deadline-chip no-deadline">No deadline</span>`}
           ${submitted?.attempt_count ? `<span class="meta-chip">Attempt ${Number(submitted.attempt_count)}</span>` : ''}
         </div>
         ${submitted?.feedback ? `<div class="student-inline-feedback"><b>Teacher feedback:</b> ${esc(submitted.feedback)}</div>` : ''}
@@ -3458,7 +3459,8 @@ async function openStudentResponsePreview(submissionId) {
   const total = totalPoints(assignment.id);
   const shownScore = submission.status === 'graded' && submission.teacher_score != null ? Number(submission.teacher_score) : Number(submission.auto_score || 0);
   $('#studentResponseTitle').textContent = assignment.title;
-  $('#studentResponseMeta').textContent = `${sectionLabel(sectionById(assignment.section_id))} · Submitted ${formatStudentDate(submission.submitted_at) || ''} · Attempt ${Number(submission.attempt_count || 1)}`;
+  const responseWasLate = Boolean(assignment.due_at && submission.submitted_at && new Date(submission.submitted_at).getTime() > new Date(assignment.due_at).getTime());
+  $('#studentResponseMeta').textContent = `${sectionLabel(sectionById(assignment.section_id))} · Submitted ${formatStudentDate(submission.submitted_at) || ''}${responseWasLate ? ' · LATE SUBMISSION' : ''} · Attempt ${Number(submission.attempt_count || 1)}`;
   $('#studentResponseScore').innerHTML = `<div><span>${submission.status === 'graded' ? 'Teacher score' : 'Auto-check score'}</span><b>${shownScore}<small>/ ${total}</small></b></div><span class="student-status ${submission.status === 'graded' ? 'status-graded' : 'status-submitted'}">${submission.status === 'graded' ? 'Graded' : 'Submitted'}</span>`;
   $('#studentResponseAnswers').innerHTML = qs.map((q, i) => {
     const answer = answers.find(a => a.question_id === q.id);
@@ -3714,9 +3716,11 @@ async function openSubmissionReview(submissionId) {
       const reviewTotal = totalPoints(assignment.id);
       const hasManualScore = submission.teacher_score != null;
       const hasManualAnswerReview = answers.some(answer => answer.manual_is_correct !== null && answer.manual_is_correct !== undefined);
+      const reviewWasLate = Boolean(assignment.due_at && submission.submitted_at && new Date(submission.submitted_at).getTime() > new Date(assignment.due_at).getTime());
+      const reviewTiming = ` · Submitted ${formatStudentDate(submission.submitted_at) || ''}${reviewWasLate ? ' · LATE SUBMISSION' : ''}`;
       $('#reviewSubmissionMeta').textContent = hasManualScore
-        ? `${sectionLabel(sectionById(assignment.section_id))} · ${hasManualAnswerReview ? 'Manual-review score' : 'Teacher score'} ${Number(submission.teacher_score)}/${reviewTotal} · Auto-check ${Number(submission.auto_score || 0)}/${reviewTotal}`
-        : `${sectionLabel(sectionById(assignment.section_id))} · Auto-check ${Number(submission.auto_score || 0)}/${reviewTotal} · No manual score yet`;
+        ? `${sectionLabel(sectionById(assignment.section_id))} · ${hasManualAnswerReview ? 'Manual-review score' : 'Teacher score'} ${Number(submission.teacher_score)}/${reviewTotal} · Auto-check ${Number(submission.auto_score || 0)}/${reviewTotal}${reviewTiming}`
+        : `${sectionLabel(sectionById(assignment.section_id))} · Auto-check ${Number(submission.auto_score || 0)}/${reviewTotal} · No manual score yet${reviewTiming}`;
       $('#reviewSubmissionAnswers').innerHTML = qs.map((q,i) => {
         const answer = answers.find(a => a.question_id === q.id);
         const key = keyFor(q.id);

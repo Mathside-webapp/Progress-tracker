@@ -13,9 +13,9 @@
   <link rel="icon" type="image/svg+xml" href="assets/mathside-icon.svg?v=12.3" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=12.4" />
+  <link rel="stylesheet" href="css/styles.css?v=12.6" />
   <link rel="stylesheet" href="css/art-theme.css?v=7.0" />
-  <link rel="stylesheet" href="css/student-v8.css?v=10.5" />
+  <link rel="stylesheet" href="css/student-v8.css?v=10.6" />
   <link rel="stylesheet" href="css/design-v9.css?v=9.1">
   <link rel="stylesheet" href="css/v10-features.css?v=11.3">
   <link rel="stylesheet" href="css/v12-archive-features.css?v=12.2" />
@@ -196,45 +196,74 @@
         </section>
 
         <section class="app-view" id="view-assignments">
-          <div class="section-row"><div><p class="eyebrow">CLASSWORK</p><h2>Activities</h2><p class="muted">Post question-based Mathematics activities to one or more classes.</p></div><button class="btn btn-orange" id="postAssignmentBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New activity</button></div>
+          <div class="section-row"><div><p class="eyebrow">CLASSWORK</p><h2>Activities</h2><p class="muted">Post question-based Mathematics activities to one or more classes.</p></div><div class="row-actions"><button class="btn btn-light compact-filter-button" id="activityFilterBtn" type="button" aria-expanded="false" aria-controls="activityFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="activityFilterBadge" class="filter-count-badge" hidden>0</span></button><button class="btn btn-orange" id="postAssignmentBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New activity</button></div></div>
+          <div class="compact-filter-wrap">
+            <div id="activityFilterPanel" class="compact-filter-panel" hidden>
+              <div class="compact-filter-panel-head"><div><p class="eyebrow">FILTER ACTIVITIES</p><h3>Show only what you need</h3></div><button type="button" class="icon-button compact-filter-close" id="activityFilterClose" aria-label="Close filters">×</button></div>
+              <div class="performance-task-filter-grid">
+                <label>Section<select id="activitySectionFilter"><option value="all">All sections</option></select></label>
+                <label>Status<select id="activityStatusFilter"><option value="all">All statuses</option><option value="posted">Posted</option><option value="scheduled">Scheduled</option><option value="archived">Archived</option></select></label>
+                <label>Order<select id="activitySort"><option value="newest">Newest first</option><option value="name">Alphabetical A–Z</option><option value="name-desc">Alphabetical Z–A</option><option value="due">Deadline soonest</option></select></label>
+              </div>
+              <div class="compact-filter-actions"><button type="button" class="btn btn-light" id="activityClearFilters">Clear filters</button><button type="button" class="btn btn-orange" id="activityFilterDone">Done</button></div>
+            </div>
+          </div>
           <div id="assignmentList" class="assignment-list"></div>
         </section>
 
         <section class="app-view" id="view-performance">
-          <div class="section-row"><div><p class="eyebrow">PERFORMANCE TASK</p><h2>Performance Tasks</h2><p class="muted">Post project-based tasks with instructions, pictures, rubric, deadlines, reminders, and assigned sections.</p></div><button class="btn btn-orange" id="postPerformanceTaskBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New performance task</button></div>
+          <div class="section-row"><div><p class="eyebrow">PERFORMANCE TASK</p><h2>Performance Tasks</h2><p class="muted">Post project-based tasks with instructions, pictures, rubric, deadlines, reminders, and assigned sections.</p></div><div class="row-actions"><button class="btn btn-light compact-filter-button" id="performanceTaskFilterBtn" type="button" aria-expanded="false" aria-controls="performanceTaskFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="performanceTaskFilterBadge" class="filter-count-badge" hidden>0</span></button><button class="btn btn-orange" id="postPerformanceTaskBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New performance task</button></div></div>
+          <div class="compact-filter-wrap">
+            <div id="performanceTaskFilterPanel" class="compact-filter-panel" hidden>
+              <div class="compact-filter-panel-head"><div><p class="eyebrow">FILTER PERFORMANCE TASKS</p><h3>Show only what you need</h3></div><button type="button" class="icon-button compact-filter-close" id="performanceTaskFilterClose" aria-label="Close filters">×</button></div>
+              <div class="performance-task-filter-grid">
+                <label>Section<select id="performanceTaskSectionFilter"><option value="all">All sections</option></select></label>
+                <label>Status<select id="performanceTaskStatusFilter"><option value="all">All statuses</option><option value="posted">Posted</option><option value="scheduled">Scheduled</option><option value="archived">Archived</option></select></label>
+                <label>Work setup<select id="performanceTaskModeFilter"><option value="all">All setups</option><option value="individual">Individual</option><option value="pair">Pair</option><option value="group">Group</option></select></label>
+                <label>Order<select id="performanceTaskSort"><option value="newest">Newest first</option><option value="name">Alphabetical A–Z</option><option value="name-desc">Alphabetical Z–A</option><option value="due">Deadline soonest</option></select></label>
+              </div>
+              <div class="compact-filter-actions"><button type="button" class="btn btn-light" id="performanceTaskClearFilters">Clear filters</button><button type="button" class="btn btn-orange" id="performanceTaskFilterDone">Done</button></div>
+            </div>
+          </div>
           <div id="performanceTaskList" class="assignment-list"></div>
         </section>
 
         <section class="app-view" id="view-submissions">
-          <div class="section-row"><div><p class="eyebrow">STUDENT WORK</p><h2>Submissions</h2><p class="muted">Choose a class, then review only the learners who submitted work.</p></div></div>
+          <div class="section-row"><div><p class="eyebrow">STUDENT WORK</p><h2>Submissions</h2><p class="muted">Choose Activities or Performance Tasks, then use Filter only when you need it.</p></div><button class="btn btn-light compact-filter-button" id="submissionFilterBtn" type="button" aria-expanded="false" aria-controls="submissionFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="submissionFilterBadge" class="filter-count-badge" hidden>0</span></button></div>
           <div class="submission-kind-tabs" id="submissionTypeTabs" role="tablist" aria-label="Submission category">
             <button type="button" class="submission-kind-tab active" data-submission-type="written_work">Activities <span id="writtenSubmissionCount">0</span></button>
             <button type="button" class="submission-kind-tab" data-submission-type="performance_task">Performance Tasks <span id="performanceSubmissionCount">0</span></button>
           </div>
-          <div class="submission-toolbar">
-            <div class="submission-section-control"><span class="field-label">Section</span><div id="submissionSectionTabs" class="submission-section-tabs"></div></div>
-            <div class="submission-filter-grid">
-              <div class="submission-review-filter">
-                <span class="field-label">Review status</span>
-                <div id="submissionReviewTabs" class="submission-review-tabs" role="group" aria-label="Filter submissions by review status">
-                  <button type="button" class="submission-review-tab active" data-submission-review-filter="all">All <span data-review-count="all">0</span></button>
-                  <button type="button" class="submission-review-tab" data-submission-review-filter="new">New <span data-review-count="new">0</span></button>
-                  <button type="button" class="submission-review-tab" data-submission-review-filter="checked">Checked <span data-review-count="checked">0</span></button>
+          <div class="compact-filter-wrap submission-filter-wrap">
+            <div id="submissionFilterPanel" class="compact-filter-panel submission-filter-panel" hidden>
+              <div class="compact-filter-panel-head"><div><p class="eyebrow">FILTER SUBMISSIONS</p><h3>Choose what to show</h3></div><button type="button" class="icon-button compact-filter-close" id="submissionFilterClose" aria-label="Close filters">×</button></div>
+              <div class="submission-toolbar">
+                <div class="submission-section-control"><span class="field-label">Section</span><div id="submissionSectionTabs" class="submission-section-tabs"></div></div>
+                <div class="submission-filter-grid">
+                  <div class="submission-review-filter">
+                    <span class="field-label">Review status</span>
+                    <div id="submissionReviewTabs" class="submission-review-tabs" role="group" aria-label="Filter submissions by review status">
+                      <button type="button" class="submission-review-tab active" data-submission-review-filter="all">All <span data-review-count="all">0</span></button>
+                      <button type="button" class="submission-review-tab" data-submission-review-filter="new">New <span data-review-count="new">0</span></button>
+                      <button type="button" class="submission-review-tab" data-submission-review-filter="checked">Checked <span data-review-count="checked">0</span></button>
+                    </div>
+                  </div>
+                  <label class="submission-sort-field">View
+                    <select id="submissionGroupMode">
+                      <option value="section" selected>Separated by section</option>
+                      <option value="combined">Combined list</option>
+                    </select>
+                  </label>
+                  <label class="submission-sort-field">Order
+                    <select id="submissionSort">
+                      <option value="newest" selected>Newest first</option>
+                      <option value="name">Alphabetical A–Z</option>
+                      <option value="name-desc">Alphabetical Z–A</option>
+                    </select>
+                  </label>
                 </div>
               </div>
-              <label class="submission-sort-field">View
-                <select id="submissionGroupMode">
-                  <option value="section" selected>Separated by section</option>
-                  <option value="combined">Combined list</option>
-                </select>
-              </label>
-              <label class="submission-sort-field">Order
-                <select id="submissionSort">
-                  <option value="newest" selected>Newest first</option>
-                  <option value="name">Alphabetical A–Z</option>
-                  <option value="name-desc">Alphabetical Z–A</option>
-                </select>
-              </label>
+              <div class="compact-filter-actions"><button type="button" class="btn btn-light" id="submissionClearFilters">Clear filters</button><button type="button" class="btn btn-orange" id="submissionFilterDone">Done</button></div>
             </div>
           </div>
           <div id="submissionSectionSummary" class="submission-section-summary"></div>
@@ -832,13 +861,13 @@
   <!-- Converts iPhone/iPad HEIC photos to JPEG before Supabase upload. -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script id="mathliveScript" defer src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
-  <script src="js/app.js?v=16.1"></script>
-  <script src="js/student-v8.js?v=15.0"></script>
-  <script src="js/v10-features.js?v=15.2"></script>
+  <script src="js/app.js?v=16.2"></script>
+  <script src="js/student-v8.js?v=15.1"></script>
+  <script src="js/v10-features.js?v=15.3"></script>
 <script src="js/design-v9.js?v=9"></script>
   <script src="js/pwa.js?v=6.9.15"></script>
   <script src="js/push-notifications.js?v=6.10"></script>
   <script src="js/v12-archive-features.js?v=15.3"></script>
-  <script src="js/v15-performance-tasks.js?v=15.9"></script>
+  <script src="js/v15-performance-tasks.js?v=15.12"></script>
 </body>
 </html>
