@@ -5,6 +5,7 @@
   'use strict';
 
   let submissionWorkType = 'written_work';
+  let submissionAssignmentFilter = 'all';
   let editingPerformanceTaskId = null;
   let editingPerformanceTaskIds = [];
   let activePerformanceTaskId = null;
@@ -899,6 +900,37 @@
     tabs.innerHTML = `<button type="button" class="submission-section-tab ${submissionSectionId==='all'?'active':''}" data-submission-section="all"><b>All</b><span>${relevant.length}</span></button>` + state.sections.filter(s=>!s.archived_at).map(section => `<button type="button" class="submission-section-tab ${submissionSectionId===section.id?'active':''}" data-submission-section="${section.id}"><b>${esc(section.name)}</b><small>Grade ${esc(section.grade_level)}</small><span>${counts.get(section.id)||0}</span></button>`).join('');
   };
 
+  function renderSubmissionActivityFilter() {
+    const select = $('#submissionActivityFilter');
+    if (!select) return;
+    const label = $('#submissionActivityFilterLabel');
+    const isPerformance = submissionWorkType === 'performance_task';
+    if (label) label.textContent = isPerformance ? 'Performance task' : 'Activity';
+
+    const eligible = state.assignments
+      .filter(a => workType(a) === submissionWorkType)
+      .filter(a => submissionSectionId === 'all' || a.section_id === submissionSectionId)
+      .filter(a => !a.archived_at)
+      .sort((a,b) => {
+        const ad = new Date(a.due_at || a.publish_at || a.created_at || 0).getTime();
+        const bd = new Date(b.due_at || b.publish_at || b.created_at || 0).getTime();
+        if (bd !== ad) return bd - ad;
+        return String(a.title || '').localeCompare(String(b.title || ''), undefined, { sensitivity:'base' });
+      });
+
+    if (submissionAssignmentFilter !== 'all' && !eligible.some(a => a.id === submissionAssignmentFilter)) {
+      submissionAssignmentFilter = 'all';
+    }
+
+    const allLabel = isPerformance ? 'All performance tasks' : 'All activities';
+    select.innerHTML = `<option value="all">${allLabel}</option>` + eligible.map(a => {
+      const section = sectionById(a.section_id);
+      const suffix = submissionSectionId === 'all' && section ? ` · ${section.name}` : '';
+      return `<option value="${esc(a.id)}">${esc(a.title || (isPerformance ? 'Performance Task' : 'Activity'))}${esc(suffix)}</option>`;
+    }).join('');
+    select.value = submissionAssignmentFilter;
+  }
+
   function sortSubmissionRows(rows) {
     return [...rows].sort((a,b) => {
       const nameA = String(studentById(a.student_id)?.display_name || '');
@@ -934,11 +966,16 @@
     submissionSort = ['newest','name','name-desc'].includes(submissionSort) ? submissionSort : 'newest';
     submissionReviewFilter = ['all','new','checked'].includes(submissionReviewFilter) ? submissionReviewFilter : 'all';
     submissionGroupMode = submissionGroupMode === 'combined' ? 'combined' : 'section';
-    renderTypeTabs(); renderSubmissionSectionTabs();
+    renderTypeTabs(); renderSubmissionSectionTabs(); renderSubmissionActivityFilter();
     if ($('#submissionSort')) $('#submissionSort').value = submissionSort;
     if ($('#submissionGroupMode')) $('#submissionGroupMode').value = submissionGroupMode;
 
-    const scopedRows = state.submissions.filter(s => workType(assignmentById(s.assignment_id)) === submissionWorkType && (submissionSectionId === 'all' || assignmentById(s.assignment_id)?.section_id === submissionSectionId));
+    const scopedRows = state.submissions.filter(s => {
+      const assignment = assignmentById(s.assignment_id);
+      return workType(assignment) === submissionWorkType
+        && (submissionSectionId === 'all' || assignment?.section_id === submissionSectionId)
+        && (submissionAssignmentFilter === 'all' || s.assignment_id === submissionAssignmentFilter);
+    });
     const statusCounts = {
       all: scopedRows.length,
       new: scopedRows.filter(s => s.status !== 'graded').length,
@@ -955,14 +992,15 @@
     rows = sortSubmissionRows(rows);
     const uniqueStudents = new Set(rows.map(s=>s.student_id)).size;
     const selectedSection = submissionSectionId === 'all' ? null : sectionById(submissionSectionId);
+    const selectedAssignment = submissionAssignmentFilter === 'all' ? null : assignmentById(submissionAssignmentFilter);
     const typeLabel = submissionWorkType === 'performance_task' ? 'Performance Tasks' : 'Activities';
-    const activeFilterCount = Number(submissionSectionId !== 'all') + Number(submissionReviewFilter !== 'all') + Number(submissionGroupMode !== 'section') + Number(submissionSort !== 'newest');
+    const activeFilterCount = Number(submissionSectionId !== 'all') + Number(submissionAssignmentFilter !== 'all') + Number(submissionReviewFilter !== 'all') + Number(submissionGroupMode !== 'section') + Number(submissionSort !== 'newest');
     const filterBadge = $('#submissionFilterBadge');
     if (filterBadge) { filterBadge.textContent = String(activeFilterCount); filterBadge.hidden = activeFilterCount === 0; }
-    $('#submissionSectionSummary').innerHTML = `<span><b>${rows.length}</b> shown</span><span><b>${uniqueStudents}</b> learner${uniqueStudents===1?'':'s'}</span><span><b>${typeLabel}</b></span>${selectedSection?`<span>${esc(selectedSection.name)} · Grade ${esc(selectedSection.grade_level)}</span>`:''}`;
+    $('#submissionSectionSummary').innerHTML = `<span><b>${rows.length}</b> shown</span><span><b>${uniqueStudents}</b> learner${uniqueStudents===1?'':'s'}</span><span><b>${typeLabel}</b></span>${selectedSection?`<span>${esc(selectedSection.name)} · Grade ${esc(selectedSection.grade_level)}</span>`:''}${selectedAssignment?`<span><b>${esc(selectedAssignment.title || 'Selected activity')}</b></span>`:''}`;
     if (!rows.length) {
       const emptyLabel = submissionReviewFilter === 'new' ? 'new submissions' : submissionReviewFilter === 'checked' ? 'checked submissions' : `${typeLabel.toLowerCase()} submissions`;
-      list.innerHTML = `<div class="assignment-empty v9-empty"><b>No ${emptyLabel}</b><p>Try another review-status or section filter.</p></div>`;
+      list.innerHTML = `<div class="assignment-empty v9-empty"><b>No ${emptyLabel}</b><p>Try another activity, review-status, or section filter.</p></div>`;
       return;
     }
 
@@ -997,8 +1035,12 @@
   });
   $('#submissionFilterClose')?.addEventListener('click', () => setCompactFilterPanel('#submissionFilterBtn', '#submissionFilterPanel', false));
   $('#submissionFilterDone')?.addEventListener('click', () => setCompactFilterPanel('#submissionFilterBtn', '#submissionFilterPanel', false));
+  $('#submissionActivityFilter')?.addEventListener('change', event => {
+    submissionAssignmentFilter = event.currentTarget.value || 'all';
+    renderSubmissions();
+  });
   $('#submissionClearFilters')?.addEventListener('click', () => {
-    submissionSectionId = 'all'; submissionReviewFilter = 'all'; submissionGroupMode = 'section'; submissionSort = 'newest';
+    submissionSectionId = 'all'; submissionAssignmentFilter = 'all'; submissionReviewFilter = 'all'; submissionGroupMode = 'section'; submissionSort = 'newest';
     renderSubmissions();
   });
 

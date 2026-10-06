@@ -1,8 +1,8 @@
-/* Mathside PWA — V24.0 Submission Filters + Teacher Password Reset Excel Fix
+/* Mathside PWA — V24.1 Submission Activity Filter + V24 Reset Fixes
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24.0';
+const CACHE_NAME = 'mathside-pwa-v24.1';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -15,7 +15,7 @@ const APP_SHELL = [
   './icons/icon-512.png',
   './icons/maskable-512.png',
   './assets/mathside-icon.svg?v=12.3',
-  './css/styles.css?v=12.6',
+  './css/styles.css?v=12.7',
   './css/art-theme.css?v=7.0',
   './css/student-v8.css?v=10.6',
   './css/design-v9.css?v=9.1',
@@ -31,7 +31,7 @@ const APP_SHELL = [
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.10',
   './js/v12-archive-features.js?v=15.3',
-  './js/v15-performance-tasks.js?v=15.12'
+  './js/v15-performance-tasks.js?v=15.13'
 ];
 
 self.addEventListener('install', (event) => {

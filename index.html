@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/mathside-icon.svg?v=12.3" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=12.6" />
+  <link rel="stylesheet" href="css/styles.css?v=12.7" />
   <link rel="stylesheet" href="css/art-theme.css?v=7.0" />
   <link rel="stylesheet" href="css/student-v8.css?v=10.6" />
   <link rel="stylesheet" href="css/design-v9.css?v=9.1">
@@ -248,6 +248,11 @@
                       <button type="button" class="submission-review-tab" data-submission-review-filter="checked">Checked <span data-review-count="checked">0</span></button>
                     </div>
                   </div>
+                  <label class="submission-sort-field"><span id="submissionActivityFilterLabel">Activity</span>
+                    <select id="submissionActivityFilter" aria-label="Filter submissions by activity">
+                      <option value="all" selected>All activities</option>
+                    </select>
+                  </label>
                   <label class="submission-sort-field">View
                     <select id="submissionGroupMode">
                       <option value="section" selected>Separated by section</option>
@@ -901,6 +906,6 @@
   <script src="js/pwa.js?v=6.9.15"></script>
   <script src="js/push-notifications.js?v=6.10"></script>
   <script src="js/v12-archive-features.js?v=15.3"></script>
-  <script src="js/v15-performance-tasks.js?v=15.12"></script>
+  <script src="js/v15-performance-tasks.js?v=15.13"></script>
 </body>
 </html>
