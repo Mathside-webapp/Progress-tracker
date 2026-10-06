@@ -1,0 +1,9 @@
+Mathside V23.9
+
+- Class Record Excel now includes a Total Score column per student.
+- Class Record shows total item count and total possible score; each activity header includes its item count.
+- Compact filter panels now stretch across the available content width from left to right.
+- Performance Task filter adds Work setup: All / Individual / Pair / Group. Shared multi-section tasks remain one logical task because collaboration mode is part of the grouping signature.
+- Performance-task submission cards identify Pair/Group submissions and label the submitting student as the team leader.
+- Late submissions now show a clear LATE label in teacher submissions/review and Submitted Late on student activity/performance views.
+- No new SQL or Edge Function is required.

@@ -1,0 +1,27 @@
+MATHSIDE V23.8 — ACTIVITY FILTER UPDATE
+
+1. ACTIVITIES NOW HAVE A COMPACT FILTER BUTTON
+   - The filter controls are hidden by default.
+   - Tap Filter to open them and Done to hide them again.
+   - A small badge shows how many non-default filters are active.
+
+2. ACTIVITY FILTER OPTIONS
+   - Section: All sections or one class
+   - Status: All / Posted / Scheduled / Archived
+   - Order: Newest / Alphabetical A-Z / Alphabetical Z-A / Deadline soonest
+   - Clear filters returns all options to their defaults.
+
+3. SAFE BULK SELECTION WITH FILTERS
+   - Select all applies to the activities currently shown by the active filters.
+   - Changing an Activity filter clears prior selections so hidden activities are not accidentally archived or deleted.
+
+4. PRIOR FILTERS AND STORAGE FIXES PRESERVED
+   - Submissions keep the compact Filter button from V23.7.
+   - Performance Tasks keep the compact Filter button from V23.7.
+   - Student photo compression from V23.6 remains unchanged.
+   - HEIC/HEIF conversion from V23.5 remains enabled.
+   - Query optimizations and iOS Math Keyboard fixes remain preserved.
+   - js/config.js is unchanged.
+
+NO SQL CHANGE IS REQUIRED.
+NO EDGE FUNCTION CHANGE IS REQUIRED FOR V23.8.

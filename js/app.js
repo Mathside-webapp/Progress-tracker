@@ -60,10 +60,13 @@ let activeRosterSectionId = null;
 let studentRosterSearch = '';
 let studentRosterSort = 'gender';
 let submissionSectionId = 'all';
+let submissionReviewFilter = 'all';
+let submissionGroupMode = 'section';
 let submissionSort = 'newest';
 let activeTrackingStudentId = null;
 let loadingDepth = 0;
 const signedUrlCache = new Map();
+const submissionAnswerCache = new Map();
 
 const messageQueue = [];
 let messagePopupOpen = false;
@@ -102,6 +105,13 @@ function friendlyErrorMessage(error, fallback = 'Something went wrong. Please tr
   const raw = String(error?.message || error || '').trim();
   const lower = raw.toLowerCase();
   const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+
+  // Supabase's raw MIME error is too technical for students. HEIC is the
+  // common iPhone/iPad photo format; Mathside normally converts it to JPEG
+  // before upload. If conversion is unavailable, show a normal Mathside popup.
+  if (lower.includes('image/heic') || lower.includes('image/heif') || lower.includes('heic_conversion')) {
+    return 'This is an iPhone/iPad HEIC photo. Mathside could not convert it to a supported JPG image this time. Check your internet connection and try again, or choose a JPG/PNG photo.';
+  }
   const looksLikeNetworkError = offline
     || lower.includes('failed to fetch')
     || lower.includes('networkerror')
@@ -187,17 +197,50 @@ function safeFileName(name = 'file') {
     .replace(/[^a-zA-Z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(-100) || 'file';
 }
 
-// Compress phone photos in the browser before they are sent to Supabase Storage.
-// This keeps written work readable while greatly reducing the amount of storage used.
+function isHeicImage(file) {
+  if (!file) return false;
+  const type = String(file.type || '').toLowerCase();
+  const name = String(file.name || '').toLowerCase();
+  return type === 'image/heic'
+    || type === 'image/heif'
+    || type === 'image/heic-sequence'
+    || type === 'image/heif-sequence'
+    || /\.(heic|heif)$/.test(name);
+}
+
+async function convertHeicToJpeg(file) {
+  if (!isHeicImage(file)) return file;
+  if (typeof window.heic2any !== 'function') {
+    throw new Error('HEIC_CONVERSION_UNAVAILABLE');
+  }
+  try {
+    const converted = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.90 });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    if (!blob) throw new Error('HEIC conversion returned no image.');
+    const baseName = String(file.name || 'iphone-photo').replace(/\.(heic|heif)$/i, '') || 'iphone-photo';
+    return new File([blob], `${baseName}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+  } catch (error) {
+    console.warn('HEIC conversion failed', error);
+    throw new Error('HEIC_CONVERSION_FAILED');
+  }
+}
+
+// Convert iPhone HEIC photos when needed, then compress phone photos in the
+// browser before they are sent to Supabase Storage. This keeps written work
+// readable while greatly reducing storage usage.
 async function compressImageForUpload(file, options = {}) {
-  if (!file || !String(file.type || '').startsWith('image/')) return file;
+  if (!file || !String(file.type || '').startsWith('image/') && !isHeicImage(file)) return file;
+  file = await convertHeicToJpeg(file);
   const supportedInput = new Set(['image/jpeg', 'image/png', 'image/webp']);
   if (!supportedInput.has(String(file.type || '').toLowerCase())) return file;
 
   const maxDimension = Math.max(800, Number(options.maxDimension || 1800));
   const targetBytes = Math.max(200 * 1024, Number(options.targetBytes || 700 * 1024));
-  const initialQuality = Math.min(0.92, Math.max(0.60, Number(options.quality || 0.82)));
-  const minQuality = Math.min(initialQuality, Math.max(0.48, Number(options.minQuality || 0.58)));
+  const initialQuality = Math.min(0.92, Math.max(0.58, Number(options.quality || 0.82)));
+  const minQuality = Math.min(initialQuality, Math.max(0.46, Number(options.minQuality || 0.56)));
+  const minLongEdge = Math.max(800, Number(options.minLongEdge || 900));
+  const hardLimitBytes = Math.max(targetBytes, Number(options.hardLimitBytes || Math.round(targetBytes * 1.12)));
+  const maxResizeRounds = Math.max(3, Math.min(7, Number(options.maxResizeRounds || 5)));
 
   let bitmap = null;
   let objectUrl = '';
@@ -236,17 +279,41 @@ async function compressImageForUpload(file, options = {}) {
       canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not compress the selected image.')), 'image/webp', quality);
     });
 
-    // First lower JPEG/WebP quality a little, then reduce dimensions if a very
-    // large phone photo is still above the target size.
-    for (let resizeRound = 0; resizeRound < 3; resizeRound += 1) {
-      for (let quality = initialQuality; quality >= minQuality - 0.001; quality -= 0.08) {
+    // First lower WebP quality, then gently reduce dimensions only when the
+    // image is still over the requested target. Student solution photos use a
+    // ~450 KB target; the extra resize rounds make that target much more
+    // reliable without immediately sacrificing handwriting readability.
+    for (let resizeRound = 0; resizeRound < maxResizeRounds; resizeRound += 1) {
+      for (let quality = initialQuality; quality >= minQuality - 0.001; quality -= 0.07) {
         const blob = await encode(width, height, Math.max(minQuality, quality));
         if (!bestBlob || blob.size < bestBlob.size) bestBlob = blob;
         if (blob.size <= targetBytes) break;
       }
-      if (bestBlob?.size <= targetBytes || Math.max(width, height) <= 1100) break;
-      width = Math.max(1, Math.round(width * 0.84));
-      height = Math.max(1, Math.round(height * 0.84));
+      if (bestBlob?.size <= targetBytes || Math.max(width, height) <= minLongEdge) break;
+      width = Math.max(1, Math.round(width * 0.86));
+      height = Math.max(1, Math.round(height * 0.86));
+    }
+
+    // One final pass near the readability floor provides a small safety buffer
+    // for unusually detailed phone photos. It still never shrinks below the
+    // configured long-edge floor unless the source image was already smaller.
+    if (bestBlob?.size > targetBytes && Math.max(width, height) > minLongEdge) {
+      const lastScale = minLongEdge / Math.max(width, height);
+      width = Math.max(1, Math.round(width * lastScale));
+      height = Math.max(1, Math.round(height * lastScale));
+      const finalBlob = await encode(width, height, minQuality);
+      if (!bestBlob || finalBlob.size < bestBlob.size) bestBlob = finalBlob;
+    }
+
+    // Student-photo calls use a 500 KB hard ceiling. Only unusually detailed
+    // images that remain above it are reduced one last time to an 800 px long
+    // edge; ordinary handwritten pages stay at the larger dimensions above.
+    if (bestBlob?.size > hardLimitBytes && Math.max(width, height) > 800) {
+      const emergencyScale = 800 / Math.max(width, height);
+      const emergencyWidth = Math.max(1, Math.round(width * emergencyScale));
+      const emergencyHeight = Math.max(1, Math.round(height * emergencyScale));
+      const emergencyBlob = await encode(emergencyWidth, emergencyHeight, Math.min(minQuality, 0.48));
+      if (!bestBlob || emergencyBlob.size < bestBlob.size) bestBlob = emergencyBlob;
     }
 
     if (!bestBlob || (bestBlob.size >= file.size && file.size <= targetBytes)) return file;
@@ -348,6 +415,7 @@ function resetState() {
   lastGeneratedSection = null;
   pendingStudentAction = null;
   signedUrlCache.clear();
+  submissionAnswerCache.clear();
 }
 
 async function signedUrl(bucket, path, seconds = 3600) {
@@ -779,6 +847,7 @@ async function loadTeacherData() {
   state.questions = [];
   state.keys = [];
   state.submissions = [];
+  submissionAnswerCache.clear();
   if (assignmentIds.length) {
     const [questionsRes, submissionsRes] = await Promise.all([
       db.from('mathside_questions').select('*').in('assignment_id', assignmentIds).order('position'),
@@ -1080,199 +1149,119 @@ $('#bulkDeleteStudentsBtn')?.addEventListener('click', () => {
 });
 
 
-async function downloadResetPasswordsExcel(accounts, section) {
-  if (!window.ExcelJS) throw new Error('Excel export library is not available.');
+async function buildResetPasswordsExcel(accounts, section) {
+  if (!window.ExcelJS) throw new Error('Excel export library is not available. Check your connection and try again.');
   const createdAt = new Date();
   const genderRank = value => String(value || '').trim().toLowerCase() === 'male' ? 0 : String(value || '').trim().toLowerCase() === 'female' ? 1 : 2;
   const rows = (accounts || []).slice().sort((a, b) => {
     const g = genderRank(a.gender) - genderRank(b.gender);
     return g || String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
   });
-
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Mathside';
   workbook.created = createdAt;
   const sheet = workbook.addWorksheet('Reset Credentials', { views: [{ state: 'frozen', ySplit: 4 }] });
-  const thinBorder = {
-    top: { style: 'thin', color: { argb: 'FFC9B7A8' } },
-    left: { style: 'thin', color: { argb: 'FFC9B7A8' } },
-    bottom: { style: 'thin', color: { argb: 'FFC9B7A8' } },
-    right: { style: 'thin', color: { argb: 'FFC9B7A8' } }
-  };
-
+  const thinBorder = { top:{style:'thin',color:{argb:'FFC9B7A8'}}, left:{style:'thin',color:{argb:'FFC9B7A8'}}, bottom:{style:'thin',color:{argb:'FFC9B7A8'}}, right:{style:'thin',color:{argb:'FFC9B7A8'}} };
   sheet.mergeCells('A1:E1');
   const title = sheet.getCell('A1');
   title.value = 'MATHSIDE — RESET STUDENT PASSWORDS';
-  title.font = { bold: true, size: 16, color: { argb: 'FFFFFFFF' } };
-  title.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B00' } };
-  title.alignment = { vertical: 'middle', horizontal: 'left' };
+  title.font = { bold:true, size:16, color:{argb:'FFFFFFFF'} };
+  title.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFF6B00'} };
+  title.alignment = { vertical:'middle', horizontal:'left' };
   title.border = thinBorder;
   sheet.getRow(1).height = 28;
-
   sheet.mergeCells('A2:E2');
   const info = sheet.getCell('A2');
   info.value = `${section?.name || 'Class'}   •   ${section?.grade_level ? `Grade ${section.grade_level}` : 'Grade'}   •   Reset: ${createdAt.toLocaleString()}`;
-  info.font = { bold: true, color: { argb: 'FF7C2D00' } };
-  info.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
-  info.alignment = { vertical: 'middle', horizontal: 'left' };
+  info.font = { bold:true, color:{argb:'FF7C2D00'} };
+  info.fill = { type:'pattern', pattern:'solid', fgColor:{argb:'FFFFE8D5'} };
+  info.alignment = { vertical:'middle', horizontal:'left' };
   info.border = thinBorder;
-
   const header = sheet.getRow(4);
-  header.values = ['No.', 'Student Name', 'Gender', 'Username', 'New Password'];
+  header.values = ['No.','Student Name','Gender','Username','New Password'];
   header.height = 25;
-  header.eachCell(cell => {
-    cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D3748' } };
-    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-    cell.border = thinBorder;
-  });
-
-  let rowNumber = 5;
-  let number = 1;
-  let currentGroup = null;
+  header.eachCell(cell => { cell.font={bold:true,color:{argb:'FFFFFFFF'}}; cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2D3748'}}; cell.alignment={vertical:'middle',horizontal:'center',wrapText:true}; cell.border=thinBorder; });
+  let rowNumber=5, number=1, currentGroup=null;
   for (const student of rows) {
-    const rank = genderRank(student.gender);
-    const group = rank === 0 ? 'MALE' : rank === 1 ? 'FEMALE' : 'OTHER / NOT SPECIFIED';
-    if (group !== currentGroup) {
-      currentGroup = group;
+    const rank=genderRank(student.gender);
+    const group=rank===0?'MALE':rank===1?'FEMALE':'OTHER / NOT SPECIFIED';
+    if (group!==currentGroup) {
+      currentGroup=group;
       sheet.mergeCells(`A${rowNumber}:E${rowNumber}`);
-      const groupCell = sheet.getCell(`A${rowNumber}`);
-      groupCell.value = group;
-      groupCell.font = { bold: true, color: { argb: rank === 0 ? 'FF174A7E' : rank === 1 ? 'FF8C2458' : 'FF5B5B5B' } };
-      groupCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rank === 0 ? 'FFDCEEFF' : rank === 1 ? 'FFFCE1EE' : 'FFECECEC' } };
-      groupCell.alignment = { vertical: 'middle', horizontal: 'left' };
-      for (let col = 1; col <= 5; col += 1) sheet.getCell(rowNumber, col).border = thinBorder;
-      rowNumber += 1;
+      const groupCell=sheet.getCell(`A${rowNumber}`);
+      groupCell.value=group;
+      groupCell.font={bold:true,color:{argb:rank===0?'FF174A7E':rank===1?'FF8C2458':'FF5B5B5B'}};
+      groupCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:rank===0?'FFDCEEFF':rank===1?'FFFCE1EE':'FFECECEC'}};
+      groupCell.alignment={vertical:'middle',horizontal:'left'};
+      for (let col=1;col<=5;col+=1) sheet.getCell(rowNumber,col).border=thinBorder;
+      rowNumber+=1;
     }
-    const row = sheet.getRow(rowNumber++);
-    row.values = [number++, student.name || '', student.gender || 'Not specified', student.username || '', student.temporary_password || ''];
-    row.height = 21;
-    row.eachCell((cell, col) => {
-      cell.border = thinBorder;
-      cell.alignment = { vertical: 'middle', horizontal: col === 1 ? 'center' : 'left', wrapText: true };
-    });
-    row.getCell(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF6EA' } };
-    row.getCell(5).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEFD9' } };
-    row.getCell(5).font = { bold: true, color: { argb: 'FF7C2D00' } };
+    const row=sheet.getRow(rowNumber++);
+    row.values=[number++,student.name||'',student.gender||'Not specified',student.username||'',student.temporary_password||''];
+    row.height=21;
+    row.eachCell((cell,col)=>{cell.border=thinBorder;cell.alignment={vertical:'middle',horizontal:col===1?'center':'left',wrapText:true};});
+    row.getCell(4).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF6EA'}};
+    row.getCell(5).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFEFD9'}};
+    row.getCell(5).font={bold:true,color:{argb:'FF7C2D00'}};
   }
-
-  sheet.getColumn(1).width = 7;
-  sheet.getColumn(2).width = 34;
-  sheet.getColumn(3).width = 14;
-  sheet.getColumn(4).width = 32;
-  sheet.getColumn(5).width = 26;
-
-  const notes = workbook.addWorksheet('Read Me');
-  notes.columns = [{ width: 24 }, { width: 90 }];
-  const noteRows = [
-    ['MATHSIDE — IMPORTANT', ''],
-    ['What changed', 'The listed student passwords were changed to the new passwords chosen by the teacher. Their previous passwords no longer work for future sign-ins.'],
-    ['Privacy', 'Keep this file private. Give each learner only their own username and new password.'],
-    ['Recovery', 'Mathside does not store readable passwords. If this file is lost, reset the affected password again.'],
-    ['Class', section?.name || ''],
-    ['Grade', section?.grade_level ? `Grade ${section.grade_level}` : '']
-  ];
-  noteRows.forEach((values, index) => {
-    const row = notes.addRow(values);
-    row.eachCell(cell => { cell.border = thinBorder; cell.alignment = { vertical: 'top', wrapText: true }; });
-    if (index === 0) {
-      row.eachCell(cell => {
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B00' } };
-      });
-    } else {
-      row.getCell(1).font = { bold: true, color: { argb: 'FF7C2D00' } };
-      row.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
-    }
-  });
-
-  const buffer = await workbook.xlsx.writeBuffer();
-  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `Mathside-Reset-Passwords-${safeFileName(section?.name || 'Class')}-${excelTimestamp(createdAt)}.xlsx`;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  sheet.getColumn(1).width=7; sheet.getColumn(2).width=34; sheet.getColumn(3).width=14; sheet.getColumn(4).width=32; sheet.getColumn(5).width=26;
+  const notes=workbook.addWorksheet('Read Me');
+  notes.columns=[{width:24},{width:90}];
+  const noteRows=[['MATHSIDE — IMPORTANT',''],['What changed','The listed student passwords were changed to the new passwords chosen by the teacher. Their previous passwords no longer work for future sign-ins.'],['Privacy','Keep this file private. Give each learner only their own username and new password.'],['Recovery','Mathside does not store readable passwords. If this file is lost, reset the affected password again.'],['Class',section?.name||''],['Grade',section?.grade_level?`Grade ${section.grade_level}`:'']];
+  noteRows.forEach((values,index)=>{const row=notes.addRow(values);row.eachCell(cell=>{cell.border=thinBorder;cell.alignment={vertical:'top',wrapText:true};});if(index===0){row.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFF6B00'}};});}else{row.getCell(1).font={bold:true,color:{argb:'FF7C2D00'}};row.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFE8D5'}};}});
+  const buffer=await workbook.xlsx.writeBuffer();
+  const blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  return { blob, filename:`Mathside-Reset-Passwords-${safeFileName(section?.name||'Class')}-${excelTimestamp(createdAt)}.xlsx` };
 }
-
-let resetPasswordStudentIds = [];
-
-function openResetPasswordsModal(section, ids) {
-  const selected = (ids || []).map(studentById).filter(Boolean);
-  if (!section || !selected.length) return;
-  resetPasswordStudentIds = selected.map(student => student.id);
-  $('#resetPasswordsLead').textContent = selected.length === 1
-    ? `Choose a new password for ${selected[0].display_name || 'this learner'}. The old password will stop working for future sign-ins.`
-    : `Choose a separate new password for each of the ${selected.length} selected learners. Their old passwords will stop working for future sign-ins.`;
-  $('#resetPasswordRows').innerHTML = selected.map(student => `
-    <label class="reset-password-row">
-      <span class="reset-password-student"><b>${esc(student.display_name || 'Student')}</b><small>${esc(student.username || 'No username')}</small></span>
-      <span class="reset-password-field"><span>New password</span><input type="password" data-reset-password-id="${esc(student.id)}" minlength="6" maxlength="72" autocomplete="new-password" autocapitalize="none" spellcheck="false" required placeholder="Enter new password"></span>
-    </label>`).join('');
-  const show = $('#showResetPasswords');
-  if (show) show.checked = false;
-  openDialog('resetPasswordsModal');
-  requestAnimationFrame(() => $('#resetPasswordRows input')?.focus());
+function isIOSDevice(){return /iPad|iPhone|iPod/i.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
+function downloadPreparedResetExcel(exportFile){
+  if(!exportFile?.blob||!exportFile?.filename)return toast('The reset Excel file is not ready. Please reset the password again.','orange','Download unavailable');
+  const url=URL.createObjectURL(exportFile.blob);
+  const link=document.createElement('a');
+  link.href=url; link.download=exportFile.filename; link.rel='noopener';
+  if(isIOSDevice()) link.target='_blank';
+  document.body.appendChild(link); link.click(); link.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(url),60000);
+  if(isIOSDevice()) toast('If Safari opened the Excel preview, tap Share then Save to Files.','success','Excel ready');
 }
-
-$('#showResetPasswords')?.addEventListener('change', event => {
-  const type = event.currentTarget.checked ? 'text' : 'password';
-  $$('#resetPasswordRows input[data-reset-password-id]').forEach(input => { input.type = type; });
-});
-
-$('#bulkResetPasswordsBtn')?.addEventListener('click', () => {
-  const section = sectionById(activeRosterSectionId);
-  if (!section) return toast('Open a class roster first.', 'orange');
-  const ids = studentsForSection(activeRosterSectionId).map(student => student.id).filter(id => selectedStudentIds.has(id));
-  if (!ids.length) return toast('Select at least one student first.', 'orange');
-  openResetPasswordsModal(section, ids);
-});
-
-$('#resetPasswordsForm')?.addEventListener('submit', async event => {
-  event.preventDefault();
-  const section = sectionById(activeRosterSectionId);
-  if (!section) return toast('Open a class roster first.', 'orange');
-
-  const passwordResets = resetPasswordStudentIds.map(studentId => {
-    const input = document.querySelector(`#resetPasswordRows input[data-reset-password-id="${CSS.escape(studentId)}"]`);
-    return { student_id: studentId, password: String(input?.value || '').trim() };
-  });
-  const invalid = passwordResets.find(item => item.password.length < 6 || item.password.length > 72);
-  if (invalid) {
-    const student = studentById(invalid.student_id);
-    return toast(`Enter a password with 6 to 72 characters for ${student?.display_name || 'every selected student'}.`, 'orange', 'Password required');
-  }
-
-  try {
-    let result = null;
-    await withLoading('Resetting passwords…', `Applying the password${passwordResets.length === 1 ? '' : 's'} you chose.`, async () => {
-      result = await invokeTeacherFunction('reset-student-passwords', {
-        section_id: section.id,
-        password_resets: passwordResets
-      });
+let resetPasswordStudentIds=[];
+let latestResetPasswordExport=null;
+function openResetPasswordsModal(section,ids){
+  const selected=(ids||[]).map(studentById).filter(Boolean); if(!section||!selected.length)return;
+  resetPasswordStudentIds=selected.map(student=>student.id);
+  $('#resetPasswordsLead').textContent=selected.length===1?`Choose a new password for ${selected[0].display_name||'this learner'}. The old password will stop working for future sign-ins.`:`Choose a separate new password for each of the ${selected.length} selected learners. Their old passwords will stop working for future sign-ins.`;
+  $('#resetPasswordRows').innerHTML=selected.map(student=>`<label class="reset-password-row"><span class="reset-password-student"><b>${esc(student.display_name||'Student')}</b><small>${esc(student.username||'No username')}</small></span><span class="reset-password-field"><span>New password</span><input type="password" data-reset-password-id="${esc(student.id)}" minlength="6" maxlength="72" autocomplete="new-password" autocapitalize="none" spellcheck="false" required placeholder="Enter new password"></span></label>`).join('');
+  const show=$('#showResetPasswords'); if(show)show.checked=false;
+  openDialog('resetPasswordsModal'); requestAnimationFrame(()=>$('#resetPasswordRows input')?.focus());
+}
+function renderResetPasswordsComplete(reset,section,exportError=null){
+  $('#resetPasswordsCompleteTitle').textContent=`${reset.length} student password${reset.length===1?'':'s'} changed.`;
+  $('#resetPasswordsCompleteLead').textContent=`${section?.name||'Class'}${section?.grade_level?` · Grade ${section.grade_level}`:''} — Download the Excel file and give each learner only their own credentials.`;
+  $('#resetPasswordsCompleteBody').innerHTML=reset.map(student=>`<tr><td>${esc(student.name||'Student')}</td><td>${esc(student.gender||'Not specified')}</td><td>${esc(student.username||'')}</td><td><b>${esc(student.temporary_password||'')}</b></td></tr>`).join('');
+  const status=$('#resetPasswordsExportStatus'),button=$('#downloadResetPasswordsExcelBtn');
+  if(exportError||!latestResetPasswordExport){status.textContent='Passwords were changed successfully, but Mathside could not prepare the Excel file. Keep this window open and copy the credentials shown below.';if(button)button.disabled=true;}
+  else{status.textContent=isIOSDevice()?'Tap Download Excel below. If Safari opens a preview, use Share → Save to Files.':'Your Excel file is ready. Tap Download Excel to save a copy.';if(button)button.disabled=false;}
+  openDialog('resetPasswordsCompleteModal');
+}
+$('#showResetPasswords')?.addEventListener('change',event=>{const type=event.currentTarget.checked?'text':'password';$$('#resetPasswordRows input[data-reset-password-id]').forEach(input=>{input.type=type;});});
+$('#bulkResetPasswordsBtn')?.addEventListener('click',()=>{const section=sectionById(activeRosterSectionId);if(!section)return toast('Open a class roster first.','orange');const ids=studentsForSection(activeRosterSectionId).map(student=>student.id).filter(id=>selectedStudentIds.has(id));if(!ids.length)return toast('Select at least one student first.','orange');openResetPasswordsModal(section,ids);});
+$('#resetPasswordsForm')?.addEventListener('submit',async event=>{
+  event.preventDefault(); const section=sectionById(activeRosterSectionId); if(!section)return toast('Open a class roster first.','orange');
+  const passwordResets=resetPasswordStudentIds.map(studentId=>{const input=document.querySelector(`#resetPasswordRows input[data-reset-password-id="${CSS.escape(studentId)}"]`);return{student_id:studentId,password:String(input?.value||'').trim()};});
+  const invalid=passwordResets.find(item=>item.password.length<6||item.password.length>72); if(invalid){const student=studentById(invalid.student_id);return toast(`Enter a password with 6 to 72 characters for ${student?.display_name||'every selected student'}.`,'orange','Password required');}
+  try{
+    let result=null,exportError=null; latestResetPasswordExport=null;
+    await withLoading('Resetting passwords…',`Applying the password${passwordResets.length===1?'':'s'} you chose.`,async()=>{
+      result=await invokeTeacherFunction('reset-student-passwords',{section_id:section.id,password_resets:passwordResets});
+      const reset=result?.reset||[];
+      if(reset.length){$('#loadingTitle').textContent='Preparing Excel…';$('#loadingMessage').textContent='Creating the reset-password file for download.';try{latestResetPasswordExport=await buildResetPasswordsExcel(reset,section);}catch(error){exportError=error;console.error('RESET PASSWORD EXCEL ERROR',error);}}
     });
-
-    const reset = result?.reset || [];
-    const failures = result?.failures || [];
-    if (reset.length) {
-      await downloadResetPasswordsExcel(reset, section);
-      selectedStudentIds.clear();
-      resetPasswordStudentIds = [];
-      closeDialog('resetPasswordsModal');
-      renderClassStudentsModal();
-      toast(`${reset.length} student password${reset.length === 1 ? '' : 's'} changed. The new credentials were downloaded.`, 'success');
-    }
-    if (failures.length) {
-      toast(`${failures.length} password${failures.length === 1 ? '' : 's'} could not be reset.\n\n${failures.map(item => `${item.name || 'Student'}: ${item.error || 'Reset failed.'}`).join('\n')}`, 'orange', 'Some resets failed');
-    }
-  } catch (error) {
-    console.error('RESET STUDENT PASSWORD ERROR', error);
-    toast(friendlyErrorMessage(error, 'Could not reset the selected student passwords. Please try again.'), 'orange');
-  }
+    const reset=result?.reset||[],failures=result?.failures||[];
+    if(reset.length){selectedStudentIds.clear();resetPasswordStudentIds=[];closeDialog('resetPasswordsModal');renderClassStudentsModal();renderResetPasswordsComplete(reset,section,exportError);}
+    if(failures.length)toast(`${failures.length} password${failures.length===1?'':'s'} could not be reset.\n\n${failures.map(item=>`${item.name||'Student'}: ${item.error||'Reset failed.'}`).join('\n')}`,'orange','Some resets failed');
+  }catch(error){console.error('RESET STUDENT PASSWORD ERROR',error);toast(friendlyErrorMessage(error,'Could not reset the selected student passwords. Please try again.'),'orange');}
 });
+$('#downloadResetPasswordsExcelBtn')?.addEventListener('click',()=>downloadPreparedResetExcel(latestResetPasswordExport));
 
 function renderStudentTracking(sectionId, studentId) {
   const section = sectionById(sectionId);
@@ -3311,16 +3300,17 @@ function renderStudentAssignments() {
     const taskState = studentAssignmentState(a);
     const due = formatDeadlineDate(a.due_at);
     const overdue = !submitted && a.due_at && new Date(a.due_at).getTime() < Date.now();
+    const lateSubmission = Boolean(submitted && a.due_at && submitted.submitted_at && new Date(submitted.submitted_at).getTime() > new Date(a.due_at).getTime());
     let status = overdue ? 'Missed' : 'Ongoing';
     let statusClass = overdue ? 'status-overdue' : 'status-todo';
     if (a.status === 'archived') {
       status = submitted ? 'Submitted · Archived' : 'Archived';
       statusClass = 'status-submitted';
     } else if (submitted) {
-      status = 'Submitted';
-      statusClass = 'status-submitted';
+      status = lateSubmission ? 'Submitted Late' : 'Submitted';
+      statusClass = lateSubmission ? 'status-late' : 'status-submitted';
       if (submitted.resubmit_allowed) {
-        status = 'Submitted · New attempt allowed';
+        status = `${lateSubmission ? 'Submitted Late' : 'Submitted'} · New attempt allowed`;
         statusClass = 'status-todo';
       }
     }
@@ -3335,7 +3325,7 @@ function renderStudentAssignments() {
         <div class="assignment-meta">
           ${section?.grade_level ? `<span class="meta-chip">Grade ${esc(section.grade_level)}</span>` : ''}
           <span class="meta-chip">${qs.length} question${qs.length === 1 ? '' : 's'}</span>
-          ${due ? `<span class="meta-chip deadline-chip ${overdue ? 'meta-overdue' : ''}">${overdue ? 'Past due' : 'Deadline'} ${esc(due)}</span>` : `<span class="meta-chip deadline-chip no-deadline">No deadline</span>`}
+          ${due ? `<span class="meta-chip deadline-chip ${(overdue || lateSubmission) ? 'meta-overdue' : ''}">${lateSubmission ? 'Submitted late · Deadline' : overdue ? 'Past due' : 'Deadline'} ${esc(due)}</span>` : `<span class="meta-chip deadline-chip no-deadline">No deadline</span>`}
           ${submitted?.attempt_count ? `<span class="meta-chip">Attempt ${Number(submitted.attempt_count)}</span>` : ''}
         </div>
         ${submitted?.feedback ? `<div class="student-inline-feedback"><b>Teacher feedback:</b> ${esc(submitted.feedback)}</div>` : ''}
@@ -3428,7 +3418,8 @@ async function openStudentResponsePreview(submissionId) {
   const total = totalPoints(assignment.id);
   const shownScore = submission.status === 'graded' && submission.teacher_score != null ? Number(submission.teacher_score) : Number(submission.auto_score || 0);
   $('#studentResponseTitle').textContent = assignment.title;
-  $('#studentResponseMeta').textContent = `${sectionLabel(sectionById(assignment.section_id))} · Submitted ${formatStudentDate(submission.submitted_at) || ''} · Attempt ${Number(submission.attempt_count || 1)}`;
+  const responseWasLate = Boolean(assignment.due_at && submission.submitted_at && new Date(submission.submitted_at).getTime() > new Date(assignment.due_at).getTime());
+  $('#studentResponseMeta').textContent = `${sectionLabel(sectionById(assignment.section_id))} · Submitted ${formatStudentDate(submission.submitted_at) || ''}${responseWasLate ? ' · LATE SUBMISSION' : ''} · Attempt ${Number(submission.attempt_count || 1)}`;
   $('#studentResponseScore').innerHTML = `<div><span>${submission.status === 'graded' ? 'Teacher score' : 'Auto-check score'}</span><b>${shownScore}<small>/ ${total}</small></b></div><span class="student-status ${submission.status === 'graded' ? 'status-graded' : 'status-submitted'}">${submission.status === 'graded' ? 'Graded' : 'Submitted'}</span>`;
   $('#studentResponseAnswers').innerHTML = qs.map((q, i) => {
     const answer = answers.find(a => a.question_id === q.id);
@@ -3524,7 +3515,7 @@ $('#answerForm').addEventListener('submit', async event => {
   });
   const proofFiles = [...($('#studentSolutionImage')?.files || [])];
   if (!proofFiles.length) return toast('Upload at least one clear photo of your written solution before submitting.', 'orange');
-  if (proofFiles.some(file => !String(file.type || '').startsWith('image/'))) return toast('Solution uploads must be image files.', 'orange');
+  if (proofFiles.some(file => !String(file.type || '').startsWith('image/') && !isHeicImage(file))) return toast('Solution uploads must be image files.', 'orange');
   if (proofFiles.length > 10) return toast('Choose up to 10 solution pictures for one submission.', 'orange');
 
   const previousProofPaths = submissionProofPaths(submissionFor(activeStudentAssignment.id));
@@ -3533,7 +3524,7 @@ $('#answerForm').addEventListener('submit', async event => {
     let rpcResult;
     await withLoading('Submitting your answers…', `Uploading ${proofFiles.length} solution picture${proofFiles.length === 1 ? '' : 's'} and saving your answers.`, async () => {
       for (let index = 0; index < proofFiles.length; index += 1) {
-        const proofFile = await compressImageForUpload(proofFiles[index], { maxDimension: 1800, targetBytes: 650 * 1024 });
+        const proofFile = await compressImageForUpload(proofFiles[index], { maxDimension: 1600, targetBytes: 450 * 1024, hardLimitBytes: 500 * 1024, quality: 0.80, minQuality: 0.50, minLongEdge: 900 });
         const proofPath = `${state.user.id}/${activeStudentAssignment.id}/${Date.now()}-${index + 1}-${safeFileName(proofFile.name)}`;
         const uploadRes = await db.storage.from('mathside-submission-proofs').upload(proofPath, proofFile, { upsert: false });
         if (uploadRes.error) throw uploadRes.error;
@@ -3637,6 +3628,16 @@ $('#submissionSectionTabs')?.addEventListener('click', event => {
   submissionSectionId = btn.dataset.submissionSection || 'all';
   renderSubmissions();
 });
+$('#submissionReviewTabs')?.addEventListener('click', event => {
+  const btn = event.target.closest('[data-submission-review-filter]');
+  if (!btn) return;
+  submissionReviewFilter = btn.dataset.submissionReviewFilter || 'all';
+  renderSubmissions();
+});
+$('#submissionGroupMode')?.addEventListener('change', event => {
+  submissionGroupMode = event.currentTarget.value || 'section';
+  renderSubmissions();
+});
 $('#submissionSort')?.addEventListener('change', event => {
   submissionSort = event.currentTarget.value || 'newest';
   renderSubmissions();
@@ -3662,17 +3663,23 @@ async function openSubmissionReview(submissionId) {
   const qs = questionsFor(assignment.id);
   try {
     await withLoading('Opening submission…', 'Loading answers and uploaded work.', async () => {
-      const answersRes = await db.from('mathside_submission_answers').select('*').eq('submission_id', submissionId);
-      if (answersRes.error) throw answersRes.error;
-      const answers = answersRes.data || [];
+      let answers = submissionAnswerCache.get(submissionId);
+      if (!answers) {
+        const answersRes = await db.from('mathside_submission_answers').select('*').eq('submission_id', submissionId);
+        if (answersRes.error) throw answersRes.error;
+        answers = answersRes.data || [];
+        submissionAnswerCache.set(submissionId, answers);
+      }
       $('#reviewSubmissionTitle').textContent = assignment.title;
       $('#reviewSubmissionStudentName').textContent = student?.display_name || 'Student';
       const reviewTotal = totalPoints(assignment.id);
       const hasManualScore = submission.teacher_score != null;
       const hasManualAnswerReview = answers.some(answer => answer.manual_is_correct !== null && answer.manual_is_correct !== undefined);
+      const reviewWasLate = Boolean(assignment.due_at && submission.submitted_at && new Date(submission.submitted_at).getTime() > new Date(assignment.due_at).getTime());
+      const reviewTiming = ` · Submitted ${formatStudentDate(submission.submitted_at) || ''}${reviewWasLate ? ' · LATE SUBMISSION' : ''}`;
       $('#reviewSubmissionMeta').textContent = hasManualScore
-        ? `${sectionLabel(sectionById(assignment.section_id))} · ${hasManualAnswerReview ? 'Manual-review score' : 'Teacher score'} ${Number(submission.teacher_score)}/${reviewTotal} · Auto-check ${Number(submission.auto_score || 0)}/${reviewTotal}`
-        : `${sectionLabel(sectionById(assignment.section_id))} · Auto-check ${Number(submission.auto_score || 0)}/${reviewTotal} · No manual score yet`;
+        ? `${sectionLabel(sectionById(assignment.section_id))} · ${hasManualAnswerReview ? 'Manual-review score' : 'Teacher score'} ${Number(submission.teacher_score)}/${reviewTotal} · Auto-check ${Number(submission.auto_score || 0)}/${reviewTotal}${reviewTiming}`
+        : `${sectionLabel(sectionById(assignment.section_id))} · Auto-check ${Number(submission.auto_score || 0)}/${reviewTotal} · No manual score yet${reviewTiming}`;
       $('#reviewSubmissionAnswers').innerHTML = qs.map((q,i) => {
         const answer = answers.find(a => a.question_id === q.id);
         const key = keyFor(q.id);
@@ -3888,7 +3895,7 @@ $('#gradeForm').addEventListener('submit', async event => {
   try {
     let cleanupResult = { deleted: 0, warning: '' };
     await withLoading('Saving grade…', hasManualAnswerReview ? 'Saving manual answer checks, recomputing the score, and clearing reviewed solution pictures.' : 'Updating the student score, feedback, and clearing reviewed solution pictures.', async () => {
-      const { error } = await db.rpc('mathside_save_submission_review', {
+      const { data: reviewResult, error } = await db.rpc('mathside_save_submission_review', {
         p_submission_id: activeSubmissionId,
         p_teacher_score: hasManualAnswerReview ? null : score,
         p_feedback: feedback || null,
@@ -3896,11 +3903,34 @@ $('#gradeForm').addEventListener('submit', async event => {
       });
       if (error) throw error;
 
+      // Keep the just-reviewed submission in local state instead of reloading the
+      // teacher's whole workspace. This avoids several unnecessary database reads
+      // after every grade while keeping all dashboard/submission counts accurate.
+      const savedAt = new Date().toISOString();
+      submission.teacher_score = reviewResult?.teacher_score ?? null;
+      submission.feedback = feedback || null;
+      submission.status = 'graded';
+      submission.graded_at = savedAt;
+      submission.updated_at = savedAt;
+
+      const cachedAnswers = submissionAnswerCache.get(activeSubmissionId);
+      if (cachedAnswers) {
+        answerReviews.forEach(review => {
+          const answer = cachedAnswers.find(item => item.question_id === review.question_id);
+          if (!answer) return;
+          if (review.manual_review) {
+            answer.manual_is_correct = Boolean(review.is_correct);
+            const question = state.questions.find(item => item.id === review.question_id);
+            answer.awarded_points = review.is_correct ? Number(question?.max_points || 0) : 0;
+          }
+          answer.teacher_comment = review.teacher_comment || null;
+        });
+      }
+
       // Once the teacher has saved the final grade, the uploaded proof pictures
       // are no longer needed for checking. Delete them to keep Supabase Storage small.
       cleanupResult = await cleanupGradedSubmissionProofs(submission);
       closeDialog('reviewSubmissionModal');
-      await refreshTeacher();
       showTeacherView('submissions');
     });
     if (cleanupResult.warning) {

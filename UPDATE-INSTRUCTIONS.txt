@@ -1,16 +1,20 @@
-MATHSIDE V23.6 — UPDATE INSTRUCTIONS
+MATHSIDE V23.8 — UPDATE INSTRUCTIONS
 
 UPLOAD/REPLACE THESE WEBSITE FILES ON GITHUB PAGES:
 1. index.html
 2. service-worker.js
-3. js/app.js
+3. css/styles.css
 4. js/v15-performance-tasks.js
 
 NO SQL CHANGE IS REQUIRED.
-NO EDGE FUNCTION CHANGE IS REQUIRED FOR V23.6.
+NO EDGE FUNCTION CHANGE IS REQUIRED.
+DO NOT REPLACE js/config.js WHEN USING THE CHANGED-FILES ZIP.
 
 WHAT CHANGED:
-Student solution photos and student performance-task output photos now target about 450 KB each before upload to Supabase Storage. Teacher assignment/rubric images retain their previous higher-quality setting.
-
-HEIC/HEIF SUPPORT REMAINS ENABLED:
-iPhone/iPad HEIC/HEIF photos are converted in the browser, compressed, and then only the final compressed file is uploaded.
+- The main Activities page now has the same compact Filter button used by Performance Tasks.
+- Activity filters: Section, Status, and Order.
+- Status options: All / Posted / Scheduled / Archived.
+- Order options: Newest / A-Z / Z-A / Deadline soonest.
+- The filter panel stays hidden until Filter is clicked, and a badge shows how many filters are active.
+- Activity filtering is client-side, so changing filters does not create another Supabase query.
+- V23.7 Submissions and Performance Task filters remain unchanged.

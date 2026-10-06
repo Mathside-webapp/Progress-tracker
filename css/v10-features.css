@@ -1288,7 +1288,7 @@ body.v8-student-active #reviewSubmissionModal{
 }
 
 
-/* V23.4 — teacher-chosen student password reset */
+/* V24.0 — teacher-chosen password reset + reliable Excel result */
 .reset-passwords-box{max-width:760px!important}
 .reset-password-list{display:grid;gap:12px;max-height:min(52vh,520px);overflow:auto;padding:2px 4px 2px 0}
 .reset-password-row{display:grid;grid-template-columns:minmax(180px,1fr) minmax(220px,1.1fr);gap:16px;align-items:end;padding:14px;border:1px solid var(--line,#eadfd5);border-radius:16px;background:#fff}
@@ -1301,4 +1301,7 @@ body.v8-student-active #reviewSubmissionModal{
 .reset-password-show{display:flex!important;align-items:center;gap:9px;font-weight:700;cursor:pointer}
 .reset-password-show input{width:18px;height:18px}
 .reset-password-help{margin-top:-2px}
-@media(max-width:640px){.reset-password-row{grid-template-columns:1fr;gap:10px}.reset-password-list{max-height:48vh}}
+.reset-passwords-complete-box{max-width:900px!important}
+.reset-passwords-complete-box .student-table-wrap{max-height:min(46vh,500px);overflow:auto}
+.reset-passwords-complete-box .credential-warning{margin:12px 0}
+@media(max-width:640px){.reset-password-row{grid-template-columns:1fr;gap:10px}.reset-password-list{max-height:48vh}.reset-passwords-complete-box .student-table-wrap{max-height:42vh}}
