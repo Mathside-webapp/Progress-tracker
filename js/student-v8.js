@@ -24,12 +24,7 @@
   }
   function status(a) {
     const sub=submissionFor(a.id);
-    if(sub){
-      const submittedAt=date(sub.submitted_at), dueAt=date(a.due_at);
-      const late=Boolean(submittedAt && dueAt && submittedAt.getTime()>dueAt.getTime());
-      if(late)return {key:'late',label:a.status==='archived'?'Submitted Late · Archived':'Submitted Late'};
-      return {key:'submitted',label:a.status==='archived'?'Submitted · Archived':'Submitted'};
-    }
+    if(sub)return {key:'submitted',label:a.status==='archived'?'Submitted · Archived':'Submitted'};
     if(a.status==='archived')return {key:'archived',label:'Archived'};
     if(window.MATHSIDE_PREVIEW && a.preview_status==='upcoming')return {key:'upcoming',label:'Upcoming'};
     if((date(a.publish_at)?.getTime() || 0)>Date.now())return {key:'upcoming',label:'Upcoming'};

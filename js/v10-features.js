@@ -578,14 +578,7 @@
       views: [{ state: 'frozen', xSplit: 2, ySplit: 4 }]
     });
 
-    const totalItemCount = assignments.reduce((sum, assignment) => {
-      if (isPerformanceTask(assignment)) return sum + 1;
-      return sum + questionsFor(assignment.id).length;
-    }, 0);
-    const totalPossiblePoints = assignments.reduce((sum, assignment) => sum + Number(totalPoints(assignment.id) || 0), 0);
-    const totalColumns = Math.max(3, 3 + assignments.length);
-    const lastAssignmentColumnNumber = 2 + assignments.length;
-    const totalScoreColumnNumber = 3 + assignments.length;
+    const totalColumns = Math.max(2, 2 + assignments.length);
     const lastColumn = sheet.getColumn(totalColumns).letter;
     const title = `Mathside Class Record — ${section.name}`;
 
@@ -605,23 +598,10 @@
     infoCell.alignment = { vertical: 'middle', horizontal: 'left' };
     sheet.getRow(2).height = 22;
 
-    sheet.mergeCells(`A3:${lastColumn}3`);
-    const summaryCell = sheet.getCell('A3');
-    summaryCell.value = `Activities / tasks: ${assignments.length}   •   Total items: ${totalItemCount}   •   Total possible score: ${totalPossiblePoints}`;
-    summaryCell.font = { bold: true, color: { argb: 'FF334155' } };
-    summaryCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-    summaryCell.alignment = { vertical: 'middle', horizontal: 'left' };
-    sheet.getRow(3).height = 21;
-
     const headers = [
       'Student Name',
       'Gender',
-      ...assignments.map(a => {
-        const items = isPerformanceTask(a) ? 1 : questionsFor(a.id).length;
-        const itemLabel = isPerformanceTask(a) ? 'task' : `${items} item${items === 1 ? '' : 's'}`;
-        return `${a.title}\n(${itemLabel} · ${totalPoints(a.id)} pts)`;
-      }),
-      `Total Score\n(/ ${totalPossiblePoints})`
+      ...assignments.map(a => `${a.title}\n(${totalPoints(a.id)} pts)`)
     ];
     const headerRow = sheet.getRow(4);
     headerRow.values = headers;
@@ -671,16 +651,7 @@
       });
 
       const row = sheet.getRow(rowNumber);
-      row.values = [student.display_name || '', classRecordGenderLabel(student.gender), ...scoreValues, ''];
-      if (assignments.length) {
-        const firstScoreColumn = sheet.getColumn(3).letter;
-        const finalScoreColumn = sheet.getColumn(lastAssignmentColumnNumber).letter;
-        row.getCell(totalScoreColumnNumber).value = { formula: `SUM(${firstScoreColumn}${rowNumber}:${finalScoreColumn}${rowNumber})` };
-      } else {
-        row.getCell(totalScoreColumnNumber).value = 0;
-      }
-      row.getCell(totalScoreColumnNumber).font = { bold: true, color: { argb: 'FF7C2D00' } };
-      row.getCell(totalScoreColumnNumber).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
+      row.values = [student.display_name || '', classRecordGenderLabel(student.gender), ...scoreValues];
       row.height = 22;
       row.eachCell((cell, colNumber) => {
         cell.border = thinBorder;
@@ -713,15 +684,13 @@
 
     sheet.getColumn(1).width = 34;
     sheet.getColumn(2).width = 13;
-    for (let col = 3; col <= lastAssignmentColumnNumber; col += 1) sheet.getColumn(col).width = 22;
-    sheet.getColumn(totalScoreColumnNumber).width = 18;
+    for (let col = 3; col <= totalColumns; col += 1) sheet.getColumn(col).width = 22;
     sheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: totalColumns } };
 
     // Keep the assignment reference sheet, but style it to match the class record.
     const assignmentSheet = workbook.addWorksheet('Assignments');
     assignmentSheet.columns = [
       { header: 'Assignment', key: 'assignment', width: 38 },
-      { header: 'Items', key: 'items', width: 12 },
       { header: 'Maximum Points', key: 'points', width: 18 },
       { header: 'Deadline', key: 'deadline', width: 24 },
       { header: 'Resubmission', key: 'resubmission', width: 18 }
@@ -736,7 +705,6 @@
     assignments.forEach(a => {
       const row = assignmentSheet.addRow({
         assignment: a.title,
-        items: isPerformanceTask(a) ? 1 : questionsFor(a.id).length,
         points: totalPoints(a.id),
         deadline: a.due_at ? formatFullDate(a.due_at) : 'No deadline',
         resubmission: a.allow_resubmission ? 'Allowed' : 'Not allowed'
@@ -745,13 +713,6 @@
         cell.border = thinBorder;
         cell.alignment = { vertical: 'middle', wrapText: true };
       });
-    });
-    const assignmentTotalRow = assignmentSheet.addRow({ assignment: 'TOTAL', items: totalItemCount, points: totalPossiblePoints });
-    assignmentTotalRow.eachCell(cell => {
-      cell.border = thinBorder;
-      cell.font = { bold: true, color: { argb: 'FF7C2D00' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     });
     assignmentSheet.views = [{ state: 'frozen', ySplit: 1 }];
 

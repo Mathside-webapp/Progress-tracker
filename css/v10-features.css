@@ -1286,3 +1286,19 @@ body.v8-student-active #reviewSubmissionModal{
     place-items:center!important;
   }
 }
+
+
+/* V23.4 — teacher-chosen student password reset */
+.reset-passwords-box{max-width:760px!important}
+.reset-password-list{display:grid;gap:12px;max-height:min(52vh,520px);overflow:auto;padding:2px 4px 2px 0}
+.reset-password-row{display:grid;grid-template-columns:minmax(180px,1fr) minmax(220px,1.1fr);gap:16px;align-items:end;padding:14px;border:1px solid var(--line,#eadfd5);border-radius:16px;background:#fff}
+.reset-password-student{display:grid;gap:3px;min-width:0}
+.reset-password-student b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reset-password-student small{color:var(--muted,#6b7280);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reset-password-field{display:grid;gap:6px;font-size:.85rem;font-weight:700}
+.reset-password-field input{width:100%;min-height:44px;border:1px solid #d8cabc;border-radius:12px;padding:10px 12px;font:inherit;background:#fff}
+.reset-password-field input:focus{outline:3px solid rgba(255,107,0,.16);border-color:#ff6b00}
+.reset-password-show{display:flex!important;align-items:center;gap:9px;font-weight:700;cursor:pointer}
+.reset-password-show input{width:18px;height:18px}
+.reset-password-help{margin-top:-2px}
+@media(max-width:640px){.reset-password-row{grid-template-columns:1fr;gap:10px}.reset-password-list{max-height:48vh}}

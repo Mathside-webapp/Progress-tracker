@@ -1,8 +1,8 @@
-/* Mathside PWA — V23.9 Class Record + Filter Layout + Group Filters + Late Labels
+/* Mathside PWA — V23.4 Teacher-Chosen Password Reset
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v23.9';
+const CACHE_NAME = 'mathside-pwa-v23.4';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -15,15 +15,15 @@ const APP_SHELL = [
   './icons/icon-512.png',
   './icons/maskable-512.png',
   './assets/mathside-icon.svg?v=12.3',
-  './css/styles.css?v=12.6',
+  './css/styles.css?v=12.3',
   './css/art-theme.css?v=7.0',
-  './css/student-v8.css?v=10.6',
+  './css/student-v8.css?v=10.5',
   './css/design-v9.css?v=9.1',
-  './css/v10-features.css?v=11.3',
+  './css/v10-features.css?v=11.4',
   './js/config.js',
-  './js/app.js?v=16.2',
-  './js/student-v8.js?v=15.1',
-  './js/v10-features.js?v=15.3',
+  './js/app.js?v=15.9',
+  './js/student-v8.js?v=15.0',
+  './js/v10-features.js?v=15.2',
   './js/design-v9.js?v=9',
   './js/pwa.js?v=6.9.15',
   './js/push-notifications.js?v=6.10',
@@ -31,7 +31,7 @@ const APP_SHELL = [
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.10',
   './js/v12-archive-features.js?v=15.3',
-  './js/v15-performance-tasks.js?v=15.12'
+  './js/v15-performance-tasks.js?v=15.7'
 ];
 
 self.addEventListener('install', (event) => {
