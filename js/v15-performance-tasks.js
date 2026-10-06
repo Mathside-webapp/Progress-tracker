@@ -1,4 +1,4 @@
-/* Mathside V15.11 — Compact hidden filters for Activities, Performance Tasks and Submissions.
+/* Mathside V15.12 — Compact hidden filters for Activities, Performance Tasks and Submissions.
    Adapted from the established EduCore performance-task workflow while
    preserving Mathside archive, manual review and controlled resubmission. */
 (() => {
@@ -17,6 +17,8 @@
   let activityStatusFilter = 'all';
   let activitySort = 'newest';
   const performanceLeaderSelections = new Map();
+  const performanceTeamOrders = new Map();
+  let performanceGroupingDirty = false;
 
   const originalOpenAssignmentPreview = openAssignmentPreview;
   const originalOpenSubmissionReview = openSubmissionReview;
@@ -260,16 +262,69 @@
     if (!grouped && $('#performanceTeamPreview')) $('#performanceTeamPreview').innerHTML = '';
   }
 
-  function teamPreviewForSection(sectionId, mode, requestedGroupCount) {
-    const students = studentsForSection(sectionId).slice().sort((a,b) => {
+  function sortedStudentsForSection(sectionId) {
+    return studentsForSection(sectionId).slice().sort((a,b) => {
       const byName = String(a.display_name || '').localeCompare(String(b.display_name || ''), undefined, { sensitivity:'base' });
       return byName || String(a.id || '').localeCompare(String(b.id || ''));
     });
+  }
+
+  function orderedStudentsForPerformanceSection(sectionId) {
+    const students = sortedStudentsForSection(sectionId);
+    const savedOrder = performanceTeamOrders.get(sectionId);
+    if (!Array.isArray(savedOrder) || savedOrder.length !== students.length) return students;
+    const byId = new Map(students.map(student => [student.id, student]));
+    const ordered = savedOrder.map(id => byId.get(id)).filter(Boolean);
+    return ordered.length === students.length ? ordered : students;
+  }
+
+  function teamPreviewForSection(sectionId, mode, requestedGroupCount) {
+    const students = orderedStudentsForPerformanceSection(sectionId);
     if (!students.length) return [];
     const count = mode === 'pair' ? Math.ceil(students.length / 2) : Math.max(1, Math.min(students.length, Number(requestedGroupCount || 1)));
     const groups = Array.from({length: count}, (_, index) => ({ name: mode === 'pair' ? `Pair ${index + 1}` : `Group ${index + 1}`, members: [] }));
     students.forEach((student, index) => groups[index % count].members.push(student));
     return groups.filter(group => group.members.length);
+  }
+
+  function secureShuffle(values) {
+    const result = values.slice();
+    const random = new Uint32Array(1);
+    for (let i = result.length - 1; i > 0; i -= 1) {
+      if (globalThis.crypto?.getRandomValues) {
+        globalThis.crypto.getRandomValues(random);
+        const j = random[0] % (i + 1);
+        [result[i], result[j]] = [result[j], result[i]];
+      } else {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+    }
+    return result;
+  }
+
+  function reshufflePerformanceTeams() {
+    const mode = performanceMode();
+    if (mode === 'individual' || performanceGroupingCreator() !== 'teacher') return toast('Choose Pair or Group with teacher-created teams first.', 'orange');
+    if (mode === 'group' && !performanceGroupCount()) return toast('Enter how many groups you want first.', 'orange');
+    const sectionIds = selectedPerformanceSections();
+    if (!sectionIds.length) return toast('Select at least one class first.', 'orange');
+    sectionIds.forEach(sectionId => {
+      const ids = sortedStudentsForSection(sectionId).map(student => student.id);
+      performanceTeamOrders.set(sectionId, secureShuffle(ids));
+    });
+    performanceLeaderSelections.clear();
+    performanceGroupingDirty = true;
+    renderPerformanceTeamPreview();
+    toast(`Groups reshuffled for ${sectionIds.length} class${sectionIds.length === 1 ? '' : 'es'}.`, 'success');
+  }
+
+  function serializedPerformanceGroupsForSection(sectionId, mode = performanceMode(), requestedGroupCount = performanceGroupCount()) {
+    return teamPreviewForSection(sectionId, mode, requestedGroupCount).map(group => ({
+      name: group.name,
+      member_ids: group.members.map(member => member.id),
+      leader_id: selectedLeaderForGroup(sectionId, group)
+    }));
   }
 
   function performanceLeaderKey(sectionId, groupName) {
@@ -413,23 +468,22 @@
   async function applyStoredPerformanceGrouping(task) {
     if (!task || task.collaboration_mode === 'individual') return;
     if ((task.grouping_creator || 'teacher') !== 'teacher') return;
-    const { error } = await db.rpc('mathside_generate_performance_groups', {
+    const groups = serializedPerformanceGroupsForSection(
+      task.section_id,
+      task.collaboration_mode,
+      task.group_count || performanceGroupCount()
+    );
+    const result = await db.rpc('mathside_set_teacher_performance_groups', {
       p_assignment_id: task.id,
-      p_group_count: task.collaboration_mode === 'pair' ? null : Number(task.group_count || performanceGroupCount() || 1)
+      p_groups: groups
     });
-    if (error) throw error;
-    const leaders = leaderAssignmentsForSection(task.section_id, task.collaboration_mode, task.group_count || performanceGroupCount());
-    if (leaders.length) {
-      const leaderUpdate = await db.rpc('mathside_set_performance_group_leaders', {
-        p_assignment_id: task.id,
-        p_leaders: leaders
-      });
-      if (leaderUpdate.error) throw leaderUpdate.error;
-    }
+    if (result.error) throw result.error;
   }
 
   function resetPerformanceForm() {
     performanceLeaderSelections.clear();
+    performanceTeamOrders.clear();
+    performanceGroupingDirty = false;
     const form = $('#performanceTaskForm');
     form?.reset();
     if (form?.elements?.max_points) form.elements.max_points.value = '100';
@@ -513,6 +567,7 @@
   $('#performanceGroupCount')?.addEventListener('input', renderPerformanceTeamPreview);
   $('#performanceSectionChecklist')?.addEventListener('change', renderPerformanceTeamPreview);
   $('#generatePerformanceTeamsBtn')?.addEventListener('click', renderPerformanceTeamPreview);
+  $('#reshufflePerformanceTeamsBtn')?.addEventListener('click', reshufflePerformanceTeams);
   $('#performanceImages')?.addEventListener('change', event => {
     const files = [...(event.currentTarget.files || [])].slice(0, 8);
     $('#performanceImagePreview').innerHTML = files.map((file,i)=>`<figure><img src="${URL.createObjectURL(file)}" alt="Selected task picture ${i+1}"><figcaption>${esc(file.name)}</figcaption></figure>`).join('');
@@ -562,7 +617,7 @@
       }).eq('id', task.id);
       if (update.error) throw update.error;
       const freshTask = { ...task, collaboration_mode:nextMode, grouping_creator:nextCreator, group_count:nextGroupCount };
-      if (setupChanged && freshTask.collaboration_mode !== 'individual' && freshTask.grouping_creator === 'teacher') await applyStoredPerformanceGrouping(freshTask);
+      if ((setupChanged || performanceGroupingDirty) && freshTask.collaboration_mode !== 'individual' && freshTask.grouping_creator === 'teacher') await applyStoredPerformanceGrouping(freshTask);
     } catch (error) {
       if (uploaded.length) await removeStoragePaths('mathside-assignment-images', uploaded);
       throw error;
