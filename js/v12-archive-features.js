@@ -59,7 +59,7 @@
       <div class="class-card-actions">
         <button class="btn btn-light class-view-students-btn" type="button" data-view-class-students="${section.id}">${iconSvg('people', 'btn-icon')}View students</button>
         ${dashboard ? '' : `${archived
-          ? `<button class="btn btn-light" type="button" data-create-from-archive="${section.id}">Reuse students</button>`
+          ? `<button class="btn btn-unarchive" type="button" data-unarchive-class="${section.id}">Unarchive</button><button class="btn btn-light" type="button" data-create-from-archive="${section.id}">Reuse students</button>`
           : `<button class="btn btn-danger-outline" type="button" data-archive-class="${section.id}">Archive class</button>`}
           <button class="btn btn-danger" type="button" data-delete-class="${section.id}">Delete class</button>`}
       </div>
@@ -70,14 +70,9 @@
     const grid = $('#classGrid');
     if (!grid) return;
     const active = activeSections();
-    const archived = archivedSections();
-    let html = active.length
+    grid.innerHTML = active.length
       ? `<div class="class-grid-group">${active.map(section => classCard(section)).join('')}</div>`
-      : `<div class="class-empty"><span>${iconSvg('class', 'empty-icon')}</span><h3>No active classes</h3><p>Create a class for the current term, or reuse students from an archived class.</p><button class="btn btn-orange" data-empty-create-class>Create class</button></div>`;
-    if (archived.length) {
-      html += `<section class="archived-class-section"><div class="archived-class-heading"><div><p class="eyebrow">PAST TERMS</p><h3>Archived classes</h3></div><span>${archived.length}</span></div><div class="class-grid-group archived-grid">${archived.map(section => classCard(section)).join('')}</div></section>`;
-    }
-    grid.innerHTML = html;
+      : `<div class="class-empty"><span>${iconSvg('class', 'empty-icon')}</span><h3>No active classes</h3><p>Create a class for the current term. Archived classes are available in the Archived panel.</p><button class="btn btn-orange" data-empty-create-class>Create class</button></div>`;
   };
 
   function populateArchivedImportOptions(preselect = '') {
@@ -125,6 +120,7 @@
     renderSubmissions();
     populateAssignmentSections();
     populateArchivedImportOptions();
+    window.renderArchiveCenter?.();
   };
 
   document.addEventListener('click', event => {
@@ -404,6 +400,7 @@
   }
 
   async function unarchiveAssignments(ids) {
+    const stayInArchive = Boolean($('#view-archive')?.classList.contains('active'));
     const valid = [...new Set((ids || []).filter(id => assignmentById(id)?.status === 'archived'))];
     if (!valid.length) return toast('The selected activity is already active.', 'orange');
     const assignments = valid.map(id => assignmentById(id)).filter(Boolean);
@@ -435,7 +432,7 @@
           }
           valid.forEach(id => selectedAssignmentIds.delete(id));
           await refreshTeacher();
-          showTeacherView(targetView);
+          showTeacherView(stayInArchive ? 'archive' : targetView);
         }
       );
       toast(
@@ -500,6 +497,34 @@
     } catch (error) {
       console.error(error);
       toast(friendlyErrorMessage(error, `Could not archive the selected ${kindSingular}.`), 'orange', 'Archive failed');
+    }
+  });
+
+  // ---------------------------------------------------------------
+  // CLASS UNARCHIVING
+  // ---------------------------------------------------------------
+  document.addEventListener('click', async event => {
+    const button = event.target.closest('[data-unarchive-class]');
+    if (!button) return;
+    const section = sectionById(button.dataset.unarchiveClass);
+    if (!section || !section.archived_at) return;
+    if (!window.MathsideActionButton?.start(button, 'Restoring…')) return;
+    try {
+      await withLoading('Unarchiving class…', 'Restoring the class to the active Classes panel while keeping its student roster.', async () => {
+        const { error } = await db.from('mathside_sections')
+          .update({ archived_at: null })
+          .eq('id', section.id)
+          .eq('teacher_id', state.user.id);
+        if (error) throw error;
+        await refreshTeacher();
+        showTeacherView('archive');
+      });
+      await window.MathsideActionButton.done(button, 'Done');
+      toast('Class restored to the Classes panel.', 'success', 'Class unarchived');
+    } catch (error) {
+      window.MathsideActionButton?.reset(button);
+      console.error(error);
+      toast(friendlyErrorMessage(error, 'Could not unarchive this class.'), 'orange', 'Unarchive failed');
     }
   });
 

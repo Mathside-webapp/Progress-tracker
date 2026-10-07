@@ -1,8 +1,8 @@
-/* Mathside PWA — V24.6 Safe Action Buttons
+/* Mathside PWA — V24.8 Archive Center
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-v24-7-delete-class';
+const CACHE_NAME = 'mathside-v24-8-archive-center';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -28,11 +28,11 @@ const APP_SHELL = [
   './js/design-v9.js?v=9',
   './js/pwa.js?v=6.9.15',
   './js/push-notifications.js?v=6.10',
-  './css/v12-archive-features.css?v=12.3',
+  './css/v12-archive-features.css?v=12.4',
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.10',
-  './js/v12-archive-features.js?v=15.6',
-  './js/v15-performance-tasks.js?v=15.16'
+  './js/v12-archive-features.js?v=15.7',
+  './js/v15-performance-tasks.js?v=15.17'
 ];
 
 self.addEventListener('install', (event) => {
