@@ -191,7 +191,8 @@
     const count = selectedGroups.length;
     $('#selectedAssignmentCount') && ($('#selectedAssignmentCount').textContent = `${count} selected`);
     $('#bulkDeleteAssignmentsBtn') && ($('#bulkDeleteAssignmentsBtn').disabled = count === 0);
-    $('#bulkArchiveAssignmentsBtn') && ($('#bulkArchiveAssignmentsBtn').disabled = count === 0 || selectedGroups.every(group => group.every(a => a.status === 'archived')));
+    $('#bulkArchiveAssignmentsBtn') && ($('#bulkArchiveAssignmentsBtn').disabled = count === 0 || !selectedGroups.some(group => group.some(a => a.status !== 'archived')));
+    $('#bulkUnarchiveAssignmentsBtn') && ($('#bulkUnarchiveAssignmentsBtn').disabled = count === 0 || !selectedGroups.some(group => group.some(a => a.status === 'archived')));
     const selectAll = $('#selectAllAssignments');
     if (selectAll) {
       selectAll.checked = count > 0 && count === groups.length;
@@ -224,10 +225,10 @@
         <label class="assignment-select-check"><input class="row-check" type="checkbox" data-select-assignment="${assignment.id}" data-assignment-group-ids="${esc(groupIdsAttr)}" ${selected ? 'checked' : ''}><span class="sr-only">Select ${esc(assignment.title)}</span></label>
         <div class="assignment-thumb">${assignment.image_url ? `<img src="${esc(assignment.image_url)}" alt="Assignment image" data-assignment-storage-path="${esc(assignment.image_path || '')}">` : iconSvg('assignment', 'assignment-line-icon')}</div>
         <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared assignment</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}${archived ? '<span class="archived-badge">Archived</span>' : ''}</div><p>${esc(assignment.instructions || 'Mathematics assignment')}</p>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
-        <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button>${archived ? '' : `<button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(groupIdsAttr)}">Archive</button>`}<button class="btn btn-danger-outline" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
+        <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button>${archived ? `<button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(groupIdsAttr)}">Unarchive</button>` : `<button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(groupIdsAttr)}">Archive</button>`}<button class="btn btn-danger-outline" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
       </article>`;
     }).join('');
-    list.innerHTML = `<div class="bulk-toolbar assignment-bulk-toolbar"><label class="bulk-select-all"><input id="selectAllAssignments" class="row-check" type="checkbox"><span>Select all activities</span></label><span class="bulk-selected-count" id="selectedAssignmentCount">0 selected</span><div class="bulk-actions"><button class="btn btn-archive" id="bulkArchiveAssignmentsBtn" type="button" disabled>Archive selected</button><button class="btn btn-danger" id="bulkDeleteAssignmentsBtn" type="button" disabled>Delete selected</button></div></div>${cards}`;
+    list.innerHTML = `<div class="bulk-toolbar assignment-bulk-toolbar"><label class="bulk-select-all"><input id="selectAllAssignments" class="row-check" type="checkbox"><span>Select all activities</span></label><span class="bulk-selected-count" id="selectedAssignmentCount">0 selected</span><div class="bulk-actions"><button class="btn btn-archive" id="bulkArchiveAssignmentsBtn" type="button" disabled>Archive selected</button><button class="btn btn-unarchive" id="bulkUnarchiveAssignmentsBtn" type="button" disabled>Unarchive selected</button><button class="btn btn-danger" id="bulkDeleteAssignmentsBtn" type="button" disabled>Delete selected</button></div></div>${cards}`;
     updateAssignmentBulkToolbar();
   };
 
@@ -394,7 +395,59 @@
     openDialog('archiveAssignmentModal');
   }
 
+  async function unarchiveAssignments(ids) {
+    const valid = [...new Set((ids || []).filter(id => assignmentById(id)?.status === 'archived'))];
+    if (!valid.length) return toast('The selected activity is already active.', 'orange');
+    const assignments = valid.map(id => assignmentById(id)).filter(Boolean);
+    const allPerformance = assignments.length > 0 && assignments.every(isPerformanceTask);
+    const targetView = allPerformance ? 'performance' : 'assignments';
+    try {
+      await withLoading(
+        allPerformance ? 'Unarchiving performance task…' : 'Unarchiving activity…',
+        'Restoring the task for students and keeping its existing submissions and scores.',
+        async () => {
+          const now = Date.now();
+          const scheduledIds = assignments
+            .filter(a => a.publish_at && new Date(a.publish_at).getTime() > now)
+            .map(a => a.id);
+          const publishedIds = assignments
+            .filter(a => !scheduledIds.includes(a.id))
+            .map(a => a.id);
+          if (scheduledIds.length) {
+            const { error } = await db.from('mathside_assignments')
+              .update({ status: 'draft', archived_at: null })
+              .in('id', scheduledIds);
+            if (error) throw error;
+          }
+          if (publishedIds.length) {
+            const { error } = await db.from('mathside_assignments')
+              .update({ status: 'published', archived_at: null })
+              .in('id', publishedIds);
+            if (error) throw error;
+          }
+          valid.forEach(id => selectedAssignmentIds.delete(id));
+          await refreshTeacher();
+          showTeacherView(targetView);
+        }
+      );
+      toast(
+        allPerformance ? 'Performance task restored.' : 'Activity restored.',
+        'success',
+        'Unarchived'
+      );
+    } catch (error) {
+      console.error(error);
+      toast(friendlyErrorMessage(error, 'Could not unarchive the selected activity.'), 'orange', 'Unarchive failed');
+    }
+  }
+
   document.addEventListener('click', event => {
+    const unarchive = event.target.closest('[data-unarchive-assignment-group]');
+    if (unarchive) return unarchiveAssignments(String(unarchive.dataset.unarchiveAssignmentGroup || '').split(',').filter(Boolean));
+    if (event.target.closest('#bulkUnarchiveAssignmentsBtn')) {
+      const ids = [...selectedAssignmentIds].filter(id => assignmentById(id)?.status === 'archived');
+      return unarchiveAssignments(ids);
+    }
     const button = event.target.closest('[data-archive-assignment-group]');
     if (button) return openArchiveAssignments(String(button.dataset.archiveAssignmentGroup || '').split(',').filter(Boolean));
     if (event.target.closest('#bulkArchiveAssignmentsBtn')) {

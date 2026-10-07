@@ -1,0 +1,28 @@
+MATHSIDE V24.3 — Notifications, Unarchive, Class Record Totals
+
+1. Notifications
+- Added a Delete button to each notification.
+- Added Clear all in the Notifications popup.
+- Deletion is restricted in Supabase to the signed-in user's own notifications.
+
+2. Activities / Performance Tasks
+- Archived activity cards now show an Unarchive button.
+- Archived performance tasks also show Unarchive.
+- Activity bulk actions now include Unarchive selected.
+- Unarchiving preserves existing submissions and scores.
+- A future scheduled publish date is restored as scheduled; otherwise the item returns to Published.
+
+3. Excel Class Record
+- Student Total Score is now calculated in Mathside and written as a numeric value.
+- This prevents mobile Excel/preview apps from showing blank/0 totals because formulas were not recalculated.
+- Archived activities/performance tasks are included in the class record so earned scores are not lost from exports.
+
+Supabase
+- mathside_delete_notifications(uuid[]) was applied to the connected Mathside project.
+- No manual SQL is required for the current connected project.
+
+Preserved
+- V24.2 Performance Task Reshuffle Groups
+- V24.1 Submission Activity filter
+- Password reset/Excel fixes
+- Late labels, group logic, query optimizations, and iOS math keyboard fixes
