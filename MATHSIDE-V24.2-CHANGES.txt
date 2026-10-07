@@ -1,7 +1,0 @@
-Mathside V24.2 — Performance Task Group Reshuffle
-
-- Adds a visible “Reshuffle Groups” button in the Performance Task teacher grouping tools.
-- Randomizes students within each selected class while keeping the selected Pair/Group mode and group count.
-- Clears old leader choices after reshuffling so a valid leader can be selected for each new team.
-- Saves the exact previewed grouping to Supabase when the task is posted or saved.
-- Keeps V24.1 submission filters, V24 reset-password Excel/loading fixes, late labels, group logic, query optimization and iOS keyboard fixes.
