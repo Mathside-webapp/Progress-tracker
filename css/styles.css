@@ -1453,3 +1453,17 @@ body.math-keyboard-open{overflow:hidden!important;touch-action:none}
   #teacherApp .submission-filter-panel .submission-section-tab{min-width:0;width:100%}
   .compact-filter-actions .btn{flex:1}
 }
+
+/* V24.6 — Cross-platform action button states (iOS, Android, desktop). */
+.btn[data-mathside-busy="1"] {
+  pointer-events: none;
+  cursor: wait;
+  opacity: 0.78;
+  transform: none !important;
+}
+
+.btn.action-done {
+  pointer-events: none;
+  opacity: 1;
+  transform: none !important;
+}

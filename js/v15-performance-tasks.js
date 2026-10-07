@@ -666,16 +666,21 @@
     try { schedule = readPerformanceSchedule(form); }
     catch (error) { return toast(friendlyErrorMessage(error, 'Could not check this performance task.'), 'orange', 'Check performance task'); }
 
+    const submitBtn = $('#performanceTaskSubmitBtn');
+    if (!window.MathsideActionButton?.start(submitBtn, editingPerformanceTaskId ? 'Updating…' : 'Posting…')) return;
+
     if (editingPerformanceTaskId) {
       const copies = editingPerformanceTaskIds.map(id => assignmentById(id)).filter(Boolean);
       try {
         await withLoading(copies.length > 1 ? `Saving performance task in ${copies.length} classes…` : 'Saving performance task…', 'Updating instructions, deadline, pictures, rubric, and score settings.', async () => {
           for (const task of copies) await savePerformanceCopy(task, form, schedule, taskImages, rubricFile, $('#removePerformanceImages')?.checked, $('#removePerformanceRubric')?.checked);
-          closeDialog('performanceTaskModal'); editingPerformanceTaskId = null; editingPerformanceTaskIds = [];
+          editingPerformanceTaskId = null; editingPerformanceTaskIds = [];
           await refreshTeacher(); showTeacherView('performance');
         });
+        await window.MathsideActionButton.done(submitBtn, 'Done');
+        closeDialog('performanceTaskModal');
         toast(schedule.status === 'draft' ? `Performance task scheduled for ${formatDeadlineDate(schedule.publishAt)}.` : 'Performance task updated.', 'success');
-      } catch (error) { console.error(error); toast(friendlyErrorMessage(error, 'Could not save the performance task.'), 'orange'); }
+      } catch (error) { window.MathsideActionButton?.reset(submitBtn); console.error(error); toast(friendlyErrorMessage(error, 'Could not save the performance task.'), 'orange'); }
       return;
     }
 
@@ -699,10 +704,13 @@
           if (update.error) throw update.error;
           if (mode !== 'individual' && groupingCreator === 'teacher') await applyStoredPerformanceGrouping({ ...task, collaboration_mode:mode, grouping_creator:groupingCreator, group_count:groupCount });
         }
-        closeDialog('performanceTaskModal'); await refreshTeacher(); showTeacherView('performance');
+        await refreshTeacher(); showTeacherView('performance');
       });
+      await window.MathsideActionButton.done(submitBtn, 'Done');
+      closeDialog('performanceTaskModal');
       toast(schedule.status === 'draft' ? `Performance task scheduled for ${formatDeadlineDate(schedule.publishAt)}.` : `Performance task posted to ${sectionIds.length} class${sectionIds.length===1?'':'es'}.`, 'success');
     } catch (error) {
+      window.MathsideActionButton?.reset(submitBtn);
       console.error(error);
       if (uploaded.length) await removeStoragePaths('mathside-assignment-images', uploaded);
       const ids = created.map(x=>x.id); if (ids.length) try { await db.from('mathside_assignments').delete().in('id',ids); } catch {}
@@ -1372,22 +1380,24 @@
     if (!requireSupabase() || state.profile?.role !== 'student') return;
     const a = assignmentById(activePerformanceTaskId); if (!a) return;
     const existing = submissionFor(a.id);
-    let team = null;
-    if ((a.collaboration_mode || 'individual') !== 'individual') {
-      try { team = await getPerformanceTeamInfo(a.id); }
-      catch (error) { return toast(friendlyErrorMessage(error, 'Could not verify your team.'), 'orange'); }
-      if (!team?.is_leader) return toast('Only your team leader can submit this performance task.', 'orange');
-      try { await saveLeaderParticipationRatings(a, team); }
-      catch (error) { return toast(friendlyErrorMessage(error, 'Rate every team member before submitting.'), 'orange'); }
-    }
     if (a.status === 'archived') return toast('This performance task has been archived.', 'orange');
     if (existing && !existing.resubmit_allowed) return toast('Your teacher must allow another attempt before you can resubmit.', 'orange');
     const files = [...($('#performanceOutputImages')?.files || [])];
     if (!files.length) return toast('Upload at least one picture of your output.', 'orange');
     if (files.length > 10) return toast('Choose up to 10 output pictures.', 'orange');
     if (files.some(f => !String(f.type||'').startsWith('image/') && !isHeicImage(f))) return toast('Performance task outputs must be image files.', 'orange');
+
+    const submitBtn = event.currentTarget.querySelector('button[type="submit"]');
+    if (!window.MathsideActionButton?.start(submitBtn, 'Submitting…')) return;
     const oldPaths = submissionOutputPaths(existing), newPaths = [];
     try {
+      let team = null;
+      if ((a.collaboration_mode || 'individual') !== 'individual') {
+        team = await getPerformanceTeamInfo(a.id);
+        if (!team?.is_leader) throw new Error('Only your team leader can submit this performance task.');
+        await saveLeaderParticipationRatings(a, team);
+      }
+
       await withLoading('Submitting performance task…','Uploading your output pictures and saving your submission.', async () => {
         for (let i=0; i<files.length; i+=1) {
           const f = await compressImageForUpload(files[i], { maxDimension: 1600, targetBytes: 450 * 1024, hardLimitBytes: 500 * 1024, quality: 0.80, minQuality: 0.50, minLongEdge: 900 });
@@ -1399,14 +1409,19 @@
         const { error } = await db.rpc('mathside_submit_work', { p_assignment_id:a.id, p_answers:[], p_proof_paths:newPaths });
         if (error) throw error;
         if (oldPaths.length) await removeStoragePaths('mathside-submission-proofs', oldPaths);
-        closeDialog('performanceSubmitModal'); await refreshStudent(); showStudentPanel('performance');
+        await refreshStudent();
+        showStudentPanel('performance');
       });
+      await window.MathsideActionButton.done(submitBtn, 'Done');
+      closeDialog('performanceSubmitModal');
       toast('Performance task submitted.', 'success');
     } catch (error) {
+      window.MathsideActionButton?.reset(submitBtn);
       console.error(error); if (newPaths.length) await removeStoragePaths('mathside-submission-proofs', newPaths);
       toast(friendlyErrorMessage(error, 'Could not submit the performance task.'), 'orange');
     }
   });
+
 
   openStudentResponsePreview = async function(submissionId) {
     const submission = state.submissions.find(s=>s.id===submissionId), a = assignmentById(submission?.assignment_id);

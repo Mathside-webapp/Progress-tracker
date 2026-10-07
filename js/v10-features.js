@@ -595,6 +595,37 @@
     }
   }
 
+  let latestClassRecordExport = null;
+
+  function classRecordTimestamp(date = new Date()) {
+    const pad = value => String(value).padStart(2, '0');
+    return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}`;
+  }
+
+  function downloadPreparedClassRecord(exportFile) {
+    if (!exportFile?.blob || !exportFile?.filename) {
+      return toast('The class record file is not ready. Export it again first.', 'orange', 'Download unavailable');
+    }
+    const url = URL.createObjectURL(exportFile.blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = exportFile.filename;
+    link.rel = 'noopener';
+    if (typeof isIOSDevice === 'function' && isIOSDevice()) link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  function showClassRecordReady(section) {
+    const title = document.getElementById('classRecordExportTitle');
+    const lead = document.getElementById('classRecordExportLead');
+    if (title) title.textContent = `${section.name} class record is ready.`;
+    if (lead) lead.textContent = `Grade ${section.grade_level} • Tap Download Excel below. You can download the prepared file repeatedly or close this window and export a fresh copy later.`;
+    openDialog('classRecordExportModal');
+  }
+
   async function exportClassRecord() {
     if (!window.ExcelJS) return toast('Excel export library is not available.', 'orange', 'Export unavailable');
     const section = sectionById(activeRosterSectionId);
@@ -795,17 +826,30 @@
     });
     assignmentSheet.views = [{ state: 'frozen', ySplit: 1 }];
 
+    const exportButton = document.getElementById('exportClassRecordBtn');
+    if (exportButton) exportButton.disabled = true;
+    latestClassRecordExport = null;
     try {
-      const buffer = await workbook.xlsx.writeBuffer();
-      downloadExcelBuffer(buffer, `Mathside-${safeFilename(section.name)}-Grade-${section.grade_level}-Class-Record.xlsx`);
-      toast('Class record exported to Excel.', 'success', 'Export complete');
+      let buffer = null;
+      await withLoading('Preparing class record…', 'Calculating student totals and creating the Excel workbook.', async () => {
+        buffer = await workbook.xlsx.writeBuffer();
+      });
+      latestClassRecordExport = {
+        blob: new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
+        filename: `Mathside-${safeFilename(section.name)}-Grade-${section.grade_level}-Class-Record-${classRecordTimestamp()}.xlsx`
+      };
+      showClassRecordReady(section);
+      toast('Class record is ready to download.', 'success', 'Export ready');
     } catch (error) {
       console.error('Class record export failed:', error);
       toast('Could not create the Excel class record.', 'orange', 'Export failed');
+    } finally {
+      if (exportButton) exportButton.disabled = false;
     }
   }
   document.getElementById('downloadRosterAccountsBtn')?.addEventListener('click', exportRosterAccounts);
   document.getElementById('exportClassRecordBtn')?.addEventListener('click', exportClassRecord);
+  document.getElementById('downloadClassRecordExcelBtn')?.addEventListener('click', () => downloadPreparedClassRecord(latestClassRecordExport));
 
   // ------------------------------------------------------------------
   // PANEL HOOKS + CALENDAR CONTROLS

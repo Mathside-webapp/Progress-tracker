@@ -367,6 +367,52 @@ async function withLoading(title, message, fn) {
   }
 }
 
+// Cross-platform anti-double-click button states. These use only standard DOM
+// APIs so the same flow works in iOS Safari, Android Chrome, and desktop browsers.
+function startActionButton(button, busyText = 'Working…') {
+  if (!button || button.dataset.mathsideBusy === '1') return false;
+  button.dataset.mathsideBusy = '1';
+  button.dataset.mathsideOriginalText = button.textContent || '';
+  button.dataset.mathsideOriginalDisabled = button.disabled ? '1' : '0';
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  button.textContent = busyText;
+  return true;
+}
+
+function resetActionButton(button) {
+  if (!button) return;
+  const originalText = button.dataset.mathsideOriginalText;
+  const wasDisabled = button.dataset.mathsideOriginalDisabled === '1';
+  if (originalText !== undefined) button.textContent = originalText;
+  button.disabled = wasDisabled;
+  button.removeAttribute('aria-busy');
+  button.removeAttribute('data-mathside-busy');
+  delete button.dataset.mathsideOriginalText;
+  delete button.dataset.mathsideOriginalDisabled;
+  button.classList.remove('action-done');
+}
+
+async function finishActionButton(button, doneText = 'Done', holdMs = 420) {
+  if (!button) return;
+  button.textContent = doneText;
+  button.classList.add('action-done');
+  button.setAttribute('aria-busy', 'false');
+  if (holdMs > 0) await sleep(holdMs);
+  resetActionButton(button);
+}
+
+function actionButtonBusy(button) {
+  return Boolean(button?.dataset?.mathsideBusy === '1');
+}
+
+window.MathsideActionButton = {
+  start: startActionButton,
+  done: finishActionButton,
+  reset: resetActionButton,
+  busy: actionButtonBusy
+};
+
 function openDialog(id) {
   const dialog = document.getElementById(id);
   if (dialog && !dialog.open) dialog.showModal();
@@ -1249,6 +1295,8 @@ $('#resetPasswordsForm')?.addEventListener('submit',async event=>{
   event.preventDefault(); const section=sectionById(activeRosterSectionId); if(!section)return toast('Open a class roster first.','orange');
   const passwordResets=resetPasswordStudentIds.map(studentId=>{const input=document.querySelector(`#resetPasswordRows input[data-reset-password-id="${CSS.escape(studentId)}"]`);return{student_id:studentId,password:String(input?.value||'').trim()};});
   const invalid=passwordResets.find(item=>item.password.length<6||item.password.length>72); if(invalid){const student=studentById(invalid.student_id);return toast(`Enter a password with 6 to 72 characters for ${student?.display_name||'every selected student'}.`,'orange','Password required');}
+  const submitBtn=$('#confirmResetPasswordsBtn');
+  if(!startActionButton(submitBtn,'Resetting…'))return;
   try{
     let result=null,exportError=null; latestResetPasswordExport=null;
     await withLoading('Resetting passwords…',`Applying the password${passwordResets.length===1?'':'s'} you chose.`,async()=>{
@@ -1257,10 +1305,16 @@ $('#resetPasswordsForm')?.addEventListener('submit',async event=>{
       if(reset.length){$('#loadingTitle').textContent='Preparing Excel…';$('#loadingMessage').textContent='Creating the reset-password file for download.';try{latestResetPasswordExport=await buildResetPasswordsExcel(reset,section);}catch(error){exportError=error;console.error('RESET PASSWORD EXCEL ERROR',error);}}
     });
     const reset=result?.reset||[],failures=result?.failures||[];
-    if(reset.length){selectedStudentIds.clear();resetPasswordStudentIds=[];closeDialog('resetPasswordsModal');renderClassStudentsModal();renderResetPasswordsComplete(reset,section,exportError);}
+    if(reset.length){
+      await finishActionButton(submitBtn,'Done');
+      selectedStudentIds.clear();resetPasswordStudentIds=[];closeDialog('resetPasswordsModal');renderClassStudentsModal();renderResetPasswordsComplete(reset,section,exportError);
+    }else{
+      resetActionButton(submitBtn);
+    }
     if(failures.length)toast(`${failures.length} password${failures.length===1?'':'s'} could not be reset.\n\n${failures.map(item=>`${item.name||'Student'}: ${item.error||'Reset failed.'}`).join('\n')}`,'orange','Some resets failed');
-  }catch(error){console.error('RESET STUDENT PASSWORD ERROR',error);toast(friendlyErrorMessage(error,'Could not reset the selected student passwords. Please try again.'),'orange');}
+  }catch(error){resetActionButton(submitBtn);console.error('RESET STUDENT PASSWORD ERROR',error);toast(friendlyErrorMessage(error,'Could not reset the selected student passwords. Please try again.'),'orange');}
 });
+
 $('#downloadResetPasswordsExcelBtn')?.addEventListener('click',()=>downloadPreparedResetExcel(latestResetPasswordExport));
 
 function renderStudentTracking(sectionId, studentId) {
@@ -1313,11 +1367,14 @@ $('#dashboardCreateClass').addEventListener('click', openSectionModal);
 $('#sectionForm').addEventListener('submit', async event => {
   event.preventDefault();
   if (!requireSupabase()) return;
-  const form = new FormData(event.currentTarget);
+  const formElement = event.currentTarget;
+  const submitBtn = formElement.querySelector('button[type="submit"]');
+  const form = new FormData(formElement);
   const grade = Number(form.get('grade_level'));
   const name = String(form.get('name') || '').trim();
   const colors = { 7:'#ff6b00', 8:'#ff8f00', 9:'#ff4f81', 10:'#3e8ef7', 11:'#7b61c8', 12:'#2c9c78' };
   if (!name) return toast('Enter a class name.', 'orange');
+  if (!startActionButton(submitBtn, 'Creating…')) return;
   try {
     await withLoading('Creating class…', `Setting up ${name} for Grade ${grade}.`, async () => {
       const { data, error } = await db.from('mathside_sections').insert({
@@ -1328,16 +1385,19 @@ $('#sectionForm').addEventListener('submit', async event => {
       }).select().single();
       if (error) throw error;
       activeSectionId = data.id;
-      closeDialog('sectionModal');
       await refreshTeacher();
       showTeacherView('classes');
     });
+    await finishActionButton(submitBtn, 'Done');
+    closeDialog('sectionModal');
     toast('Class created.', 'success');
   } catch (error) {
+    resetActionButton(submitBtn);
     console.error(error);
     toast(friendlyErrorMessage(error, 'Could not create the class.'), 'orange');
   }
 });
+
 
 // ---------- STUDENT ACCOUNT MANAGEMENT ----------
 async function invokeTeacherFunction(name, body) {
@@ -1825,10 +1885,10 @@ $('#saveStudentsBtn').addEventListener('click', async () => {
   const students = currentStudentEntryRows();
   if (!students.length) return toast('Enter at least one student name.', 'orange');
   if (students.length > MAX_STUDENTS_PER_ADD) return toast(`You can generate up to ${MAX_STUDENTS_PER_ADD} student accounts at a time.`, 'orange');
+  const submitBtn = $('#saveStudentsBtn');
+  if (!startActionButton(submitBtn, 'Creating accounts…')) return;
 
   try {
-    closeDialog('studentModal');
-
     let result = { created: [], failures: [], section: null };
     await withLoading('Creating student accounts…', `Generating ${students.length} secure student account${students.length === 1 ? '' : 's'}.`, async () => {
       for (let start = 0; start < students.length; start += STUDENT_CREATE_BATCH_SIZE) {
@@ -1858,17 +1918,25 @@ $('#saveStudentsBtn').addEventListener('click', async () => {
       lastGeneratedSection = result.section || sectionById(activeSectionId) || null;
     }
     $('#generatedAccountsBody').innerHTML = created.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.gender)}</td><td><b>${esc(s.username)}</b></td><td><b>${esc(s.temporary_password)}</b></td></tr>`).join('');
-    if (created.length) openDialog('accountsModal');
+    if (created.length) {
+      await finishActionButton(submitBtn, 'Done');
+      closeDialog('studentModal');
+      openDialog('accountsModal');
+    } else {
+      resetActionButton(submitBtn);
+    }
     if (failures.length) {
       const details = failures.map(f => `${f.name || 'Student'}: ${f.error || 'Account creation failed.'}`).join('\n');
       toast(`${failures.length} account${failures.length === 1 ? '' : 's'} could not be created.\n\n${details}`, 'orange');
     }
     if (created.length) toast(`${created.length} student account${created.length === 1 ? '' : 's'} created.`, 'success');
   } catch (error) {
+    resetActionButton(submitBtn);
     console.error(error);
     toast(friendlyErrorMessage(error, 'Could not create student accounts. Please try again.'), 'orange');
   }
 });
+
 
 // ---------- ASSIGNMENTS ----------
 function questionBlock(number) {
@@ -2640,6 +2708,9 @@ $('#assignmentForm').addEventListener('submit', async event => {
     return toast('The assignment deadline must be after the scheduled posting time.', 'orange', 'Check the schedule');
   }
 
+  const submitBtn = $('#assignmentSubmitBtn');
+  if (!startActionButton(submitBtn, editingAssignmentId ? 'Updating…' : 'Posting…')) return;
+
   if (editingAssignmentId) {
     const assignmentsToUpdate = (editingAssignmentIds.length ? editingAssignmentIds : [editingAssignmentId])
       .map(id => assignmentById(id))
@@ -2656,13 +2727,14 @@ $('#assignmentForm').addEventListener('submit', async event => {
           for (const assignment of assignmentsToUpdate) {
             await updateExistingAssignment(assignment, form, questions, dueAt, reminderHours, publishStatus, publishAt);
           }
-          closeDialog('assignmentModal');
           editingAssignmentId = null;
           editingAssignmentIds = [];
           await refreshTeacher();
           showTeacherView('assignments');
         }
       );
+      await finishActionButton(submitBtn, 'Done');
+      closeDialog('assignmentModal');
       toast(
         publishStatus === 'draft'
           ? `Assignment scheduled for ${formatDeadlineDate(publishAt)}${copyCount > 1 ? ` in ${copyCount} classes` : ''}.`
@@ -2671,6 +2743,7 @@ $('#assignmentForm').addEventListener('submit', async event => {
         publishStatus === 'draft' ? 'Assignment scheduled' : 'Assignment updated'
       );
     } catch (error) {
+      resetActionButton(submitBtn);
       console.error(error);
       toast(friendlyErrorMessage(error, 'Could not save the assignment changes.'), 'orange', 'Save failed');
     }
@@ -2732,11 +2805,12 @@ $('#assignmentForm').addEventListener('submit', async event => {
           if (keyRes.error) throw keyRes.error;
         }
 
-        closeDialog('assignmentModal');
         await refreshTeacher();
         showTeacherView('assignments');
       }
     );
+    await finishActionButton(submitBtn, 'Done');
+    closeDialog('assignmentModal');
     toast(
       publishStatus === 'draft'
         ? `Assignment scheduled for ${formatDeadlineDate(publishAt)}${sectionIds.length > 1 ? ` in ${sectionIds.length} classes` : ''}.`
@@ -2745,6 +2819,7 @@ $('#assignmentForm').addEventListener('submit', async event => {
       publishStatus === 'draft' ? 'Assignment scheduled' : 'Assignment posted'
     );
   } catch (error) {
+    resetActionButton(submitBtn);
     console.error(error);
     if (uploadedPaths.length) { try { await db.storage.from('mathside-assignment-images').remove(uploadedPaths); } catch {} }
     const createdIds = createdAssignments.map(assignment => assignment.id).filter(Boolean);
@@ -3520,6 +3595,8 @@ $('#answerForm').addEventListener('submit', async event => {
 
   const previousProofPaths = submissionProofPaths(submissionFor(activeStudentAssignment.id));
   const uploadedPaths = [];
+  const submitBtn = event.currentTarget.querySelector('button[type="submit"]');
+  if (!startActionButton(submitBtn, 'Submitting…')) return;
   try {
     let rpcResult;
     await withLoading('Submitting your answers…', `Uploading ${proofFiles.length} solution picture${proofFiles.length === 1 ? '' : 's'} and saving your answers.`, async () => {
@@ -3540,12 +3617,14 @@ $('#answerForm').addEventListener('submit', async event => {
       if (previousProofPaths.length) {
         try { await db.storage.from('mathside-submission-proofs').remove(previousProofPaths); } catch {}
       }
-      closeDialog('answerModal');
       await window.MathsideV10?.clearDraft?.(activeStudentAssignment.id);
       await refreshStudent();
     });
+    await finishActionButton(submitBtn, 'Done');
+    closeDialog('answerModal');
     toast(`Submitted! Auto-check score: ${Number(rpcResult?.auto_score || 0)}/${totalPoints(activeStudentAssignment.id)}.`, 'success');
   } catch (error) {
+    resetActionButton(submitBtn);
     console.error(error);
     if (uploadedPaths.length) { try { await db.storage.from('mathside-submission-proofs').remove(uploadedPaths); } catch {} }
     toast(friendlyErrorMessage(error, 'Could not submit your answers.'), 'orange');

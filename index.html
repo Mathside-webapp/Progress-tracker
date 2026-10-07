@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/mathside-icon.svg?v=12.3" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=12.7" />
+  <link rel="stylesheet" href="css/styles.css?v=12.8" />
   <link rel="stylesheet" href="css/art-theme.css?v=7.0" />
   <link rel="stylesheet" href="css/student-v8.css?v=10.6" />
   <link rel="stylesheet" href="css/design-v9.css?v=9.1">
@@ -483,6 +483,19 @@
     </div>
   </dialog>
 
+  <!-- CLASS RECORD EXPORT READY MODAL -->
+  <dialog id="classRecordExportModal" class="modal wide-modal">
+    <div class="modal-box reset-passwords-complete-box">
+      <button class="modal-close" data-close="classRecordExportModal" aria-label="Close">×</button>
+      <div class="success-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17l9-10"/></svg></div>
+      <p class="eyebrow">CLASS RECORD READY</p>
+      <h2 id="classRecordExportTitle">Your Excel class record is ready.</h2>
+      <p id="classRecordExportLead" class="muted">Tap Download Excel below. You can tap it again if you need another copy.</p>
+      <p class="account-note credential-warning">On iPhone/iPad, Safari may open the Excel file in a preview. Use Share → Save to Files if needed.</p>
+      <div class="modal-actions"><button class="btn btn-light" type="button" data-close="classRecordExportModal">Done</button><button class="btn btn-orange" id="downloadClassRecordExcelBtn" type="button"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"/></svg>Download Excel</button></div>
+    </div>
+  </dialog>
+
   <!-- STUDENT TRACKING MODAL -->
   <dialog id="studentTrackingModal" class="modal wide-modal">
     <div class="modal-box student-tracking-box">
@@ -862,6 +875,19 @@
     </div>
   </dialog>
 
+  <!-- DELETE CLASS CONFIRMATION -->
+  <dialog id="deleteClassModal" class="modal">
+    <div class="modal-box archive-confirm-box">
+      <button class="modal-close" data-close="deleteClassModal" aria-label="Close">×</button>
+      <div class="archive-confirm-icon danger" aria-hidden="true">!</div>
+      <p class="eyebrow">DELETE CLASS</p>
+      <h2 id="deleteClassTitle">Delete this class?</h2>
+      <p id="deleteClassText" class="muted"></p>
+      <div class="archive-warning danger"><b>This cannot be undone</b><span>The class, its activities and performance tasks, submissions, group records, and related uploaded task/solution files will be permanently removed. Student login accounts are kept. If you only want to end a term and reuse the roster later, use Archive class instead.</span></div>
+      <div class="modal-actions"><button class="btn btn-light" type="button" data-close="deleteClassModal">Cancel</button><button id="confirmDeleteClassBtn" class="btn btn-danger" type="button">Delete class permanently</button></div>
+    </div>
+  </dialog>
+
   <!-- STUDENT RESPONSE PREVIEW MODAL -->
   <dialog id="studentResponseModal" class="modal assignment-modal">
     <div class="modal-box">
@@ -899,13 +925,13 @@
   <!-- Converts iPhone/iPad HEIC photos to JPEG before Supabase upload. -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script id="mathliveScript" defer src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
-  <script src="js/app.js?v=16.3"></script>
+  <script src="js/app.js?v=16.4"></script>
   <script src="js/student-v8.js?v=15.1"></script>
-  <script src="js/v10-features.js?v=15.4"></script>
+  <script src="js/v10-features.js?v=15.5"></script>
 <script src="js/design-v9.js?v=9"></script>
   <script src="js/pwa.js?v=6.9.15"></script>
   <script src="js/push-notifications.js?v=6.10"></script>
-  <script src="js/v12-archive-features.js?v=15.4"></script>
-  <script src="js/v15-performance-tasks.js?v=15.15"></script>
+  <script src="js/v12-archive-features.js?v=15.6"></script>
+  <script src="js/v15-performance-tasks.js?v=15.16"></script>
 </body>
 </html>

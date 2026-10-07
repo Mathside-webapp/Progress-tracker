@@ -6,6 +6,7 @@
   const archiveState = {
     assignmentIds: [],
     classId: null,
+    deleteClassId: null,
     clearSubmissionId: null,
   };
 
@@ -57,9 +58,10 @@
       <footer><span><b>${studentCount}</b> student${studentCount === 1 ? '' : 's'}</span><span>${activeAssignmentCount} active${archivedAssignmentCount ? ` · ${archivedAssignmentCount} archived` : ''}</span></footer>
       <div class="class-card-actions">
         <button class="btn btn-light class-view-students-btn" type="button" data-view-class-students="${section.id}">${iconSvg('people', 'btn-icon')}View students</button>
-        ${dashboard ? '' : archived
+        ${dashboard ? '' : `${archived
           ? `<button class="btn btn-light" type="button" data-create-from-archive="${section.id}">Reuse students</button>`
           : `<button class="btn btn-danger-outline" type="button" data-archive-class="${section.id}">Archive class</button>`}
+          <button class="btn btn-danger" type="button" data-delete-class="${section.id}">Delete class</button>`}
       </div>
     </article>`;
   };
@@ -143,12 +145,15 @@
     event.preventDefault();
     event.stopImmediatePropagation();
     if (!requireSupabase()) return;
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const submitBtn = formElement.querySelector('button[type="submit"]');
+    const form = new FormData(formElement);
     const grade = Number(form.get('grade_level'));
     const name = String(form.get('name') || '').trim();
     const sourceSectionId = String(form.get('import_archived_section') || '').trim();
     const colors = { 7:'#ff6b00', 8:'#ff8f00', 9:'#ff4f81', 10:'#3e8ef7', 11:'#7b61c8', 12:'#2c9c78' };
     if (!name) return toast('Enter a class name.', 'orange');
+    if (!window.MathsideActionButton?.start(submitBtn, 'Creating…')) return;
     try {
       let created;
       await withLoading('Creating class…', sourceSectionId ? 'Creating the class and enrolling existing student accounts.' : `Setting up ${name} for Grade ${grade}.`, async () => {
@@ -169,18 +174,21 @@
           data.imported_count = Number(imported || 0);
         }
         activeSectionId = data.id;
-        closeDialog('sectionModal');
         await refreshTeacher();
         showTeacherView('classes');
       });
+      await window.MathsideActionButton.done(submitBtn, 'Done');
+      closeDialog('sectionModal');
       toast(sourceSectionId ? `Class created. ${Number(created?.imported_count || 0)} existing student account${Number(created?.imported_count || 0) === 1 ? '' : 's'} enrolled.` : 'Class created.', 'success');
     } catch (error) {
+      window.MathsideActionButton?.reset(submitBtn);
       console.error(error);
       toast(friendlyErrorMessage(error, 'Could not create the class.'), 'orange');
     }
   }, true);
 
-  // ---------------------------------------------------------------
+  
+// ---------------------------------------------------------------
   // ASSIGNMENT RENDERING + ARCHIVE ACTIONS
   // ---------------------------------------------------------------
   updateAssignmentBulkToolbar = function() {
@@ -549,6 +557,64 @@
     } catch (error) {
       console.error(error);
       toast(friendlyErrorMessage(error, 'Could not archive this class.'), 'orange', 'Archive failed');
+    }
+  });
+
+  // ---------------------------------------------------------------
+  // PERMANENT CLASS DELETION
+  // ---------------------------------------------------------------
+  document.addEventListener('click', event => {
+    const button = event.target.closest('[data-delete-class]');
+    if (!button) return;
+    const section = sectionById(button.dataset.deleteClass);
+    if (!section) return;
+    archiveState.deleteClassId = section.id;
+    const assignments = state.assignments.filter(a => a.section_id === section.id);
+    const studentCount = studentsForSection(section.id).length;
+    $('#deleteClassTitle').textContent = `Delete ${section.name}?`;
+    $('#deleteClassText').textContent = `${sectionLabel(section)} has ${studentCount} student${studentCount === 1 ? '' : 's'} and ${assignments.length} activity/performance-task record${assignments.length === 1 ? '' : 's'}.`;
+    openDialog('deleteClassModal');
+  });
+
+  $('#confirmDeleteClassBtn')?.addEventListener('click', async () => {
+    const button = $('#confirmDeleteClassBtn');
+    const section = sectionById(archiveState.deleteClassId);
+    if (!section) return closeDialog('deleteClassModal');
+    if (!window.MathsideActionButton?.start(button, 'Deleting…')) return;
+
+    try {
+      const assignmentIds = state.assignments.filter(a => a.section_id === section.id).map(a => a.id);
+      if (assignmentIds.length) {
+        const { data: sessionData, error: sessionError } = await db.auth.getSession();
+        if (sessionError) throw sessionError;
+        const accessToken = sessionData?.session?.access_token;
+        if (!accessToken) throw new Error('Your teacher session has expired. Please sign in again.');
+
+        for (const assignmentId of assignmentIds) {
+          await deleteAssignmentThroughFunction(assignmentId, accessToken);
+        }
+      }
+
+      const { data: deletedSection, error: deleteError } = await db
+        .from('mathside_sections')
+        .delete()
+        .eq('id', section.id)
+        .select('id')
+        .maybeSingle();
+      if (deleteError) throw deleteError;
+      if (!deletedSection?.id) throw new Error('Class could not be deleted or you no longer have permission to delete it.');
+
+      if (activeSectionId === section.id) activeSectionId = null;
+      archiveState.deleteClassId = null;
+      await refreshTeacher();
+      showTeacherView('classes');
+      await window.MathsideActionButton.done(button, 'Deleted');
+      closeDialog('deleteClassModal');
+      toast('Class deleted permanently. Student login accounts were kept.', 'success', 'Class deleted');
+    } catch (error) {
+      console.error(error);
+      window.MathsideActionButton?.reset(button);
+      toast(friendlyErrorMessage(error, 'Could not delete this class.'), 'orange', 'Delete failed');
     }
   });
 
