@@ -160,6 +160,7 @@
         <button class="side-link" data-view="assignments"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 11h6M9 15h6"/></svg><span>Activities</span></button>
         <button class="side-link" data-view="performance"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5M7 3v4M17 3v4"/></svg><span>Performance Tasks</span></button>
         <button class="side-link" data-view="submissions"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17l9-10M4 4h10M4 8h7"/></svg><span>Submissions</span></button>
+        <button class="side-link" data-view="storage-cleanup"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 7V4h10v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/></svg><span>Storage Cleanup</span></button>
         <button class="side-link" data-view="archive"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>Archived</span></button>
       </nav>
       <button class="side-link signout" id="teacherSignout"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/></svg><span>Sign out</span></button>
@@ -229,6 +230,20 @@
           <div id="performanceTaskList" class="assignment-list"></div>
         </section>
 
+        <section class="app-view" id="view-storage-cleanup">
+          <div class="section-row"><div><p class="eyebrow">STORAGE MAINTENANCE</p><h2>Storage Cleanup</h2><p class="muted">Review uploaded solution photos that are no longer linked to a student submission.</p></div></div>
+          <div class="ms-storage-panel">
+            <h3>Unreferenced solution images</h3>
+            <p>Mathside checks files against both the original and multiple-image submission fields. Files younger than 48 hours are protected. Student scores, answers, and feedback are not touched.</p>
+            <div class="ms-storage-summary"><div><span>Eligible files</span><strong id="msStorageCount">—</strong></div><div><span>Space that could be freed</span><strong id="msStorageBytes">—</strong></div></div>
+            <p id="msStorageStatus" role="status" aria-live="polite">Select “Scan storage” to preview possible unused files.</p>
+            <div class="ms-storage-actions">
+              <button class="btn btn-light" type="button" id="msStorageScan">Scan storage</button>
+              <button class="btn btn-danger" type="button" id="msStorageDelete" disabled>Delete verified unused images</button>
+            </div>
+            <p class="muted">Deletion is permanent. Only files confirmed unreferenced at the time of cleanup are eligible. Never delete files manually from the database storage.objects table.</p>
+          </div>
+        </section>
         <section class="app-view" id="view-archive">
           <div class="section-row"><div><p class="eyebrow">ARCHIVE CENTER</p><h2>Archived</h2><p class="muted">Archived classes, activities, and performance tasks are kept here and hidden from their regular panels.</p></div><button class="btn btn-light compact-filter-button" id="archiveFilterBtn" type="button" aria-expanded="false" aria-controls="archiveFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="archiveFilterBadge" class="filter-count-badge" hidden>0</span></button></div>
           <div class="archive-summary-grid" aria-label="Archive summary">
@@ -954,5 +969,7 @@
   <script src="js/push-notifications.js?v=6.10"></script>
   <script src="js/v12-archive-features.js?v=15.7"></script>
   <script src="js/v15-performance-tasks.js?v=15.17"></script>
+  <link rel="stylesheet" href="css/storage-cleanup.css?v=1" />
+  <script src="js/storage-cleanup.js?v=1"></script>
 </body>
 </html>

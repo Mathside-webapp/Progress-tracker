@@ -1,0 +1,10 @@
+
+.ms-storage-panel{max-width:860px;padding:clamp(20px,4vw,36px);border:1px solid #e5e7eb;border-radius:22px;background:white;box-shadow:0 10px 28px rgba(22,32,45,.06)}
+.ms-storage-panel h3{font-size:1.25rem;margin:0 0 10px}.ms-storage-panel p{line-height:1.55}
+.ms-storage-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:24px 0}
+.ms-storage-summary>div{border:1px solid #e5e7eb;border-radius:15px;padding:20px;background:#fafafa;display:flex;flex-direction:column;gap:8px}
+.ms-storage-summary span{font-size:.86rem;color:#64748b}.ms-storage-summary strong{font-size:1.7rem;color:#12213a}
+.ms-storage-actions{display:flex;flex-wrap:wrap;gap:12px;margin:18px 0}
+.ms-storage-actions button{min-width:170px}
+#msStorageStatus{padding:12px 15px;border-radius:12px;background:#f3f5f8;color:#334155}
+@media(max-width:550px){.ms-storage-summary{grid-template-columns:1fr}.ms-storage-actions button{width:100%}}
