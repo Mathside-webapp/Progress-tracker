@@ -1,4 +1,4 @@
-/* Mathside V15.12 — Compact hidden filters for Activities, Performance Tasks and Submissions.
+/* Mathside V24.9 — Reuse past Performance Task groups and edit leaders after posting.
    Adapted from the established EduCore performance-task workflow while
    preserving Mathside archive, manual review and controlled resubmission. */
 (() => {
@@ -20,7 +20,9 @@
   let archiveSort = 'newest';
   const performanceLeaderSelections = new Map();
   const performanceTeamOrders = new Map();
+  const performanceImportedGroups = new Map();
   let performanceGroupingDirty = false;
+  let performanceLeaderDirty = false;
 
   const originalOpenAssignmentPreview = openAssignmentPreview;
   const originalOpenSubmissionReview = openSubmissionReview;
@@ -287,7 +289,90 @@
     return ordered.length === students.length ? ordered : students;
   }
 
+  function clearImportedPerformanceGroups(sectionIds = null) {
+    const ids = Array.isArray(sectionIds) ? sectionIds : [...performanceImportedGroups.keys()];
+    ids.forEach(sectionId => performanceImportedGroups.delete(sectionId));
+  }
+
+  function clearLeaderSelectionsForSections(sectionIds = []) {
+    const prefixes = sectionIds.map(sectionId => `${sectionId}::`);
+    [...performanceLeaderSelections.keys()].forEach(key => {
+      if (prefixes.some(prefix => key.startsWith(prefix))) performanceLeaderSelections.delete(key);
+    });
+  }
+
+  function savedGroupsForSection(sectionId, data, { adaptRoster = false, mode = 'group' } = {}) {
+    const roster = sortedStudentsForSection(sectionId);
+    const rosterById = new Map(roster.map(student => [student.id, student]));
+    const seen = new Set();
+    const sourceGroups = Array.isArray(data?.groups) ? data.groups : [];
+    const groups = sourceGroups.map((source, index) => {
+      const members = (Array.isArray(source.members) ? source.members : []).map(member => {
+        const id = String(member?.id || '');
+        if (!id || seen.has(id)) return null;
+        const rosterStudent = rosterById.get(id);
+        if (adaptRoster && !rosterStudent) return null;
+        seen.add(id);
+        return rosterStudent || {
+          id,
+          display_name: String(member?.display_name || 'Student')
+        };
+      }).filter(Boolean);
+      if (!members.length) return null;
+      const leaderId = members.some(member => member.id === source.leader_id)
+        ? source.leader_id
+        : members[0].id;
+      return {
+        id: source.id || null,
+        name: String(source.name || (mode === 'pair' ? `Pair ${index + 1}` : `Group ${index + 1}`)),
+        members,
+        leader_id: leaderId
+      };
+    }).filter(Boolean);
+
+    if (adaptRoster) {
+      const unassigned = roster.filter(student => !seen.has(student.id));
+      if (mode === 'pair') {
+        let pairNumber = groups.length + 1;
+        for (let index = 0; index < unassigned.length; index += 2) {
+          const members = unassigned.slice(index, index + 2);
+          groups.push({
+            id: null,
+            name: `Pair ${pairNumber++}`,
+            members,
+            leader_id: members[0]?.id || ''
+          });
+        }
+      } else if (groups.length) {
+        unassigned.forEach(student => {
+          const target = groups.reduce((smallest, group) => group.members.length < smallest.members.length ? group : smallest, groups[0]);
+          target.members.push(student);
+        });
+      }
+    }
+
+    groups.forEach(group => {
+      if (!group.members.some(member => member.id === group.leader_id)) group.leader_id = group.members[0]?.id || '';
+    });
+    return groups;
+  }
+
+  function setImportedGroupsForSection(sectionId, groups) {
+    performanceImportedGroups.set(sectionId, groups);
+    clearLeaderSelectionsForSections([sectionId]);
+    groups.forEach(group => {
+      if (group.leader_id) performanceLeaderSelections.set(performanceLeaderKey(sectionId, group.name), group.leader_id);
+    });
+  }
+
   function teamPreviewForSection(sectionId, mode, requestedGroupCount) {
+    const imported = performanceImportedGroups.get(sectionId);
+    if (Array.isArray(imported) && imported.length) {
+      return imported.map(group => ({
+        ...group,
+        members: group.members.slice()
+      }));
+    }
     const students = orderedStudentsForPerformanceSection(sectionId);
     if (!students.length) return [];
     const count = mode === 'pair' ? Math.ceil(students.length / 2) : Math.max(1, Math.min(students.length, Number(requestedGroupCount || 1)));
@@ -321,9 +406,11 @@
     sectionIds.forEach(sectionId => {
       const ids = sortedStudentsForSection(sectionId).map(student => student.id);
       performanceTeamOrders.set(sectionId, secureShuffle(ids));
+      performanceImportedGroups.delete(sectionId);
     });
-    performanceLeaderSelections.clear();
+    clearLeaderSelectionsForSections(sectionIds);
     performanceGroupingDirty = true;
+    performanceLeaderDirty = false;
     renderPerformanceTeamPreview();
     toast(`Groups reshuffled for ${sectionIds.length} class${sectionIds.length === 1 ? '' : 'es'}.`, 'success');
   }
@@ -344,6 +431,11 @@
     const key = performanceLeaderKey(sectionId, group.name);
     const current = performanceLeaderSelections.get(key);
     if (current && group.members.some(member => member.id === current)) return current;
+    const savedLeader = group.leader_id;
+    if (savedLeader && group.members.some(member => member.id === savedLeader)) {
+      performanceLeaderSelections.set(key, savedLeader);
+      return savedLeader;
+    }
     const fallback = group.members[0]?.id || '';
     if (fallback) performanceLeaderSelections.set(key, fallback);
     return fallback;
@@ -464,6 +556,7 @@
     const select = event.target.closest('[data-performance-leader-select]');
     if (!select) return;
     performanceLeaderSelections.set(performanceLeaderKey(select.dataset.sectionId, select.dataset.groupName), select.value);
+    performanceLeaderDirty = true;
     renderPerformanceTeamPreview();
   });
 
@@ -473,6 +566,127 @@
     event.preventDefault();
     downloadPerformanceGroupingImage(btn.dataset.downloadPerformanceTeamImage);
   });
+
+  function performanceGroupSeriesForImport() {
+    const selectedSections = selectedPerformanceSections();
+    if (!selectedSections.length) return [];
+    return performanceGroups()
+      .filter(group => {
+        if (!group.length) return false;
+        const first = group[0];
+        if ((first.collaboration_mode || 'individual') === 'individual') return false;
+        if ((first.grouping_creator || 'teacher') !== 'teacher') return false;
+        if (editingPerformanceTaskIds.some(id => group.some(item => item.id === id))) return false;
+        const sourceSections = new Set(group.map(item => item.section_id));
+        return selectedSections.every(sectionId => sourceSections.has(sectionId));
+      })
+      .sort((a, b) => {
+        const aTime = Math.max(...a.map(item => new Date(item.created_at || item.publish_at || item.due_at || 0).getTime() || 0));
+        const bTime = Math.max(...b.map(item => new Date(item.created_at || item.publish_at || item.due_at || 0).getTime() || 0));
+        return bTime - aTime;
+      });
+  }
+
+  function populatePastPerformanceGroupSources() {
+    const select = $('#pastPerformanceGroupSource');
+    const button = $('#importPastPerformanceGroupsBtn');
+    if (!select || !button) return;
+    const choices = performanceGroupSeriesForImport();
+    if (!choices.length) {
+      select.innerHTML = '<option value="">No past grouped task for the selected class(es)</option>';
+      select.disabled = true;
+      button.disabled = true;
+      return;
+    }
+    select.disabled = false;
+    button.disabled = false;
+    select.innerHTML = '<option value="">Choose a past performance task</option>' + choices.map(group => {
+      const task = group[0];
+      const created = new Date(task.created_at || task.publish_at || task.due_at || Date.now());
+      const dateLabel = Number.isNaN(created.getTime()) ? '' : ` · ${created.toLocaleDateString()}`;
+      const classLabel = group.length > 1 ? ` · ${group.length} classes` : ` · ${sectionById(task.section_id)?.name || 'Class'}`;
+      return `<option value="${esc(task.id)}">${esc(task.title || 'Performance Task')}${esc(classLabel)}${esc(dateLabel)}</option>`;
+    }).join('');
+  }
+
+  async function importPastPerformanceGroups() {
+    const select = $('#pastPerformanceGroupSource');
+    const sourceId = select?.value || '';
+    if (!sourceId) return toast('Choose a past performance task first.', 'orange');
+    const sourceTask = assignmentById(sourceId);
+    if (!sourceTask) return toast('That past performance task is no longer available.', 'orange');
+    const sourceSeries = performanceGroupForId(sourceId);
+    const linked = sourceSeries.length ? sourceSeries : [sourceTask];
+    const sourceBySection = new Map(linked.map(task => [task.section_id, task]));
+    const sectionIds = selectedPerformanceSections();
+    if (!sectionIds.length) return toast('Select at least one class first.', 'orange');
+    if (sectionIds.some(sectionId => !sourceBySection.has(sectionId))) {
+      return toast('The selected past task does not contain groups for every selected class.', 'orange');
+    }
+
+    const button = $('#importPastPerformanceGroupsBtn');
+    if (!window.MathsideActionButton?.start(button, 'Importing…')) return;
+    try {
+      const sourceMode = sourceTask.collaboration_mode || 'group';
+      $$('input[name="performance_mode"]').forEach(input => { input.checked = input.value === sourceMode; });
+      $$('input[name="grouping_creator"]').forEach(input => { input.checked = input.value === 'teacher'; });
+      let importedCount = 0;
+      let firstGroupCount = null;
+
+      await withLoading('Importing past groups…', 'Loading the saved team members and leaders, then matching them with the current class roster.', async () => {
+        for (const sectionId of sectionIds) {
+          const pastTask = sourceBySection.get(sectionId);
+          const data = await getTeacherPerformanceGroups(pastTask.id);
+          const groups = savedGroupsForSection(sectionId, data, { adaptRoster: true, mode: sourceMode });
+          if (!groups.length) throw new Error(`No saved groups were found for ${sectionById(sectionId)?.name || 'one selected class'}.`);
+          setImportedGroupsForSection(sectionId, groups);
+          performanceTeamOrders.delete(sectionId);
+          importedCount += groups.length;
+          if (firstGroupCount == null) firstGroupCount = groups.length;
+        }
+      });
+
+      if (sourceMode === 'group' && $('#performanceGroupCount')) {
+        $('#performanceGroupCount').value = String(Number(sourceTask.group_count || firstGroupCount || 1));
+      }
+      syncPerformanceTeamOptions();
+      performanceGroupingDirty = true;
+      performanceLeaderDirty = false;
+      renderPerformanceTeamPreview();
+      await window.MathsideActionButton.done(button, 'Imported ✓');
+      toast(`Imported ${importedCount} saved group${importedCount === 1 ? '' : 's'} from "${sourceTask.title || 'past performance task'}".`, 'success');
+    } catch (error) {
+      window.MathsideActionButton?.reset(button);
+      console.error(error);
+      toast(friendlyErrorMessage(error, 'Could not import the past groups.'), 'orange');
+    }
+  }
+
+  async function loadStoredTeacherGroupsIntoEditor(linkedTasks) {
+    const teacherTasks = (linkedTasks || []).filter(task =>
+      (task.collaboration_mode || 'individual') !== 'individual' &&
+      (task.grouping_creator || 'teacher') === 'teacher'
+    );
+    if (!teacherTasks.length) return;
+    for (const task of teacherTasks) {
+      const data = await getTeacherPerformanceGroups(task.id);
+      const groups = savedGroupsForSection(task.section_id, data, {
+        adaptRoster: false,
+        mode: task.collaboration_mode || 'group'
+      });
+      if (groups.length) setImportedGroupsForSection(task.section_id, groups);
+    }
+  }
+
+  function generatePerformanceTeams() {
+    const sectionIds = selectedPerformanceSections();
+    clearImportedPerformanceGroups(sectionIds);
+    sectionIds.forEach(sectionId => performanceTeamOrders.delete(sectionId));
+    clearLeaderSelectionsForSections(sectionIds);
+    performanceGroupingDirty = true;
+    performanceLeaderDirty = false;
+    renderPerformanceTeamPreview();
+  }
 
   async function applyStoredPerformanceGrouping(task) {
     if (!task || task.collaboration_mode === 'individual') return;
@@ -492,7 +706,9 @@
   function resetPerformanceForm() {
     performanceLeaderSelections.clear();
     performanceTeamOrders.clear();
+    performanceImportedGroups.clear();
     performanceGroupingDirty = false;
+    performanceLeaderDirty = false;
     const form = $('#performanceTaskForm');
     form?.reset();
     if (form?.elements?.max_points) form.elements.max_points.value = '100';
@@ -539,9 +755,15 @@
       if ($('#performanceGroupCount')) $('#performanceGroupCount').value = String(Number(task.group_count || 4));
       syncPerformancePublishFields();
       syncPerformanceTeamOptions();
-      if ((task.collaboration_mode || 'individual') !== 'individual' && (task.grouping_creator || 'teacher') === 'teacher') renderPerformanceTeamPreview();
-      const sectionIds = new Set((group.length ? group : [task]).map(item => item.section_id));
+      const linkedTasks = group.length ? group : [task];
+      const sectionIds = new Set(linkedTasks.map(item => item.section_id));
       $$('input[name="performance_sections"]', $('#performanceSectionChecklist')).forEach(input => { input.checked = sectionIds.has(input.value); input.disabled = true; input.closest('.class-check-option')?.classList.toggle('editing-class-option', input.checked); });
+      if ((task.collaboration_mode || 'individual') !== 'individual' && (task.grouping_creator || 'teacher') === 'teacher') {
+        try { await loadStoredTeacherGroupsIntoEditor(linkedTasks); }
+        catch (error) { console.error('Could not load saved teacher groups into editor', error); }
+        renderPerformanceTeamPreview();
+      }
+      populatePastPerformanceGroupSources();
       const existingImages = assignmentTaskImages(task);
       if (existingImages.length) {
         $('#removePerformanceImagesWrap').hidden = false;
@@ -558,6 +780,7 @@
     } else {
       $('#performanceTaskModalTitle').textContent = 'Create performance task';
       $('#performanceTaskSubmitBtn').textContent = 'Post performance task';
+      populatePastPerformanceGroupSources();
     }
     openDialog('performanceTaskModal');
   }
@@ -569,14 +792,40 @@
     if (!input) return;
     if (!input.checked) { input.checked = true; return; }
     $$('input[name="performance_mode"]').forEach(other => { if (other !== input) other.checked = false; });
+    clearImportedPerformanceGroups();
+    performanceTeamOrders.clear();
+    performanceLeaderSelections.clear();
+    performanceGroupingDirty = true;
+    performanceLeaderDirty = false;
     syncPerformanceTeamOptions();
+    populatePastPerformanceGroupSources();
     renderPerformanceTeamPreview();
   });
-  $$('input[name="grouping_creator"]').forEach(input => input.addEventListener('change', () => { syncPerformanceTeamOptions(); renderPerformanceTeamPreview(); }));
-  $('#performanceGroupCount')?.addEventListener('input', renderPerformanceTeamPreview);
-  $('#performanceSectionChecklist')?.addEventListener('change', renderPerformanceTeamPreview);
-  $('#generatePerformanceTeamsBtn')?.addEventListener('click', renderPerformanceTeamPreview);
+  $$('input[name="grouping_creator"]').forEach(input => input.addEventListener('change', () => {
+    clearImportedPerformanceGroups();
+    performanceTeamOrders.clear();
+    performanceLeaderSelections.clear();
+    performanceGroupingDirty = true;
+    performanceLeaderDirty = false;
+    syncPerformanceTeamOptions();
+    populatePastPerformanceGroupSources();
+    renderPerformanceTeamPreview();
+  }));
+  $('#performanceGroupCount')?.addEventListener('input', () => {
+    const sectionIds = selectedPerformanceSections();
+    clearImportedPerformanceGroups(sectionIds);
+    clearLeaderSelectionsForSections(sectionIds);
+    performanceGroupingDirty = true;
+    performanceLeaderDirty = false;
+    renderPerformanceTeamPreview();
+  });
+  $('#performanceSectionChecklist')?.addEventListener('change', () => {
+    populatePastPerformanceGroupSources();
+    renderPerformanceTeamPreview();
+  });
+  $('#generatePerformanceTeamsBtn')?.addEventListener('click', generatePerformanceTeams);
   $('#reshufflePerformanceTeamsBtn')?.addEventListener('click', reshufflePerformanceTeams);
+  $('#importPastPerformanceGroupsBtn')?.addEventListener('click', importPastPerformanceGroups);
   $('#performanceImages')?.addEventListener('change', event => {
     const files = [...(event.currentTarget.files || [])].slice(0, 8);
     $('#performanceImagePreview').innerHTML = files.map((file,i)=>`<figure><img src="${URL.createObjectURL(file)}" alt="Selected task picture ${i+1}"><figcaption>${esc(file.name)}</figcaption></figure>`).join('');
@@ -626,7 +875,16 @@
       }).eq('id', task.id);
       if (update.error) throw update.error;
       const freshTask = { ...task, collaboration_mode:nextMode, grouping_creator:nextCreator, group_count:nextGroupCount };
-      if ((setupChanged || performanceGroupingDirty) && freshTask.collaboration_mode !== 'individual' && freshTask.grouping_creator === 'teacher') await applyStoredPerformanceGrouping(freshTask);
+      if ((setupChanged || performanceGroupingDirty) && freshTask.collaboration_mode !== 'individual' && freshTask.grouping_creator === 'teacher') {
+        await applyStoredPerformanceGrouping(freshTask);
+      } else if (performanceLeaderDirty && freshTask.collaboration_mode !== 'individual' && freshTask.grouping_creator === 'teacher') {
+        const leaders = leaderAssignmentsForSection(task.section_id, nextMode, nextGroupCount);
+        const leaderUpdate = await db.rpc('mathside_set_performance_group_leaders', {
+          p_assignment_id: task.id,
+          p_leaders: leaders
+        });
+        if (leaderUpdate.error) throw leaderUpdate.error;
+      }
     } catch (error) {
       if (uploaded.length) await removeStoragePaths('mathside-assignment-images', uploaded);
       throw error;
@@ -948,8 +1206,7 @@
     const box = $('#performancePreviewTeamManager');
     if (!box) return;
     const relevant = (linkedTasks || []).filter(task =>
-      (task.collaboration_mode || 'individual') !== 'individual' &&
-      (task.grouping_creator || 'teacher') === 'students'
+      (task.collaboration_mode || 'individual') !== 'individual'
     );
     if (!relevant.length) {
       box.hidden = true;
@@ -963,11 +1220,12 @@
         task,
         data: await getTeacherPerformanceGroups(task.id)
       })));
-      box.innerHTML = `<div class="performance-team-manager-head"><div><p class="eyebrow">TEAM LEADERS</p><h3>Choose the leader for each student-created team</h3><p>Students may form their own pair or group, but no one can submit until you choose a leader.</p></div></div>${rows.map(({task,data}) => {
+      box.innerHTML = `<div class="performance-team-manager-head"><div><p class="eyebrow">TEAM LEADERS</p><h3>Edit group leaders</h3><p>You can change a group leader even after the Performance Task has been posted. Group members stay unchanged.</p></div></div>${rows.map(({task,data}) => {
         const section = sectionById(task.section_id);
         const groups = Array.isArray(data.groups) ? data.groups : [];
         const ungrouped = Array.isArray(data.ungrouped) ? data.ungrouped : [];
-        return `<section class="performance-formed-team-section" data-team-manager-assignment="${esc(task.id)}"><div class="performance-formed-team-section-head"><div><b>${esc(section?.name || 'Class')}</b><small>Grade ${esc(section?.grade_level || '')}</small></div><span>${groups.length} team${groups.length===1?'':'s'} formed</span></div>${groups.length ? `<div class="performance-formed-team-grid">${groups.map(group => {
+        const creatorLabel = (task.grouping_creator || 'teacher') === 'teacher' ? 'Teacher-created groups' : 'Student-created groups';
+        return `<section class="performance-formed-team-section" data-team-manager-assignment="${esc(task.id)}"><div class="performance-formed-team-section-head"><div><b>${esc(section?.name || 'Class')}</b><small>Grade ${esc(section?.grade_level || '')} · ${esc(creatorLabel)}</small></div><span>${groups.length} team${groups.length===1?'':'s'} formed</span></div>${groups.length ? `<div class="performance-formed-team-grid">${groups.map(group => {
           const members = Array.isArray(group.members) ? group.members : [];
           return `<article class="performance-formed-team-card"><div class="performance-formed-team-title"><b>${esc(group.name || 'Team')}</b>${group.leader_id ? '<span>Leader selected</span>' : '<span class="needs-leader">Needs leader</span>'}</div><label class="performance-leader-picker"><span>Team leader</span><select data-student-team-leader-select data-assignment-id="${esc(task.id)}" data-group-id="${esc(group.id)}"><option value="">Choose leader</option>${members.map(member => `<option value="${esc(member.id)}" ${member.id===group.leader_id?'selected':''}>${esc(member.display_name || 'Student')}</option>`).join('')}</select></label><div class="performance-team-members">${members.map(member => `<span>${member.id===group.leader_id?'<strong>Leader</strong> ':''}${esc(member.display_name || 'Student')}</span>`).join('')}</div></article>`;
         }).join('')}</div>` : '<p class="muted performance-no-formed-teams">No teams have been formed in this class yet.</p>'}${ungrouped.length ? `<div class="performance-ungrouped-students"><b>Still without a team</b><span>${ungrouped.map(student => esc(student.display_name || 'Student')).join(', ')}</span></div>` : ''}</section>`;
@@ -991,6 +1249,7 @@
       if (!byAssignment.has(assignmentId)) byAssignment.set(assignmentId, []);
       byAssignment.get(assignmentId).push({ group_id: select.dataset.groupId, leader_id: select.value });
     });
+    if (!window.MathsideActionButton?.start(btn, 'Saving…')) return;
     try {
       await withLoading('Saving team leaders…','Updating who can submit each team output.', async () => {
         for (const [assignmentId, leaders] of byAssignment.entries()) {
@@ -998,11 +1257,13 @@
           if (result.error) throw result.error;
         }
       });
+      await window.MathsideActionButton.done(btn, 'Done');
       toast('Team leaders saved. The selected leaders can now submit.', 'success');
       const activeTask = assignmentById(activePerformanceTaskId);
       const group = activeTask ? performanceGroupForId(activeTask.id) : [];
       await renderStudentCreatedTeamLeaderManager(group.length ? group : (activeTask ? [activeTask] : []));
     } catch (error) {
+      window.MathsideActionButton?.reset(btn);
       console.error(error);
       toast(friendlyErrorMessage(error, 'Could not save the team leaders.'), 'orange');
     }

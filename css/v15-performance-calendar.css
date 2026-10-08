@@ -1213,3 +1213,24 @@
   .performance-grouping-action-row { display:grid; grid-template-columns:1fr; }
   .performance-grouping-action-row .btn { width:100%; }
 }
+
+/* V24.9 — import past groups */
+.performance-import-groups-row{
+  width:100%;
+  display:grid;
+  grid-template-columns:minmax(220px,1fr) auto;
+  gap:10px;
+  align-items:end;
+  padding:12px;
+  border:1px solid #ead7c8;
+  border-radius:14px;
+  background:#fff;
+}
+.performance-import-groups-row label{display:grid;gap:6px;min-width:0}
+.performance-import-groups-row label>span{font-size:.78rem;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:#6f6259}
+.performance-import-groups-row select{width:100%;min-height:42px}
+.performance-import-groups-row .btn{min-height:42px;white-space:nowrap}
+@media (max-width:700px){
+  .performance-import-groups-row{grid-template-columns:1fr}
+  .performance-import-groups-row .btn{width:100%}
+}

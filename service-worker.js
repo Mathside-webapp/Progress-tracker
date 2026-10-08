@@ -1,8 +1,8 @@
-/* Mathside PWA — V24.8 Archive Center
+/* Mathside PWA — V24.10 Separate Performance Task Class Record
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-v24-10-cleanup-background-only';
+const CACHE_NAME = 'mathside-v24-10-performance-record';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -24,15 +24,15 @@ const APP_SHELL = [
   './js/config.js',
   './js/app.js?v=16.4',
   './js/student-v8.js?v=15.1',
-  './js/v10-features.js?v=15.5',
+  './js/v10-features.js?v=15.6',
   './js/design-v9.js?v=9',
   './js/pwa.js?v=6.9.15',
   './js/push-notifications.js?v=6.10',
   './css/v12-archive-features.css?v=12.4',
   './css/v14-layout-fixes.css?v=14.0',
-  './css/v15-performance-calendar.css?v=15.10',
+  './css/v15-performance-calendar.css?v=15.11',
   './js/v12-archive-features.js?v=15.7',
-  './js/v15-performance-tasks.js?v=15.17'
+  './js/v15-performance-tasks.js?v=15.18'
 ];
 
 self.addEventListener('install', (event) => {

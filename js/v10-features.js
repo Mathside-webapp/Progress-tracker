@@ -626,40 +626,86 @@
     openDialog('classRecordExportModal');
   }
 
-  async function exportClassRecord() {
-    if (!window.ExcelJS) return toast('Excel export library is not available.', 'orange', 'Export unavailable');
-    const section = sectionById(activeRosterSectionId);
-    if (!section) return toast('Open a class roster first.', 'orange', 'Choose a class');
+  const performanceRatingDeduction = rating => ({ 5: 0, 4: 2, 3: 3, 2: 4, 1: 5 }[Number(rating)] ?? null);
 
-    const students = studentsForSection(section.id).slice().sort((a, b) => {
-      const genderDifference = classRecordGenderRank(a.gender) - classRecordGenderRank(b.gender);
-      if (genderDifference) return genderDifference;
-      return String(a.display_name || '').localeCompare(String(b.display_name || ''), undefined, { sensitivity: 'base' });
-    });
-    const assignments = state.assignments
-      // Keep archived graded work in the class record so archiving never removes
-      // a learner's earned score from the exported record.
-      .filter(a => a.section_id === section.id && (a.status === 'published' || a.status === 'archived'))
-      .sort((a,b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+  function submissionNumericScore(submission, { performanceTask = false } = {}) {
+    if (!submission) return null;
+    if (performanceTask) {
+      if (submission.status !== 'graded' || submission.teacher_score === null || submission.teacher_score === undefined || submission.teacher_score === '') return null;
+      const score = Number(submission.teacher_score);
+      return Number.isFinite(score) ? score : null;
+    }
+    const rawScore = submission.status === 'graded'
+      ? (submission.teacher_score ?? submission.auto_score)
+      : submission.auto_score;
+    if (rawScore === null || rawScore === undefined || rawScore === '') return null;
+    const score = Number(rawScore);
+    return Number.isFinite(score) ? score : null;
+  }
 
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Mathside';
-    workbook.created = new Date();
-    const sheet = workbook.addWorksheet('Class Record', {
-      views: [{ state: 'frozen', xSplit: 2, ySplit: 4 }]
-    });
+  async function loadPerformanceTaskExportData(performanceAssignments) {
+    const result = new Map();
+    for (const assignment of performanceAssignments) {
+      if ((assignment.collaboration_mode || 'individual') === 'individual') {
+        result.set(assignment.id, { groups: [], ratingsByGroup: new Map() });
+        continue;
+      }
 
-    const totalItemCount = assignments.reduce((sum, assignment) => {
-      if (isPerformanceTask(assignment)) return sum + 1;
-      return sum + questionsFor(assignment.id).length;
-    }, 0);
-    const totalPossiblePoints = assignments.reduce((sum, assignment) => sum + Number(totalPoints(assignment.id) || 0), 0);
-    const totalColumns = Math.max(3, 3 + assignments.length);
-    const lastAssignmentColumnNumber = 2 + assignments.length;
-    const totalScoreColumnNumber = 3 + assignments.length;
-    const lastColumn = sheet.getColumn(totalColumns).letter;
-    const title = `Mathside Class Record — ${section.name}`;
+      const groupsResult = await db.rpc('mathside_get_performance_groups_for_teacher', { p_assignment_id: assignment.id });
+      if (groupsResult.error) throw groupsResult.error;
+      const groups = Array.isArray(groupsResult.data?.groups) ? groupsResult.data.groups : [];
+      const ratingsByGroup = new Map();
 
+      await Promise.all(groups.map(async group => {
+        const ratingsResult = await db.rpc('mathside_get_participation_ratings', {
+          p_assignment_id: assignment.id,
+          p_group_id: group.id
+        });
+        if (ratingsResult.error) throw ratingsResult.error;
+        ratingsByGroup.set(group.id, new Map(
+          (Array.isArray(ratingsResult.data) ? ratingsResult.data : [])
+            .map(row => [String(row.member_id || ''), Number(row.rating || 0)])
+        ));
+      }));
+
+      result.set(assignment.id, { groups, ratingsByGroup });
+    }
+    return result;
+  }
+
+  function performanceTaskExportScore(assignment, studentId, performanceData) {
+    const ownSubmission = state.submissions.find(s => s.assignment_id === assignment.id && s.student_id === studentId);
+    if ((assignment.collaboration_mode || 'individual') === 'individual') {
+      if (!ownSubmission) return { value: '—', note: '' };
+      const score = submissionNumericScore(ownSubmission, { performanceTask: true });
+      return score === null ? { value: 'Pending', note: '' } : { value: score, note: 'Individual performance task score.' };
+    }
+
+    const assignmentData = performanceData.get(assignment.id) || { groups: [], ratingsByGroup: new Map() };
+    const group = assignmentData.groups.find(item => (item.members || []).some(member => String(member.id) === String(studentId)));
+    if (!group) return { value: '—', note: 'No saved team was found for this learner.' };
+
+    const leaderId = String(group.leader_id || '');
+    const leaderSubmission = state.submissions.find(s => s.assignment_id === assignment.id && String(s.student_id) === leaderId);
+    if (!leaderSubmission) return { value: '—', note: `${group.name || 'Team'} has no leader submission yet.` };
+
+    const leaderScore = submissionNumericScore(leaderSubmission, { performanceTask: true });
+    if (leaderScore === null) return { value: 'Pending', note: 'The team leader submission has not been graded yet.' };
+    if (String(studentId) === leaderId) {
+      return { value: leaderScore, note: `Team leader — full teacher-given grade (${leaderScore}).` };
+    }
+
+    const rating = assignmentData.ratingsByGroup.get(group.id)?.get(String(studentId));
+    const deduction = performanceRatingDeduction(rating);
+    if (deduction === null) return { value: 'Not rated', note: 'The team leader has not saved a participation rating for this member yet.' };
+    const adjustedScore = Math.max(0, leaderScore - deduction);
+    return {
+      value: adjustedScore,
+      note: `Leader score ${leaderScore} − ${deduction} point${deduction === 1 ? '' : 's'} for participation rating ${rating}/5 = ${adjustedScore}.`
+    };
+  }
+
+  function styleRecordTitle(sheet, lastColumn, title, section) {
     sheet.mergeCells(`A1:${lastColumn}1`);
     const titleCell = sheet.getCell('A1');
     titleCell.value = title;
@@ -675,165 +721,259 @@
     infoCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
     infoCell.alignment = { vertical: 'middle', horizontal: 'left' };
     sheet.getRow(2).height = 22;
+  }
 
-    sheet.mergeCells(`A3:${lastColumn}3`);
-    const summaryCell = sheet.getCell('A3');
-    summaryCell.value = `Activities / tasks: ${assignments.length}   •   Total items: ${totalItemCount}   •   Total possible score: ${totalPossiblePoints}`;
-    summaryCell.font = { bold: true, color: { argb: 'FF334155' } };
-    summaryCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-    summaryCell.alignment = { vertical: 'middle', horizontal: 'left' };
-    sheet.getRow(3).height = 21;
+  async function exportClassRecord() {
+    if (!window.ExcelJS) return toast('Excel export library is not available.', 'orange', 'Export unavailable');
+    const section = sectionById(activeRosterSectionId);
+    if (!section) return toast('Open a class roster first.', 'orange', 'Choose a class');
 
-    const headers = [
-      'Student Name',
-      'Gender',
-      ...assignments.map(a => {
-        const items = isPerformanceTask(a) ? 1 : questionsFor(a.id).length;
-        const itemLabel = isPerformanceTask(a) ? 'task' : `${items} item${items === 1 ? '' : 's'}`;
-        return `${a.title}\n(${itemLabel} · ${totalPoints(a.id)} pts)`;
-      }),
-      `Total Score\n(/ ${totalPossiblePoints})`
-    ];
-    const headerRow = sheet.getRow(4);
-    headerRow.values = headers;
-    headerRow.height = 38;
-    headerRow.eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D3748' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    const students = studentsForSection(section.id).slice().sort((a, b) => {
+      const genderDifference = classRecordGenderRank(a.gender) - classRecordGenderRank(b.gender);
+      if (genderDifference) return genderDifference;
+      return String(a.display_name || '').localeCompare(String(b.display_name || ''), undefined, { sensitivity: 'base' });
     });
-
-    const thinBorder = {
-      top: { style: 'thin', color: { argb: 'FFB8B8B8' } },
-      left: { style: 'thin', color: { argb: 'FFB8B8B8' } },
-      bottom: { style: 'thin', color: { argb: 'FFB8B8B8' } },
-      right: { style: 'thin', color: { argb: 'FFB8B8B8' } }
-    };
-
-    let rowNumber = 5;
-    let currentGroup = null;
-    students.forEach(student => {
-      const rank = classRecordGenderRank(student.gender);
-      const group = rank === 0 ? 'MALE' : rank === 1 ? 'FEMALE' : 'OTHER / NOT SPECIFIED';
-      if (group !== currentGroup) {
-        currentGroup = group;
-        sheet.mergeCells(`A${rowNumber}:${lastColumn}${rowNumber}`);
-        const groupCell = sheet.getCell(`A${rowNumber}`);
-        groupCell.value = group;
-        groupCell.font = { bold: true, color: { argb: rank === 0 ? 'FF174A7E' : rank === 1 ? 'FF8C2458' : 'FF5B5B5B' } };
-        groupCell.fill = {
-          type: 'pattern', pattern: 'solid',
-          fgColor: { argb: rank === 0 ? 'FFDCEEFF' : rank === 1 ? 'FFFCE1EE' : 'FFECECEC' }
-        };
-        groupCell.alignment = { vertical: 'middle', horizontal: 'left' };
-        for (let col = 1; col <= totalColumns; col += 1) sheet.getCell(rowNumber, col).border = thinBorder;
-        rowNumber += 1;
-      }
-
-      const scoreValues = assignments.map(a => {
-        const sub = state.submissions.find(s => s.assignment_id === a.id && s.student_id === student.id);
-        if (!sub) return '—';
-        const rawScore = sub.status === 'graded'
-          ? (sub.teacher_score ?? sub.auto_score)
-          : sub.auto_score;
-        if (rawScore === null || rawScore === undefined || rawScore === '') return 'Pending';
-        const numericScore = Number(rawScore);
-        return Number.isFinite(numericScore) ? numericScore : rawScore;
-      });
-
-      // Write the total as an actual number instead of an unevaluated Excel
-      // formula. Mobile spreadsheet previews often do not recalculate formulas,
-      // which made the Total Score column appear blank or 0 after download.
-      const totalEarned = scoreValues.reduce((sum, value) => {
-        const numeric = typeof value === 'number' ? value : Number.NaN;
-        return Number.isFinite(numeric) ? sum + numeric : sum;
-      }, 0);
-      const row = sheet.getRow(rowNumber);
-      row.values = [student.display_name || '', classRecordGenderLabel(student.gender), ...scoreValues, totalEarned];
-      row.getCell(totalScoreColumnNumber).font = { bold: true, color: { argb: 'FF7C2D00' } };
-      row.getCell(totalScoreColumnNumber).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
-      row.height = 22;
-      row.eachCell((cell, colNumber) => {
-        cell.border = thinBorder;
-        cell.alignment = {
-          vertical: 'middle',
-          horizontal: colNumber <= 2 ? 'left' : 'center',
-          wrapText: true
-        };
-        if (colNumber >= 3) {
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFAF5' } };
-        }
-      });
-      const genderCell = row.getCell(2);
-      genderCell.fill = {
-        type: 'pattern', pattern: 'solid',
-        fgColor: { argb: rank === 0 ? 'FFF0F7FF' : rank === 1 ? 'FFFFF1F7' : 'FFF5F5F5' }
-      };
-      rowNumber += 1;
-    });
-
-    // Borders for the header row and a short legend under the record.
-    headerRow.eachCell(cell => { cell.border = thinBorder; });
-    rowNumber += 1;
-    sheet.mergeCells(`A${rowNumber}:${lastColumn}${rowNumber}`);
-    const legendCell = sheet.getCell(`A${rowNumber}`);
-    legendCell.value = '— = Not submitted   •   Pending = Submitted but not yet scored';
-    legendCell.font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
-    legendCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-    legendCell.border = thinBorder;
-
-    sheet.getColumn(1).width = 34;
-    sheet.getColumn(2).width = 13;
-    for (let col = 3; col <= lastAssignmentColumnNumber; col += 1) sheet.getColumn(col).width = 22;
-    sheet.getColumn(totalScoreColumnNumber).width = 18;
-    sheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: totalColumns } };
-
-    // Keep the assignment reference sheet, but style it to match the class record.
-    const assignmentSheet = workbook.addWorksheet('Assignments');
-    assignmentSheet.columns = [
-      { header: 'Assignment', key: 'assignment', width: 38 },
-      { header: 'Items', key: 'items', width: 12 },
-      { header: 'Maximum Points', key: 'points', width: 18 },
-      { header: 'Deadline', key: 'deadline', width: 24 },
-      { header: 'Resubmission', key: 'resubmission', width: 18 }
-    ];
-    assignmentSheet.getRow(1).height = 26;
-    assignmentSheet.getRow(1).eachCell(cell => {
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B00' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-      cell.border = thinBorder;
-    });
-    assignments.forEach(a => {
-      const row = assignmentSheet.addRow({
-        assignment: a.title,
-        items: isPerformanceTask(a) ? 1 : questionsFor(a.id).length,
-        points: totalPoints(a.id),
-        deadline: a.due_at ? formatFullDate(a.due_at) : 'No deadline',
-        resubmission: a.allow_resubmission ? 'Allowed' : 'Not allowed'
-      });
-      row.eachCell(cell => {
-        cell.border = thinBorder;
-        cell.alignment = { vertical: 'middle', wrapText: true };
-      });
-    });
-    const assignmentTotalRow = assignmentSheet.addRow({ assignment: 'TOTAL', items: totalItemCount, points: totalPossiblePoints });
-    assignmentTotalRow.eachCell(cell => {
-      cell.border = thinBorder;
-      cell.font = { bold: true, color: { argb: 'FF7C2D00' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
-      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
-    });
-    assignmentSheet.views = [{ state: 'frozen', ySplit: 1 }];
+    const assignments = state.assignments
+      .filter(a => a.section_id === section.id && (a.status === 'published' || a.status === 'archived'))
+      .sort((a,b) => new Date(a.created_at || 0) - new Date(b.created_at || 0));
+    const writtenAssignments = assignments.filter(a => !isPerformanceTask(a));
+    const performanceAssignments = assignments.filter(a => isPerformanceTask(a));
 
     const exportButton = document.getElementById('exportClassRecordBtn');
     if (exportButton) exportButton.disabled = true;
     latestClassRecordExport = null;
+
     try {
       let buffer = null;
-      await withLoading('Preparing class record…', 'Calculating student totals and creating the Excel workbook.', async () => {
+      await withLoading('Preparing class record…', 'Creating separate Written Works and Performance Tasks sheets.', async () => {
+        const performanceData = await loadPerformanceTaskExportData(performanceAssignments);
+        const workbook = new ExcelJS.Workbook();
+        workbook.creator = 'Mathside';
+        workbook.created = new Date();
+
+        const thinBorder = {
+          top: { style: 'thin', color: { argb: 'FFB8B8B8' } },
+          left: { style: 'thin', color: { argb: 'FFB8B8B8' } },
+          bottom: { style: 'thin', color: { argb: 'FFB8B8B8' } },
+          right: { style: 'thin', color: { argb: 'FFB8B8B8' } }
+        };
+
+        // ----------------------------------------------------------
+        // WRITTEN WORKS SHEET — keeps the existing Total Score.
+        // ----------------------------------------------------------
+        const writtenSheet = workbook.addWorksheet('Written Works', {
+          views: [{ state: 'frozen', xSplit: 2, ySplit: 4 }]
+        });
+        const writtenItemCount = writtenAssignments.reduce((sum, assignment) => sum + questionsFor(assignment.id).length, 0);
+        const writtenPossiblePoints = writtenAssignments.reduce((sum, assignment) => sum + Number(totalPoints(assignment.id) || 0), 0);
+        const writtenTotalColumns = Math.max(3, 3 + writtenAssignments.length);
+        const writtenLastAssignmentColumn = 2 + writtenAssignments.length;
+        const writtenTotalScoreColumn = 3 + writtenAssignments.length;
+        const writtenLastColumn = writtenSheet.getColumn(writtenTotalColumns).letter;
+
+        styleRecordTitle(writtenSheet, writtenLastColumn, `Mathside Written Works — ${section.name}`, section);
+        writtenSheet.mergeCells(`A3:${writtenLastColumn}3`);
+        const writtenSummary = writtenSheet.getCell('A3');
+        writtenSummary.value = `Written works: ${writtenAssignments.length}   •   Total items: ${writtenItemCount}   •   Total possible score: ${writtenPossiblePoints}`;
+        writtenSummary.font = { bold: true, color: { argb: 'FF334155' } };
+        writtenSummary.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        writtenSummary.alignment = { vertical: 'middle', horizontal: 'left' };
+        writtenSheet.getRow(3).height = 21;
+
+        const writtenHeaders = [
+          'Student Name',
+          'Gender',
+          ...writtenAssignments.map(a => {
+            const items = questionsFor(a.id).length;
+            return `${a.title}\n(${items} item${items === 1 ? '' : 's'} · ${totalPoints(a.id)} pts)`;
+          }),
+          `Total Score\n(/ ${writtenPossiblePoints})`
+        ];
+        const writtenHeaderRow = writtenSheet.getRow(4);
+        writtenHeaderRow.values = writtenHeaders;
+        writtenHeaderRow.height = 38;
+        writtenHeaderRow.eachCell(cell => {
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D3748' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          cell.border = thinBorder;
+        });
+
+        let writtenRowNumber = 5;
+        let writtenCurrentGroup = null;
+        students.forEach(student => {
+          const rank = classRecordGenderRank(student.gender);
+          const genderGroup = rank === 0 ? 'MALE' : rank === 1 ? 'FEMALE' : 'OTHER / NOT SPECIFIED';
+          if (genderGroup !== writtenCurrentGroup) {
+            writtenCurrentGroup = genderGroup;
+            writtenSheet.mergeCells(`A${writtenRowNumber}:${writtenLastColumn}${writtenRowNumber}`);
+            const groupCell = writtenSheet.getCell(`A${writtenRowNumber}`);
+            groupCell.value = genderGroup;
+            groupCell.font = { bold: true, color: { argb: rank === 0 ? 'FF174A7E' : rank === 1 ? 'FF8C2458' : 'FF5B5B5B' } };
+            groupCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rank === 0 ? 'FFDCEEFF' : rank === 1 ? 'FFFCE1EE' : 'FFECECEC' } };
+            groupCell.alignment = { vertical: 'middle', horizontal: 'left' };
+            for (let col = 1; col <= writtenTotalColumns; col += 1) writtenSheet.getCell(writtenRowNumber, col).border = thinBorder;
+            writtenRowNumber += 1;
+          }
+
+          const scoreValues = writtenAssignments.map(a => {
+            const sub = state.submissions.find(s => s.assignment_id === a.id && s.student_id === student.id);
+            if (!sub) return '—';
+            const numericScore = submissionNumericScore(sub);
+            if (numericScore !== null) return numericScore;
+            return sub.status === 'graded' ? 'Pending' : (sub.auto_score === null || sub.auto_score === undefined ? 'Pending' : Number(sub.auto_score));
+          });
+          const totalEarned = scoreValues.reduce((sum, value) => typeof value === 'number' && Number.isFinite(value) ? sum + value : sum, 0);
+          const row = writtenSheet.getRow(writtenRowNumber);
+          row.values = [student.display_name || '', classRecordGenderLabel(student.gender), ...scoreValues, totalEarned];
+          row.getCell(writtenTotalScoreColumn).font = { bold: true, color: { argb: 'FF7C2D00' } };
+          row.getCell(writtenTotalScoreColumn).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
+          row.height = 22;
+          row.eachCell((cell, colNumber) => {
+            cell.border = thinBorder;
+            cell.alignment = { vertical: 'middle', horizontal: colNumber <= 2 ? 'left' : 'center', wrapText: true };
+            if (colNumber >= 3 && colNumber !== writtenTotalScoreColumn) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFAF5' } };
+          });
+          row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rank === 0 ? 'FFF0F7FF' : rank === 1 ? 'FFFFF1F7' : 'FFF5F5F5' } };
+          writtenRowNumber += 1;
+        });
+
+        writtenRowNumber += 1;
+        writtenSheet.mergeCells(`A${writtenRowNumber}:${writtenLastColumn}${writtenRowNumber}`);
+        const writtenLegend = writtenSheet.getCell(`A${writtenRowNumber}`);
+        writtenLegend.value = '— = Not submitted   •   Pending = Submitted but not yet scored';
+        writtenLegend.font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
+        writtenLegend.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        writtenLegend.border = thinBorder;
+        writtenSheet.getColumn(1).width = 34;
+        writtenSheet.getColumn(2).width = 13;
+        for (let col = 3; col <= writtenLastAssignmentColumn; col += 1) writtenSheet.getColumn(col).width = 22;
+        writtenSheet.getColumn(writtenTotalScoreColumn).width = 18;
+        writtenSheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: writtenTotalColumns } };
+
+        // ----------------------------------------------------------
+        // PERFORMANCE TASKS SHEET — deliberately has NO Total Score.
+        // ----------------------------------------------------------
+        const performanceSheet = workbook.addWorksheet('Performance Tasks', {
+          views: [{ state: 'frozen', xSplit: 2, ySplit: 4 }]
+        });
+        const performanceTotalColumns = Math.max(2, 2 + performanceAssignments.length);
+        const performanceLastColumn = performanceSheet.getColumn(performanceTotalColumns).letter;
+        styleRecordTitle(performanceSheet, performanceLastColumn, `Mathside Performance Tasks — ${section.name}`, section);
+        performanceSheet.mergeCells(`A3:${performanceLastColumn}3`);
+        const performanceSummary = performanceSheet.getCell('A3');
+        performanceSummary.value = `Performance tasks: ${performanceAssignments.length}   •   Group scoring: leader keeps the teacher grade; members receive the leader grade minus the participation-rating deduction.`;
+        performanceSummary.font = { bold: true, color: { argb: 'FF334155' } };
+        performanceSummary.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        performanceSummary.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+        performanceSheet.getRow(3).height = 34;
+
+        const performanceHeaderRow = performanceSheet.getRow(4);
+        performanceHeaderRow.values = [
+          'Student Name',
+          'Gender',
+          ...performanceAssignments.map(a => `${a.title}\n(${totalPoints(a.id)} pts)`)
+        ];
+        performanceHeaderRow.height = 38;
+        performanceHeaderRow.eachCell(cell => {
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2D3748' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          cell.border = thinBorder;
+        });
+
+        let performanceRowNumber = 5;
+        let performanceCurrentGroup = null;
+        students.forEach(student => {
+          const rank = classRecordGenderRank(student.gender);
+          const genderGroup = rank === 0 ? 'MALE' : rank === 1 ? 'FEMALE' : 'OTHER / NOT SPECIFIED';
+          if (genderGroup !== performanceCurrentGroup) {
+            performanceCurrentGroup = genderGroup;
+            performanceSheet.mergeCells(`A${performanceRowNumber}:${performanceLastColumn}${performanceRowNumber}`);
+            const groupCell = performanceSheet.getCell(`A${performanceRowNumber}`);
+            groupCell.value = genderGroup;
+            groupCell.font = { bold: true, color: { argb: rank === 0 ? 'FF174A7E' : rank === 1 ? 'FF8C2458' : 'FF5B5B5B' } };
+            groupCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rank === 0 ? 'FFDCEEFF' : rank === 1 ? 'FFFCE1EE' : 'FFECECEC' } };
+            groupCell.alignment = { vertical: 'middle', horizontal: 'left' };
+            for (let col = 1; col <= performanceTotalColumns; col += 1) performanceSheet.getCell(performanceRowNumber, col).border = thinBorder;
+            performanceRowNumber += 1;
+          }
+
+          const scoreDetails = performanceAssignments.map(a => performanceTaskExportScore(a, student.id, performanceData));
+          const row = performanceSheet.getRow(performanceRowNumber);
+          row.values = [student.display_name || '', classRecordGenderLabel(student.gender), ...scoreDetails.map(item => item.value)];
+          row.height = 22;
+          row.eachCell((cell, colNumber) => {
+            cell.border = thinBorder;
+            cell.alignment = { vertical: 'middle', horizontal: colNumber <= 2 ? 'left' : 'center', wrapText: true };
+            if (colNumber >= 3) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFAF5' } };
+          });
+          scoreDetails.forEach((detail, index) => {
+            if (detail.note) row.getCell(index + 3).note = detail.note;
+          });
+          row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rank === 0 ? 'FFF0F7FF' : rank === 1 ? 'FFFFF1F7' : 'FFF5F5F5' } };
+          performanceRowNumber += 1;
+        });
+
+        performanceRowNumber += 1;
+        performanceSheet.mergeCells(`A${performanceRowNumber}:${performanceLastColumn}${performanceRowNumber}`);
+        const performanceLegend = performanceSheet.getCell(`A${performanceRowNumber}`);
+        performanceLegend.value = 'Participation deduction: Rating 5 = 0 points • 4 = 2 points • 3 = 3 points • 2 = 4 points • 1 = 5 points. Scores cannot go below 0.';
+        performanceLegend.font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
+        performanceLegend.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        performanceLegend.border = thinBorder;
+        performanceLegend.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+        performanceSheet.getRow(performanceRowNumber).height = 32;
+        performanceRowNumber += 1;
+        performanceSheet.mergeCells(`A${performanceRowNumber}:${performanceLastColumn}${performanceRowNumber}`);
+        const statusLegend = performanceSheet.getCell(`A${performanceRowNumber}`);
+        statusLegend.value = '— = No team/submission   •   Pending = Leader submission not yet graded   •   Not rated = Leader has not saved that member’s participation rating';
+        statusLegend.font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
+        statusLegend.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+        statusLegend.border = thinBorder;
+        statusLegend.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+        performanceSheet.getRow(performanceRowNumber).height = 32;
+        performanceSheet.getColumn(1).width = 34;
+        performanceSheet.getColumn(2).width = 13;
+        for (let col = 3; col <= performanceTotalColumns; col += 1) performanceSheet.getColumn(col).width = 22;
+        performanceSheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: performanceTotalColumns } };
+
+        // Reference sheet for all work in the class.
+        const assignmentSheet = workbook.addWorksheet('Assignments');
+        assignmentSheet.columns = [
+          { header: 'Type', key: 'type', width: 20 },
+          { header: 'Assignment', key: 'assignment', width: 38 },
+          { header: 'Items', key: 'items', width: 12 },
+          { header: 'Maximum Points', key: 'points', width: 18 },
+          { header: 'Deadline', key: 'deadline', width: 24 },
+          { header: 'Resubmission', key: 'resubmission', width: 18 }
+        ];
+        assignmentSheet.getRow(1).height = 26;
+        assignmentSheet.getRow(1).eachCell(cell => {
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF6B00' } };
+          cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+          cell.border = thinBorder;
+        });
+        assignments.forEach(a => {
+          const row = assignmentSheet.addRow({
+            type: isPerformanceTask(a) ? 'Performance Task' : 'Written Work',
+            assignment: a.title,
+            items: isPerformanceTask(a) ? 1 : questionsFor(a.id).length,
+            points: totalPoints(a.id),
+            deadline: a.due_at ? formatFullDate(a.due_at) : 'No deadline',
+            resubmission: a.allow_resubmission ? 'Allowed' : 'Not allowed'
+          });
+          row.eachCell(cell => {
+            cell.border = thinBorder;
+            cell.alignment = { vertical: 'middle', wrapText: true };
+          });
+        });
+        assignmentSheet.views = [{ state: 'frozen', ySplit: 1 }];
+
         buffer = await workbook.xlsx.writeBuffer();
       });
+
       latestClassRecordExport = {
         blob: new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
         filename: `Mathside-${safeFilename(section.name)}-Grade-${section.grade_level}-Class-Record-${classRecordTimestamp()}.xlsx`
@@ -842,7 +982,7 @@
       toast('Class record is ready to download.', 'success', 'Export ready');
     } catch (error) {
       console.error('Class record export failed:', error);
-      toast('Could not create the Excel class record.', 'orange', 'Export failed');
+      toast(friendlyErrorMessage(error, 'Could not create the Excel class record.'), 'orange', 'Export failed');
     } finally {
       if (exportButton) exportButton.disabled = false;
     }

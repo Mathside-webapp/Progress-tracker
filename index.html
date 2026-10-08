@@ -20,7 +20,7 @@
   <link rel="stylesheet" href="css/v10-features.css?v=11.5">
   <link rel="stylesheet" href="css/v12-archive-features.css?v=12.4" />
   <link rel="stylesheet" href="css/v14-layout-fixes.css?v=14.0" />
-  <link rel="stylesheet" href="css/v15-performance-calendar.css?v=15.10" />
+  <link rel="stylesheet" href="css/v15-performance-calendar.css?v=15.11" />
 </head>
 <body>
   <div id="appLoading" class="app-loading" hidden>
@@ -228,6 +228,7 @@
           </div>
           <div id="performanceTaskList" class="assignment-list"></div>
         </section>
+
         <section class="app-view" id="view-archive">
           <div class="section-row"><div><p class="eyebrow">ARCHIVE CENTER</p><h2>Archived</h2><p class="muted">Archived classes, activities, and performance tasks are kept here and hidden from their regular panels.</p></div><button class="btn btn-light compact-filter-button" id="archiveFilterBtn" type="button" aria-expanded="false" aria-controls="archiveFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="archiveFilterBadge" class="filter-count-badge" hidden>0</span></button></div>
           <div class="archive-summary-grid" aria-label="Archive summary">
@@ -696,7 +697,11 @@
           <div id="performanceGroupingOptions" class="performance-grouping-options" hidden>
             <div><p class="field-label">Who creates the teams?</p><div class="performance-creator-options"><label><input type="radio" name="grouping_creator" value="teacher" checked><span>Teacher creates teams</span></label><label><input type="radio" name="grouping_creator" value="students"><span>Students create their teams</span></label></div></div>
             <label id="performanceGroupCountWrap" hidden>How many groups per class?<input id="performanceGroupCount" name="group_count" type="number" min="1" step="1" value="4"><small>Mathside will distribute students as evenly as possible.</small></label>
-            <div id="performanceTeacherGroupingTools" class="performance-grouping-tools"><div class="performance-grouping-action-row"><button type="button" class="btn btn-light" id="generatePerformanceTeamsBtn">Generate team preview</button><button type="button" class="btn btn-orange" id="reshufflePerformanceTeamsBtn">Reshuffle Groups</button></div><p class="muted">Preview each class, reshuffle when needed, then choose the leader for every pair or group before posting.</p></div>
+            <div id="performanceTeacherGroupingTools" class="performance-grouping-tools">
+              <div class="performance-grouping-action-row"><button type="button" class="btn btn-light" id="generatePerformanceTeamsBtn">Generate team preview</button><button type="button" class="btn btn-orange" id="reshufflePerformanceTeamsBtn">Reshuffle Groups</button></div>
+              <div class="performance-import-groups-row"><label><span>Reuse a past grouping</span><select id="pastPerformanceGroupSource"><option value="">Choose a past performance task</option></select></label><button type="button" class="btn btn-light" id="importPastPerformanceGroupsBtn">Import Groups</button></div>
+              <p class="muted">Preview each class, import groups from a past Performance Task or reshuffle, then choose the leader for every pair or group before posting.</p>
+            </div>
             <div id="performanceTeamPreview" class="performance-team-preview"></div>
           </div>
         </section>
@@ -947,11 +952,11 @@
   <script id="mathliveScript" defer src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
   <script src="js/app.js?v=16.4"></script>
   <script src="js/student-v8.js?v=15.1"></script>
-  <script src="js/v10-features.js?v=15.5"></script>
+  <script src="js/v10-features.js?v=15.6"></script>
 <script src="js/design-v9.js?v=9"></script>
   <script src="js/pwa.js?v=6.9.15"></script>
   <script src="js/push-notifications.js?v=6.10"></script>
   <script src="js/v12-archive-features.js?v=15.7"></script>
-  <script src="js/v15-performance-tasks.js?v=15.17"></script>
+  <script src="js/v15-performance-tasks.js?v=15.18"></script>
 </body>
 </html>
