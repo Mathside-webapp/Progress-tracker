@@ -495,28 +495,3 @@
   .camera-stage .camera-scan-assist small{font-size:8.5px!important}
   .camera-stage .camera-scan-assist .camera-scan-assist-icon{width:28px!important;height:28px!important;font-size:15px!important}
 }
-
-.review-bulk-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:7px}.review-bulk-actions button{min-height:34px;padding:8px 14px}.review-bulk-actions span{font-weight:700;font-size:12px}
-
-/* Comfortable spacing for the Confirm All dialog */
-.confirm-all-dialog{padding:24px 28px 20px}
-.confirm-all-dialog h3{margin:0 0 14px}
-.confirm-all-dialog p{margin:0 0 22px;line-height:1.5}
-.confirm-all-dialog .modal-actions{padding:8px 0 0}
-@media(max-width:520px){.confirm-all-dialog{padding:22px 20px 18px}.confirm-all-dialog .modal-actions{flex-wrap:wrap}}
-
-/* GradeDock v3.20 roster and archive panels */
-.gd-flex-buttons{display:flex;gap:8px}.gd-flex-buttons .btn:first-child{flex:1}.gd-archive-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.gd-archive-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--line)}.gd-archive-row strong,.gd-archive-row small{display:block}.gd-archive-row small{font-size:11px;color:var(--muted);margin-top:4px}.gd-roster-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px}.gd-roster-preview{padding:0 22px 16px;display:flex;gap:7px;flex-wrap:wrap}.gd-roster-preview span{background:var(--blueSoft);border-radius:8px;padding:6px 9px;font-size:11px}.gd-roster-top{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:0 12px}.gd-roster-top .form-stack{align-content:start}.gd-roster-top textarea{width:100%;resize:vertical;border:1px solid #d8deea;border-radius:10px;padding:10px;font:inherit}.gd-roster-top .form-grid{padding:0}.gd-roster-heading{padding:14px 22px;font-weight:800;border-top:1px solid var(--line)}.gd-dialog{padding:26px 28px}.gd-dialog h3{margin:0 0 12px}.gd-dialog p{line-height:1.6;color:var(--muted)}.gd-dialog .modal-actions{padding:12px 0 0}.gd-roster-top .form-grid.two{grid-template-columns:1fr 1fr}@media(max-width:780px){.gd-archive-panels,.gd-roster-top{grid-template-columns:1fr}.gd-archive-row{flex-wrap:wrap}.gd-roster-top .form-stack{padding:12px}}
-
-/* SF1 import, roster picker and password visibility */
-.gd-sf1-import{display:flex;flex-direction:column;gap:12px;padding:18px;border:1px solid #dce2eb;border-radius:16px;background:#f8fafc;min-width:0}.gd-sf1-import p{margin:0;color:#64748b;font-size:.9rem}.gd-sf1-import input[type=file]{max-width:100%;font-size:.85rem}.gd-sf1-import .btn{align-self:flex-start}.gd-name-label{display:block;font-weight:600;font-size:.88rem;margin-bottom:5px}.scanned-name-wrap #gdScanRosterSelect{width:100%;margin-top:8px;padding:10px;border:1px solid #cad5e5;border-radius:10px;background:#fff}.scanned-name-wrap #scannedStudentName{width:100%}.auth-form label:has(.gd-password-eye){position:relative}.auth-form label:has(.gd-password-eye) input{padding-right:53px}.gd-password-eye{position:absolute;right:10px;bottom:9px;border:0;background:transparent;padding:6px 8px;cursor:pointer;font-size:1.15rem;border-radius:8px}.gd-password-eye:focus-visible{outline:2px solid #2563eb}.gd-sf1-import #gdSF1Info{color:#ad4424}
-
-/* V3.22 neutral outlined password-eye controls (same feel as Mathside, GradeDock blue/gray theme) */
-.auth-form label:has(.gd-password-eye){position:relative}
-.auth-form label:has(.gd-password-eye) input{padding-right:52px}
-.gd-password-eye{position:absolute;bottom:7px;right:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;padding:0;border:0!important;border-radius:8px;background:transparent!important;color:#64748b;font-size:0;box-shadow:none!important;line-height:1;transition:color .15s,background-color .15s}
-.gd-password-eye:hover{color:#2563eb;background:#eff6ff!important}
-.gd-password-eye:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
-.gd-password-eye svg{display:block;flex:0 0 20px;width:20px;height:20px;pointer-events:none}
-
-.gd-sf1-import .btn{margin-top:8px;margin-right:7px;display:inline-flex}
