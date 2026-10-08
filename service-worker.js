@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-v24-9-storage-cleanup';
+const CACHE_NAME = 'mathside-v24-10-cleanup-background-only';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -23,8 +23,6 @@ const APP_SHELL = [
   './css/v10-features.css?v=11.5',
   './js/config.js',
   './js/app.js?v=16.4',
-  './js/storage-cleanup.js?v=1',
-  './css/storage-cleanup.css?v=1',
   './js/student-v8.js?v=15.1',
   './js/v10-features.js?v=15.5',
   './js/design-v9.js?v=9',
