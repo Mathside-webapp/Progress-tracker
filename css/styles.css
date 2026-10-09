@@ -520,3 +520,14 @@
 .gd-password-eye svg{display:block;flex:0 0 20px;width:20px;height:20px;pointer-events:none}
 
 .gd-sf1-import .btn{margin-top:8px;margin-right:7px;display:inline-flex}
+
+.gd-bulk-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 0 18px;padding:14px;background:#f3f5f7;border:1px solid #d6dbe1;border-radius:12px}
+.gd-select{display:inline-flex!important;align-items:center;gap:8px;font-size:13px;white-space:nowrap;margin:0 0 8px}
+.gd-select input{width:18px!important;height:18px;min-height:0;padding:0;accent-color:#7c243a}
+.gd-import-preview{max-height:45vh;overflow:auto;border:1px solid #ddd;border-radius:10px;margin:16px 0}
+.gd-import-preview table{width:100%;border-collapse:collapse}.gd-import-preview th,.gd-import-preview td{padding:10px;text-align:left;border-bottom:1px solid #ddd}.gd-import-preview th{position:sticky;top:0;background:#f3f5f7}
+.gd-confirm-list{max-height:30vh;overflow:auto;padding-left:24px}.gd-confirm-list li{margin:8px 0}
+button[aria-busy="true"]{cursor:wait;opacity:.75}button[aria-busy="true"]::before{content:'';display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;margin-right:7px;animation:gd-spin .8s linear infinite}
+@keyframes gd-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){button[aria-busy="true"]::before{animation:none}}
+@media(max-width:600px){.gd-bulk-bar{gap:8px}.gd-bulk-bar .btn{flex:1}.gd-archive-row{flex-wrap:wrap}.gd-import-preview{font-size:12px}}

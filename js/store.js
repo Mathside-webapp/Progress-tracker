@@ -186,8 +186,9 @@
 
     async deleteStudent(studentId) {
       if (demo) { const d = load(); d.students = d.students.filter(x => x.id !== studentId); save(d); return; }
-      const { error } = await client.from('students').delete().eq('id', studentId);
+      const { data, error } = await client.from('students').delete().eq('id', studentId).select('id');
       if (error) throw error;
+      if(!data?.length)throw new Error('Student was not deleted. Check your delete permissions.');
     },
 
     async setArchived(kind, itemId, archived) {
@@ -257,14 +258,28 @@
         save(d);
         return true;
       }
-      // Remove stored scan images for this exam first, when scan storage is enabled.
-      const scans = await client.from('results').select('scan_path').eq('exam_id', examId);
-      if (!scans.error) {
-        const paths = (scans.data || []).map(x => x.scan_path).filter(Boolean);
-        if (paths.length) await client.storage.from(cfg.storageBucket || 'gradedock-scans').remove(paths);
+      return this.deleteOwnedItem('exams',examId);
+    },
+    async deleteClass(classId) {
+      if(demo){
+        const d=load();const ids=d.results.filter(r=>r.class_id===classId).map(r=>r.id);
+        d.classes=d.classes.filter(c=>c.id!==classId);d.students=d.students.filter(s=>s.class_id!==classId);
+        d.results=d.results.filter(r=>r.class_id!==classId);ids.forEach(id=>delete d.resultAnswers[id]);save(d);return true;
       }
-      const { error } = await client.from('exams').delete().eq('id', examId);
-      if (error) throw error;
+      return this.deleteOwnedItem('classes',classId);
+    },
+    async deleteOwnedItem(kind,itemId) {
+      if(!['classes','exams'].includes(kind))throw new Error('Invalid item type.');
+      const scans=await client.from('results').select('scan_path').eq(kind==='classes'?'class_id':'exam_id',itemId);
+      if(scans.error)throw scans.error;
+      const removed=await client.from(kind).delete().eq('id',itemId).select('id');
+      if(removed.error)throw removed.error;
+      if(!removed.data?.length)throw new Error('Nothing was deleted. The item is missing or your account has no delete permission.');
+      const paths=(scans.data||[]).map(x=>x.scan_path).filter(Boolean);
+      if(paths.length){
+        try{const cleanup=await client.storage.from(cfg.storageBucket||'gradedock-scans').remove(paths);if(cleanup.error)throw cleanup.error;}
+        catch(e){console.warn('Records deleted; stored image cleanup failed:',e);}
+      }
       return true;
     },
 

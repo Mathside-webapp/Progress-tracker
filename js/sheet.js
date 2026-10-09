@@ -303,10 +303,11 @@
 
   function downloadPng(exam, teacherName = 'Teacher') {
     const canvas = renderCanvas(exam, teacherName, 2);
-    canvas.toBlob(blob => {
-      if (!blob) return;
+    return new Promise((resolve,reject)=>canvas.toBlob(blob => {
+      if (!blob) return reject(new Error('Could not generate the answer sheet image.'));
       downloadBlob(blob, `${slug(exam.title)}-Answer-Sheet.png`);
-    }, 'image/png');
+      resolve();
+    }, 'image/png')); 
   }
 
   function printableHtml(exam, teacherName = 'Teacher') {
