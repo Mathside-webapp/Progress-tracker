@@ -1,1 +1,0 @@
-GradeDock SF1 import: The upload requires no gender selector or gender column. It uses MALE/FEMALE section headings, TOTAL MALE transitions, or a Gender/Sex field if present. If neither exists in an ordinary roster, gender is Unspecified rather than guessed. Review the gender counts before saving. Scanner and Supabase configuration unchanged.
