@@ -1,6 +1,7 @@
-/* GradeDock Supabase settings. The publishable key is safe for browser use. */
-window.GRADEDOCK_CONFIG = {
-  supabaseUrl: 'https://kgdxnmbmyyimikjftvnn.supabase.co',
-  supabasePublishableKey: 'sb_publishable_FFYZyKrBUx1TUyZbKu1Fkg_UgrLChEn',
-  storageBucket: 'gradedock-scans'
+// Mathside frontend configuration.
+// Paste the Project URL and frontend-safe PUBLISHABLE key from Supabase → Connect.
+// Never put a secret/service-role key in this file.
+window.MATHSIDE_CONFIG = {
+  SUPABASE_URL: 'https://klosedmxcocqtntvokut.supabase.co',
+  SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_uKtpGAqIYSlFjzfkHuobPQ_lp3wq2UB'
 };
