@@ -1,4 +1,4 @@
-/* Mathside V24.9 — Reuse past Performance Task groups and edit leaders after posting.
+/* Mathside V24.12 — Performance Task routing/create hardening; reuse past groups and edit leaders after posting.
    Adapted from the established EduCore performance-task workflow while
    preserving Mathside archive, manual review and controlled resubmission. */
 (() => {

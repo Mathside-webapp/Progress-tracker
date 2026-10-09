@@ -1,8 +1,8 @@
-/* Mathside PWA — V24.10 Separate Performance Task Class Record
+/* Mathside PWA — V24.11 Connection Bootstrap Fix
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-v24-10-performance-record';
+const CACHE_NAME = 'mathside-v24-12-performance-task-fix';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -21,8 +21,7 @@ const APP_SHELL = [
   './css/student-v8.css?v=10.6',
   './css/design-v9.css?v=9.1',
   './css/v10-features.css?v=11.5',
-  './js/config.js',
-  './js/app.js?v=16.4',
+  './js/app.js?v=16.6',
   './js/student-v8.js?v=15.1',
   './js/v10-features.js?v=15.6',
   './js/design-v9.js?v=9',
@@ -32,7 +31,7 @@ const APP_SHELL = [
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.11',
   './js/v12-archive-features.js?v=15.7',
-  './js/v15-performance-tasks.js?v=15.18'
+  './js/v15-performance-tasks.js?v=24.12'
 ];
 
 self.addEventListener('install', (event) => {
@@ -67,6 +66,15 @@ self.addEventListener('fetch', (event) => {
 
   // Supabase/CDN/other third-party requests stay network-controlled.
   if (url.origin !== self.location.origin) return;
+
+  // Configuration is environment-specific and must never be served from an old PWA cache.
+  // Always request it from the network so GitHub Pages changes take effect immediately.
+  if (url.pathname.endsWith('/js/config.js')) {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' }).catch(() => Response.error())
+    );
+    return;
+  }
 
   // Page navigations: use the network when Mathside is healthy.
   // If the website cannot be reached (or returns an error response), show the

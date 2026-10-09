@@ -1,20 +1,101 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
-const config = window.MATHSIDE_CONFIG || {};
-const isConfigured = Boolean(
-  !window.MATHSIDE_PREVIEW && window.supabase &&
-  /^https?:\/\//i.test(String(config.SUPABASE_URL || '')) &&
-  !String(config.SUPABASE_URL || '').includes('YOUR-PROJECT') &&
-  String(config.SUPABASE_PUBLISHABLE_KEY || '').length > 20 &&
-  !String(config.SUPABASE_PUBLISHABLE_KEY || '').includes('REPLACE_ME')
-);
+let config = window.MATHSIDE_CONFIG || {};
+let db = null;
+let mathsideConnectionPromise = null;
 
-const db = isConfigured
-  ? window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_PUBLISHABLE_KEY, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-    })
-  : null;
+function mathsideConfigValid(value = window.MATHSIDE_CONFIG || {}) {
+  return Boolean(
+    /^https?:\/\//i.test(String(value.SUPABASE_URL || '')) &&
+    !String(value.SUPABASE_URL || '').includes('YOUR-PROJECT') &&
+    !String(value.SUPABASE_URL || '').includes('YOUR_SUPABASE') &&
+    String(value.SUPABASE_PUBLISHABLE_KEY || '').length > 20 &&
+    !String(value.SUPABASE_PUBLISHABLE_KEY || '').includes('REPLACE_ME') &&
+    !String(value.SUPABASE_PUBLISHABLE_KEY || '').includes('YOUR_SUPABASE')
+  );
+}
+
+function createMathsideClient() {
+  config = window.MATHSIDE_CONFIG || {};
+  if (window.MATHSIDE_PREVIEW || !mathsideConfigValid(config) || !window.supabase?.createClient) return null;
+  if (db) return db;
+  db = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+  return db;
+}
+
+function loadExternalScript(src) {
+  return new Promise(resolve => {
+    const script = document.createElement('script');
+    script.src = src;
+    script.async = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => {
+      script.remove();
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  });
+}
+
+function reloadMathsideConfig() {
+  return new Promise(resolve => {
+    const script = document.createElement('script');
+    // A unique URL bypasses both the browser HTTP cache and any older service-worker entry.
+    script.src = `js/config.js?v=24.11&t=${Date.now()}`;
+    script.async = false;
+    script.onload = () => {
+      config = window.MATHSIDE_CONFIG || {};
+      script.remove();
+      resolve(mathsideConfigValid(config));
+    };
+    script.onerror = () => {
+      script.remove();
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  });
+}
+
+async function ensureMathsideConnection() {
+  if (window.MATHSIDE_PREVIEW) return false;
+  if (db) return true;
+  if (mathsideConnectionPromise) return mathsideConnectionPromise;
+
+  mathsideConnectionPromise = (async () => {
+    try {
+      config = window.MATHSIDE_CONFIG || {};
+      if (!mathsideConfigValid(config)) await reloadMathsideConfig();
+
+      if (!window.supabase?.createClient) {
+        // The main CDN can occasionally be blocked or delayed on mobile networks.
+        // Try an independent CDN before declaring Mathside disconnected.
+        const fallbacks = [
+          'https://unpkg.com/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js',
+          'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.min.js?v=24.11'
+        ];
+        for (const src of fallbacks) {
+          if (window.supabase?.createClient) break;
+          await loadExternalScript(src);
+        }
+      }
+
+      createMathsideClient();
+      return Boolean(db);
+    } catch (error) {
+      console.error('Mathside connection bootstrap failed.', error);
+      return false;
+    } finally {
+      mathsideConnectionPromise = null;
+    }
+  })();
+
+  return mathsideConnectionPromise;
+}
+
+createMathsideClient();
 
 const state = {
   user: null,
@@ -437,7 +518,17 @@ $('#messageDialog')?.addEventListener('cancel', event => {
 
 function requireSupabase() {
   if (db) return true;
-  toast('Connect Mathside first: edit js/config.js with your Supabase Project URL and publishable key.', 'orange');
+
+  // Retry silently in case config/SDK loading was delayed by the browser or mobile network.
+  void ensureMathsideConnection();
+
+  if (!mathsideConfigValid(window.MATHSIDE_CONFIG || {})) {
+    toast('Mathside could not load js/config.js. Refresh the page after confirming the file is uploaded to the js folder.', 'orange');
+  } else if (!window.supabase?.createClient) {
+    toast('Your Mathside config is present, but the Supabase connection library did not load. Check your internet connection, then refresh.', 'orange');
+  } else {
+    toast('Mathside could not start the Supabase connection. Refresh the page and try again.', 'orange');
+  }
   return false;
 }
 
@@ -510,7 +601,7 @@ function studentsForSection(sectionId) {
   return state.students.filter(s => ids.has(s.id)).sort((a,b) => a.display_name.localeCompare(b.display_name));
 }
 function sectionLabel(section) { return section ? `${section.name} · Grade ${section.grade_level}` : 'Unknown class'; }
-function workType(assignment) { return assignment?.work_type === 'performance_task' ? 'performance_task' : 'written_work'; }
+function workType(assignment) { return String(assignment?.work_type || '').trim().toLowerCase() === 'performance_task' ? 'performance_task' : 'written_work'; }
 function isPerformanceTask(assignment) { return workType(assignment) === 'performance_task'; }
 function workTypeLabel(assignment) { return isPerformanceTask(assignment) ? 'Performance Task' : 'Activity'; }
 function totalPoints(assignmentId) {
@@ -2844,6 +2935,7 @@ function assignmentQuestionSignature(assignmentId) {
 
 function assignmentDisplaySignature(assignment) {
   return JSON.stringify({
+    workType: workType(assignment),
     title: String(assignment.title || '').trim(),
     instructions: String(assignment.instructions || '').trim(),
     dueAt: assignment.due_at || null,
@@ -2908,7 +3000,15 @@ function renderAssignments() {
     list.innerHTML = `<div class="assignment-empty v9-empty"><span class="v9-empty-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"/></svg></span><b>No assignments yet</b><p>Create your first Mathematics task to get started.<br>You can assign it to one or more classes.</p><button class="btn btn-orange" type="button" data-v9-new-assignment>＋ New assignment</button></div>`;
     return;
   }
-  const groups = groupedAssignmentsForDisplay();
+  // Core safety rule: the Activities panel must never render Performance Tasks.
+  // v15-performance-tasks.js also applies its own filters, but keeping this rule
+  // here prevents a stale/missing Performance Task module from mixing task types.
+  const groups = groupedAssignmentsForDisplay().filter(group => group.length && !isPerformanceTask(group[0]));
+  if (!groups.length) {
+    selectedAssignmentIds.clear();
+    list.innerHTML = `<div class="assignment-empty v9-empty"><span class="v9-empty-icon">${iconSvg('assignment','assignment-line-icon')}</span><b>No activities yet</b><p>Create your first question-based Mathematics activity.</p><button class="btn btn-orange" type="button" data-v9-new-assignment>＋ New activity</button></div>`;
+    return;
+  }
   const cards = groups.map(group => {
     const assignment = group[0];
     const groupIds = group.map(item => item.id);
@@ -4027,15 +4127,34 @@ $('#gradeForm').addEventListener('submit', async event => {
 
 // ---------- STARTUP / SESSION RESTORE ----------
 (async function restoreSession() {
-  if (!db) {
-    if (window.MATHSIDE_PREVIEW) return;
-    setTimeout(() => toast('Mathside is ready for Supabase. Edit js/config.js before signing in.', 'orange'), 500);
+  if (window.MATHSIDE_PREVIEW) return;
+
+  const connected = await ensureMathsideConnection();
+  if (!connected || !db) {
+    setTimeout(() => {
+      if (!mathsideConfigValid(window.MATHSIDE_CONFIG || {})) {
+        toast('Mathside could not read js/config.js. Upload the configured file to the js folder, then refresh.', 'orange');
+      } else if (!window.supabase?.createClient) {
+        toast('Mathside found your Supabase configuration, but the connection library could not load. Check your internet connection and refresh.', 'orange');
+      } else {
+        toast('Mathside found your Supabase configuration but could not start the connection. Refresh the page and try again.', 'orange');
+      }
+    }, 500);
     return;
   }
+
   try {
     const { data } = await db.auth.getSession();
-    if (!data?.session) return;
-    await withLoading('Restoring your Mathside…', 'Loading your Supabase classroom.', routeAuthenticatedUser);
+    if (data?.session) {
+      await withLoading('Restoring your Mathside…', 'Loading your Supabase classroom.', routeAuthenticatedUser);
+    }
+
+    db.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        resetState();
+        returnPublic();
+      }
+    });
   } catch (error) {
     console.error(error);
     try { await db.auth.signOut({ scope: 'local' }); } catch {}
@@ -4044,12 +4163,3 @@ $('#gradeForm').addEventListener('submit', async event => {
     toast('Your previous session could not be restored. Please sign in again.', 'orange');
   }
 })();
-
-if (db) {
-  db.auth.onAuthStateChange((event) => {
-    if (event === 'SIGNED_OUT') {
-      resetState();
-      returnPublic();
-    }
-  });
-}
