@@ -88,3 +88,6 @@ Verify these flows in the new backend:
 ## Important
 
 This portable backup contains the **code and database setup**, not the live data stored in your current Supabase project. Moving existing users, submissions, uploaded images/files, and other live records to another Supabase project requires a separate database/storage migration or export/import process.
+
+## V24.14 class visuals
+After the base Mathside schema is installed, run `Mathside-V24.14-Class-Visuals.sql` once. It adds the `logo_key` and `background_key` fields used by the 10 class logo/background choices.

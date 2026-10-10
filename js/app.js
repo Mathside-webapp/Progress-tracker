@@ -134,8 +134,11 @@ let studentGradeWatchTimer = null;
 let studentWorkspacePollBusy = false;
 let studentWorkspaceSignature = '';
 let studentWorkspaceFullRefreshAt = 0;
-const STUDENT_WORKSPACE_POLL_MS = 60000;
-const STUDENT_WORKSPACE_FULL_REFRESH_MS = 15 * 60 * 1000;
+const STUDENT_WORKSPACE_POLL_MS = 120000;
+const STUDENT_WORKSPACE_FULL_REFRESH_MS = 20 * 60 * 1000;
+let studentWorkspacePollFailures = 0;
+let studentWorkspaceNextAllowedAt = 0;
+let studentWorkspaceLastCheckAt = 0;
 let studentLoginAlertsShownFor = null;
 let activeRosterSectionId = null;
 let studentRosterSearch = '';
@@ -751,13 +754,16 @@ async function fetchStudentWorkspaceSignature() {
 
 async function checkStudentGradeUpdates() {
   if (!db || state.profile?.role !== 'student' || !state.user?.id) return;
-  if (studentWorkspacePollBusy || document.visibilityState !== 'visible' || !navigator.onLine) return;
+  if (studentWorkspacePollBusy || document.visibilityState !== 'visible' || !navigator.onLine || Date.now() < studentWorkspaceNextAllowedAt) return;
   studentWorkspacePollBusy = true;
+  studentWorkspaceLastCheckAt = Date.now();
   try {
     // Keep the 60-second schedule responsiveness, but only ask Supabase for the
     // newest assignment/submission timestamps. A full workspace reload happens
     // only when something actually changed.
     const remoteSignature = await fetchStudentWorkspaceSignature();
+    studentWorkspacePollFailures = 0;
+    studentWorkspaceNextAllowedAt = 0;
     const periodicRefreshDue = !studentWorkspaceFullRefreshAt || Date.now() - studentWorkspaceFullRefreshAt >= STUDENT_WORKSPACE_FULL_REFRESH_MS;
     if (remoteSignature === studentWorkspaceSignature && !periodicRefreshDue) return;
     await loadStudentData();
@@ -765,6 +771,8 @@ async function checkStudentGradeUpdates() {
     renderStudentDashboard();
     showStudentPanel(activeStudentPanel);
   } catch (error) {
+    studentWorkspacePollFailures = Math.min(5, studentWorkspacePollFailures + 1);
+    studentWorkspaceNextAllowedAt = Date.now() + Math.min(15 * 60 * 1000, STUDENT_WORKSPACE_POLL_MS * Math.pow(2, studentWorkspacePollFailures - 1));
     console.warn('Student workspace refresh skipped:', error?.message || error);
   } finally {
     studentWorkspacePollBusy = false;
@@ -773,8 +781,15 @@ async function checkStudentGradeUpdates() {
 
 function startStudentGradeWatcher() {
   stopStudentGradeWatcher();
+  studentWorkspacePollFailures = 0;
+  studentWorkspaceNextAllowedAt = 0;
+  studentWorkspaceLastCheckAt = Date.now();
   studentGradeWatchTimer = window.setInterval(checkStudentGradeUpdates, STUDENT_WORKSPACE_POLL_MS);
 }
+window.addEventListener('focus', () => {
+  if (Date.now() - studentWorkspaceLastCheckAt >= STUDENT_WORKSPACE_POLL_MS) checkStudentGradeUpdates();
+});
+window.addEventListener('online', () => { studentWorkspaceNextAllowedAt = 0; checkStudentGradeUpdates(); });
 
 function stopStudentGradeWatcher() {
   if (studentGradeWatchTimer) window.clearInterval(studentGradeWatchTimer);

@@ -29,3 +29,13 @@ Mathside uses the existing Supabase configuration stored in `js/config.js`. Do n
 ## Deployment
 
 Upload the project files while preserving the folder structure. For GitHub Pages, `index.html` must remain at the project root and `assets/mathside-maintenance.png` must remain inside the `assets` folder.
+
+## V24.14 Reference Redesign
+- Rebuilt the teacher workspace around the supplied desktop/mobile Mathside references.
+- New light cream/white layout, tighter spacing, smaller supporting text, softer borders/shadows, and mobile-first card layouts.
+- Added teacher Calendar panel.
+- Activities no longer show instructions in the activity list; instructions remain available in Preview/Edit.
+- Added 10 selectable class logos and 10 selectable class backgrounds.
+- Added class visual customization after class creation through the class card menu.
+- Includes the generated illustration boards under `assets/v16/` plus optimized site-ready crops.
+- Supabase needs the two new `mathside_sections` columns in `Mathside-V24.14-Class-Visuals.sql`. The connected Mathside project has already been updated.

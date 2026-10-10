@@ -1,0 +1,27 @@
+MATHSIDE V24.14 — REFERENCE REDESIGN
+
+WHAT CHANGED
+- Teacher workspace redesigned to match the supplied desktop/mobile references.
+- New light cream/white palette, tighter spacing, refined font scale, softer borders/shadows, cleaner cards and less text.
+- Overview redesigned with hero illustration, four compact statistics, class cards, coming-up deadlines and latest submissions.
+- My Classes redesigned with visual class cards.
+- Activities redesigned as compact cards. Activity instructions are NOT shown in the activity list; use Preview/Edit to read them.
+- Performance Tasks redesigned as image-led cards with concise information only.
+- Submissions restyled for faster scanning and mobile use.
+- New teacher Calendar page added.
+- Archived panel redesigned and simplified.
+- 10 selectable class logos added.
+- 10 selectable class backgrounds added.
+- Existing classes can be customized from the three-dot menu.
+- Mobile teacher workspace redesigned to match the supplied mobile references.
+- PWA cache version updated so the new design replaces older cached files.
+
+SUPABASE
+The connected Mathside project has already been updated with:
+- mathside_sections.logo_key
+- mathside_sections.background_key
+
+For a future/new Supabase project, run Mathside-V24.14-Class-Visuals.sql.
+
+IMPORTANT
+js/config.js was preserved unchanged.

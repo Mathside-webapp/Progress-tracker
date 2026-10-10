@@ -1,0 +1,463 @@
+/* Mathside V24.14 — Teacher reference redesign
+   Light, compact, classroom-first interface based on the supplied desktop/mobile mockups. */
+
+:root{
+  --v16-orange:#f24a00;
+  --v16-orange-2:#ff5b15;
+  --v16-orange-soft:#fff1e7;
+  --v16-ink:#0d1733;
+  --v16-muted:#53617a;
+  --v16-line:#e5e8ee;
+  --v16-cream:#fffaf5;
+  --v16-card:#ffffff;
+  --v16-shadow:0 8px 24px rgba(24,38,67,.055);
+  --v16-shadow-soft:0 2px 10px rgba(24,38,67,.045);
+  --v16-radius:14px;
+  --v16-sidebar:218px;
+}
+
+#teacherApp,
+#teacherApp button,
+#teacherApp input,
+#teacherApp select,
+#teacherApp textarea{font-family:Inter,"Segoe UI Variable","Segoe UI",Arial,sans-serif;color:var(--v16-ink)}
+
+#teacherApp{background:#fbfaf7;color:var(--v16-ink);min-height:100vh}
+#teacherApp .workspace-main{margin-left:var(--v16-sidebar)!important;min-width:0;background:linear-gradient(180deg,#fffdf9 0,#fbfaf7 100%)}
+#teacherApp .workspace-content{max-width:none!important;padding:24px 28px 34px!important;margin:0!important}
+
+/* Sidebar */
+#teacherApp .sidebar{position:fixed!important;inset:0 auto 0 0!important;width:var(--v16-sidebar)!important;height:100vh!important;display:flex!important;flex-direction:column!important;padding:26px 16px 18px!important;background:#fff!important;border:0!important;border-right:1px solid #eceef2!important;box-shadow:none!important;z-index:80}
+#teacherApp .sidebar-brand-row{order:1;min-height:54px;padding:0 10px 18px;margin:0 0 12px;border-bottom:1px solid #f1f2f5}
+#teacherApp .sidebar-logo{display:flex;align-items:center;gap:7px;text-decoration:none;color:var(--v16-ink)!important;font-size:24px!important;font-weight:800!important;letter-spacing:-1px}
+#teacherApp .sidebar-logo .cap-logo{width:48px!important;height:42px!important;object-fit:contain!important;flex:0 0 48px!important}
+#teacherApp .sidebar-brand-name{font-size:24px!important;font-weight:800!important;color:var(--v16-ink)!important;letter-spacing:-1px!important}
+#teacherApp .side-nav{order:2;display:grid!important;gap:7px;margin:0!important;flex:0 0 auto!important}
+#teacherApp .side-link{position:relative;display:flex!important;align-items:center!important;gap:13px!important;width:100%;min-height:46px;padding:0 13px!important;border:0!important;border-radius:10px!important;background:transparent!important;color:#17315a!important;font-size:14px!important;font-weight:550!important;text-align:left;transition:.18s ease}
+#teacherApp .side-link .ui-icon{width:21px;height:21px;stroke:currentColor;stroke-width:1.8;fill:none;flex:0 0 21px}
+#teacherApp .side-link:hover{background:#fff6ef!important;color:var(--v16-orange)!important;transform:none!important}
+#teacherApp .side-link.active{background:linear-gradient(90deg,#fff0e6,#fff8f2)!important;color:var(--v16-orange)!important;font-weight:700!important;box-shadow:none!important}
+#teacherApp .teacher-mini{order:3;margin-top:auto!important;display:flex!important;align-items:center!important;gap:10px!important;padding:13px 10px 10px!important;border-top:1px solid #f0f1f4!important;background:transparent!important;border-radius:0!important}
+#teacherApp .teacher-mini .avatar{width:42px!important;height:42px!important;display:grid!important;place-items:center!important;border-radius:50%!important;background:#ffd6ae!important;color:#121d38!important;font-weight:800!important}
+#teacherApp .teacher-mini b{font-size:13px!important;color:var(--v16-ink)!important;max-width:118px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#teacherApp .teacher-mini small{display:none!important}
+#teacherApp #teacherSignout{order:4;min-height:40px!important;margin-top:2px!important;color:#667085!important;font-size:12px!important}
+#teacherApp #teacherSignout:hover{color:#d92d20!important;background:#fff2f0!important}
+#teacherApp .sidebar-close{display:none}
+#teacherApp .v16-nav-badge{margin-left:auto;min-width:20px;height:20px;padding:0 5px;display:grid;place-items:center;border-radius:999px;background:var(--v16-orange);color:#fff;font-size:10px;font-weight:800}
+
+/* Topbar */
+#teacherApp .workspace-topbar{position:sticky!important;top:0!important;z-index:45!important;height:72px!important;min-height:72px!important;display:grid!important;grid-template-columns:minmax(180px,1fr) minmax(260px,330px) 44px!important;align-items:center!important;gap:18px!important;padding:0 28px!important;background:rgba(255,255,255,.96)!important;border:0!important;border-bottom:1px solid #eceef2!important;box-shadow:none!important;backdrop-filter:blur(10px)}
+#teacherApp .v16-topbar-breadcrumb{display:flex;align-items:center;gap:11px;font-size:13px;color:#334c73;min-width:0}
+#teacherApp .v16-topbar-breadcrumb i{font-style:normal;color:#a1a9b7}
+#teacherApp .v16-topbar-breadcrumb strong{color:var(--v16-orange);font-weight:650}
+#teacherApp .v16-global-search{height:42px;display:flex;align-items:center;gap:9px;padding:0 13px;border:1px solid #dfe4ec;border-radius:10px;background:#fff;color:#20375d}
+#teacherApp .v16-global-search .ui-icon{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
+#teacherApp .v16-global-search input{width:100%;border:0!important;outline:0!important;background:transparent!important;padding:0!important;font-size:12px!important;box-shadow:none!important}
+#teacherApp .v10-notification-button{width:40px!important;height:40px!important;display:grid!important;place-items:center!important;border:0!important;border-radius:50%!important;background:var(--v16-orange)!important;color:#fff!important;padding:0!important;box-shadow:none!important}
+#teacherApp .v10-notification-button .ui-icon{width:21px!important;height:21px!important;stroke:#fff!important;fill:none!important;stroke-width:1.9!important}
+#teacherApp .v16-mobile-brand{display:none}
+#teacherApp .mobile-side-toggle{display:none}
+
+/* Base page typography */
+#teacherApp .app-view{animation:none!important}
+#teacherApp .section-row{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:20px!important;margin:0 0 20px!important}
+#teacherApp .section-row>div:first-child{min-width:0}
+#teacherApp .section-row h2{margin:0!important;font-size:38px!important;line-height:1.02!important;letter-spacing:-1.6px!important;color:#0d1328!important;font-weight:800!important}
+#teacherApp .section-row .muted{margin:6px 0 0!important;font-size:14px!important;line-height:1.45!important;color:#53617a!important;max-width:560px}
+#teacherApp .section-row .eyebrow{display:none!important}
+#teacherApp .row-actions{display:flex!important;gap:9px!important;align-items:center!important;flex-wrap:wrap!important}
+#teacherApp .btn{min-height:43px!important;padding:0 17px!important;border-radius:9px!important;font-size:13px!important;font-weight:650!important;box-shadow:none!important;gap:8px!important}
+#teacherApp .btn-orange{background:linear-gradient(180deg,#fb4f08,#ed3d00)!important;color:#fff!important;border:1px solid #ed3d00!important}
+#teacherApp .btn-orange:hover{filter:brightness(.98);transform:translateY(-1px)!important}
+#teacherApp .btn-light{background:#fff!important;color:#152746!important;border:1px solid #dce2eb!important}
+#teacherApp .btn-light:hover{background:#fbfcfe!important;border-color:#cdd5df!important;transform:none!important}
+#teacherApp .btn-danger,#teacherApp .btn-danger-outline{background:#fff!important;color:#d92d20!important;border:1px solid #ff6b61!important}
+#teacherApp .btn-archive,#teacherApp .btn-unarchive{background:#fff!important;color:#c2410c!important;border:1px solid #ff9b6d!important}
+#teacherApp input,#teacherApp select,#teacherApp textarea{border:1px solid #dfe4ec!important;border-radius:9px!important;background:#fff!important;box-shadow:none!important}
+#teacherApp input:focus,#teacherApp select:focus,#teacherApp textarea:focus{border-color:#f58b60!important;box-shadow:0 0 0 3px rgba(242,74,0,.08)!important;outline:0!important}
+
+/* Search/toolbars */
+#teacherApp .v16-page-toolbar,#teacherApp .v16-archive-tools{display:flex;align-items:center;gap:12px;margin:0 0 18px;position:relative}
+#teacherApp .v16-page-toolbar>.v16-search-field{flex:1}
+#teacherApp .v16-search-field{height:44px;display:flex;align-items:center;gap:10px;padding:0 13px;border:1px solid #dfe4ec;border-radius:10px;background:#fff;color:#20375d}
+#teacherApp .v16-search-field .ui-icon{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2;flex:0 0 auto}
+#teacherApp .v16-search-field input{width:100%;height:auto!important;border:0!important;padding:0!important;background:transparent!important;box-shadow:none!important;font-size:13px!important}
+#teacherApp .v16-class-filter-panel{position:absolute;right:0;top:52px;z-index:30;width:210px;padding:12px;background:#fff;border:1px solid #e2e6ed;border-radius:12px;box-shadow:0 16px 40px rgba(26,36,56,.12)}
+#teacherApp .v16-class-filter-panel label{font-size:11px;color:#64748b;font-weight:700}
+#teacherApp .v16-class-filter-panel select{width:100%;height:40px;margin-top:6px}
+
+/* Overview */
+#teacherApp .v16-overview-hero{min-height:222px;display:grid;grid-template-columns:minmax(0,.95fr) minmax(360px,1.35fr);overflow:hidden;border:1px solid #f0e6dd;border-radius:15px;background:linear-gradient(110deg,#fff1dc 0,#fff8ef 52%,#f9eadb 100%);box-shadow:var(--v16-shadow-soft);margin-bottom:14px}
+#teacherApp .v16-overview-copy{padding:29px 18px 22px 30px;position:relative;z-index:2}
+#teacherApp .v16-overview-copy>p{margin:0 0 6px;font-size:14px;color:#232323}
+#teacherApp .v16-overview-copy h2{margin:0;font-size:42px;line-height:.98;letter-spacing:-2px;font-weight:850;color:#17101c}
+#teacherApp .v16-overview-hero>img{width:100%;height:100%;min-height:222px;object-fit:cover;object-position:center;mask-image:linear-gradient(90deg,transparent 0,#000 18%);-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 18%)}
+#teacherApp .v16-hero-actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+#teacherApp .v16-stats-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;margin:0 0 14px!important}
+#teacherApp .v16-stats-grid article{min-height:92px!important;display:flex!important;align-items:center!important;gap:13px!important;padding:15px 16px!important;border:1px solid #e5e9ef!important;border-radius:13px!important;background:#fff!important;box-shadow:var(--v16-shadow-soft)!important}
+#teacherApp .v16-stats-grid .stat-icon{width:43px!important;height:43px!important;border-radius:11px!important;display:grid!important;place-items:center!important;font-size:19px!important;flex:0 0 43px!important;margin:0!important}
+#teacherApp .v16-stat-green{background:#e8faee!important;color:#159947!important}
+#teacherApp .v16-stat-blue{background:#e7f4ff!important;color:#0c82e8!important}
+#teacherApp .v16-stat-orange{background:#fff0e5!important;color:#ff4f0a!important}
+#teacherApp .v16-stat-purple{background:#f2eafe!important;color:#7448e8!important}
+#teacherApp .v16-stats-grid article>div{display:grid;gap:1px}
+#teacherApp .v16-stats-grid small{font-size:11px!important;color:#1d2b48!important;order:1}
+#teacherApp .v16-stats-grid b{font-size:25px!important;line-height:1!important;color:#0d1733!important;order:2}
+#teacherApp .v16-stats-grid em{font-style:normal;font-size:10px;color:#7b879a;order:3;white-space:nowrap}
+#teacherApp .v16-dashboard-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(250px,.82fr);gap:14px}
+#teacherApp .v16-dashboard-panel{border:1px solid #e6e9ee;border-radius:14px;background:#fff;box-shadow:var(--v16-shadow-soft);padding:15px}
+#teacherApp .v16-dashboard-panel>header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+#teacherApp .v16-dashboard-panel>header h2{margin:0;font-size:18px;letter-spacing:-.4px}
+#teacherApp .v16-text-link{border:0;background:transparent;color:var(--v16-orange);font-size:11px;font-weight:700;padding:4px;cursor:pointer}
+#teacherApp .v16-dashboard-classes{grid-column:1;grid-row:1}
+#teacherApp .v16-coming-up{grid-column:2;grid-row:1}
+#teacherApp .v16-latest-submissions{grid-column:1;grid-row:2}
+#teacherApp .v16-dashboard-quote{grid-column:2;grid-row:2;min-height:210px;display:grid;grid-template-columns:1fr;align-content:space-between;overflow:hidden;border:1px solid #f0e0d0;border-radius:14px;background:linear-gradient(135deg,#fff3e3,#fff9f3);padding:17px;position:relative}
+#teacherApp .v16-dashboard-quote strong{font-size:19px;line-height:1.05;letter-spacing:-.6px}
+#teacherApp .v16-dashboard-quote p{font-size:11px;color:#6b6259;max-width:180px}
+#teacherApp .v16-dashboard-quote img{width:68%;max-height:115px;object-fit:cover;object-position:center;margin-left:auto;border-radius:12px;mix-blend-mode:multiply;opacity:.9}
+#teacherApp .v16-upcoming-list{display:grid;gap:2px}
+#teacherApp .v16-upcoming-item{width:100%;display:grid;grid-template-columns:44px 1fr 16px;align-items:center;gap:10px;padding:9px 2px;border:0;border-bottom:1px solid #edf0f4;background:#fff;text-align:left;cursor:pointer}
+#teacherApp .v16-upcoming-item:last-child{border-bottom:0}
+#teacherApp .v16-date-block{width:42px;height:46px;border-radius:10px;background:#fff2e9;display:grid;place-items:center;align-content:center;color:#c9410a}
+#teacherApp .v16-date-block b{font-size:8px;line-height:1}
+#teacherApp .v16-date-block strong{font-size:16px;line-height:1.2}
+#teacherApp .v16-upcoming-item>span:nth-child(2){min-width:0;display:grid;gap:3px}
+#teacherApp .v16-upcoming-item>span:nth-child(2)>strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#teacherApp .v16-upcoming-item small{font-size:10px;color:#6e7a8d}
+#teacherApp .v16-upcoming-item em{font-style:normal;color:var(--v16-orange)}
+#teacherApp .v16-latest-row{display:grid;grid-template-columns:38px minmax(0,1.4fr) auto 82px;align-items:center;gap:9px;padding:9px 4px;border-bottom:1px solid #edf0f4}
+#teacherApp .v16-latest-row:last-child{border-bottom:0}
+#teacherApp .v16-student-chip{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;background:#eaf4ff;color:#1c69e8;font-size:11px;font-weight:800}
+#teacherApp .v16-latest-row>div{min-width:0;display:grid;gap:2px}
+#teacherApp .v16-latest-row strong{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#teacherApp .v16-latest-row small{font-size:9px;color:#718096;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#teacherApp .v16-review-state{padding:5px 8px;border-radius:999px;background:#fff0df;color:#d25d00;font-size:9px;font-weight:700;white-space:nowrap}
+#teacherApp .v16-review-state.done{background:#e5f8eb;color:#1b8b45}
+#teacherApp .v16-latest-row .btn{min-height:31px!important;height:31px!important;padding:0 10px!important;font-size:10px!important}
+#teacherApp .v16-empty-small{padding:18px;text-align:center;color:#7b8798;font-size:12px}
+
+/* Class cards */
+#teacherApp .class-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+#teacherApp #dashboardClassGrid.class-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#teacherApp .v16-class-card{padding:0!important;min-height:0!important;overflow:visible!important;border:1px solid #e3e7ed!important;border-radius:14px!important;background:#fff!important;box-shadow:var(--v16-shadow-soft)!important;transform:none!important;position:relative}
+#teacherApp .v16-class-card:hover{transform:translateY(-1px)!important;box-shadow:0 12px 28px rgba(24,38,67,.08)!important}
+#teacherApp .v16-class-cover{height:114px;overflow:hidden;border-radius:13px 13px 0 0;background:#f5f7fa}
+#teacherApp .v16-class-cover img{width:100%;height:100%;object-fit:cover;object-position:center}
+#teacherApp .v16-class-card-main{padding:11px 12px 12px}
+#teacherApp .v16-class-heading{display:grid;grid-template-columns:54px minmax(0,1fr);gap:10px;align-items:center}
+#teacherApp .v16-class-logo{width:52px;height:52px;border-radius:12px;object-fit:cover;border:1px solid rgba(14,30,57,.06);box-shadow:0 2px 8px rgba(23,39,67,.05)}
+#teacherApp .v16-class-title-line{display:flex;align-items:center;gap:9px;min-width:0}
+#teacherApp .v16-class-title-line h3{margin:0!important;font-size:19px!important;line-height:1.05!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;letter-spacing:-.5px!important}
+#teacherApp .v16-class-title-line .grade-pill{font-size:9px!important;padding:5px 9px!important;border-radius:999px!important;background:#e8f9ed!important;color:#188c46!important;border:0!important;margin:0!important;white-space:nowrap}
+#teacherApp .v16-class-heading p{margin:5px 0 0;font-size:11px;color:#4d5f79}
+#teacherApp .v16-class-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:11px 0 10px;font-size:10px;color:#475974}
+#teacherApp .v16-class-meta span{display:flex;align-items:center;gap:5px}
+#teacherApp .v16-inline-icon{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.8}
+#teacherApp .v16-class-actions{display:grid!important;grid-template-columns:minmax(110px,1fr) minmax(100px,1fr) 42px!important;gap:7px!important;padding:0!important;border:0!important;margin:0!important}
+#teacherApp #dashboardClassGrid .v16-class-actions{grid-template-columns:1fr!important}
+#teacherApp .v16-class-actions .btn{min-width:0!important;justify-content:center!important;min-height:38px!important;height:38px!important;padding:0 10px!important;font-size:11px!important}
+#teacherApp .v16-card-menu{position:relative;min-width:0}
+#teacherApp .v16-card-menu>summary{list-style:none;height:38px;display:grid;place-items:center;border:1px solid #dce2eb;border-radius:9px;background:#fff;color:#1c2d49;font-weight:800;cursor:pointer;user-select:none;letter-spacing:1px}
+#teacherApp .v16-card-menu>summary::-webkit-details-marker{display:none}
+#teacherApp .v16-card-menu-popover{position:absolute;right:0;bottom:44px;z-index:35;min-width:152px;padding:6px;background:#fff;border:1px solid #e2e6ed;border-radius:10px;box-shadow:0 18px 36px rgba(26,36,56,.16)}
+#teacherApp .v16-card-menu-popover button{width:100%;min-height:34px;padding:0 10px;border:0;border-radius:7px;background:#fff;color:#26364e;text-align:left;font-size:11px;cursor:pointer}
+#teacherApp .v16-card-menu-popover button:hover{background:#f8fafc}
+#teacherApp .v16-card-menu-popover button.danger{color:#d92d20}
+#teacherApp .class-empty{grid-column:1/-1;border:1px dashed #e3e7ed!important;border-radius:14px!important;background:#fff!important;color:#69768a!important;padding:28px!important}
+
+/* Class visual picker */
+#teacherApp .v16-class-visual-picker,.v16-class-visual-picker{display:grid;gap:16px;margin:3px 0 4px}
+.v16-class-visual-picker .field-label{display:block;margin-bottom:7px;font-size:11px;font-weight:750;color:#344054}
+.v16-logo-choice-row{display:grid;grid-auto-flow:column;grid-auto-columns:74px;gap:8px;overflow-x:auto;padding:2px 2px 7px;scrollbar-width:thin}
+.v16-logo-choice{position:relative;width:72px;height:72px;border:2px solid transparent;border-radius:14px;background:#fff;padding:4px;cursor:pointer;box-shadow:0 1px 6px rgba(22,34,53,.05)}
+.v16-logo-choice img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.v16-logo-choice span{position:absolute;right:4px;bottom:4px;min-width:20px;height:20px;display:grid;place-items:center;border-radius:999px;background:rgba(255,255,255,.92);color:#4b5563;font-size:8px;font-weight:800}
+.v16-logo-choice.selected{border-color:var(--v16-orange);box-shadow:0 0 0 3px rgba(242,74,0,.1)}
+.v16-background-choice-row{display:grid;grid-auto-flow:column;grid-auto-columns:180px;gap:8px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin}
+.v16-bg-choice{position:relative;width:178px;height:72px;border:2px solid transparent;border-radius:12px;background:#fff;padding:3px;cursor:pointer;overflow:hidden}
+.v16-bg-choice img{width:100%;height:100%;object-fit:cover;border-radius:8px}
+.v16-bg-choice span{position:absolute;right:6px;bottom:6px;min-width:23px;height:19px;display:grid;place-items:center;border-radius:999px;background:rgba(255,255,255,.92);color:#344054;font-size:8px;font-weight:800}
+.v16-bg-choice.selected{border-color:var(--v16-orange);box-shadow:0 0 0 3px rgba(242,74,0,.1)}
+.v16-visual-modal{max-width:720px!important}
+
+/* Activities */
+#teacherApp #assignmentList.assignment-list{display:block!important}
+#teacherApp .v16-bulk-toolbar{margin:0 0 12px!important;padding:7px 10px!important;border:1px solid #eceff3!important;border-radius:10px!important;background:#fff!important;min-height:42px!important}
+#teacherApp .v16-bulk-toolbar .bulk-actions .btn{min-height:30px!important;height:30px!important;font-size:9px!important;padding:0 9px!important}
+#teacherApp .v16-activity-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#teacherApp .v16-activity-card{display:flex!important;flex-direction:column!important;gap:0!important;padding:16px!important;min-height:240px!important;border:1px solid #e3e7ed!important;border-radius:14px!important;background:#fff!important;box-shadow:var(--v16-shadow-soft)!important;position:relative!important}
+#teacherApp .v16-activity-card.is-selected{border-color:#f28458!important;box-shadow:0 0 0 3px rgba(242,74,0,.08)!important}
+#teacherApp .v16-activity-card .assignment-select-check{position:absolute!important;right:12px!important;top:12px!important;left:auto!important;z-index:4;opacity:.65}
+#teacherApp .v16-activity-head{display:grid;grid-template-columns:54px minmax(0,1fr) auto;gap:10px;align-items:start;padding-right:22px}
+#teacherApp .v16-activity-logo{width:52px;height:52px;border-radius:12px;object-fit:cover}
+#teacherApp .v16-activity-title{min-width:0}
+#teacherApp .v16-activity-title h3{margin:2px 0 7px!important;font-size:18px!important;line-height:1.08!important;letter-spacing:-.45px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#teacherApp .v16-class-pills{display:flex;flex-wrap:wrap;gap:5px}
+#teacherApp .v16-class-pills>span{display:inline-flex;align-items:center;gap:4px;min-height:23px;padding:3px 8px;border-radius:999px;background:#e8f8ed;color:#168b45;font-size:9px;font-weight:700}
+#teacherApp .v16-status-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:9px;font-weight:750;white-space:nowrap}
+#teacherApp .v16-status-pill:before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor}
+#teacherApp .v16-status-pill.is-open{background:#e4fae8;color:#159447}
+#teacherApp .v16-status-pill.is-scheduled{background:#e5f1ff;color:#1677e8}
+#teacherApp .v16-activity-details{display:flex;flex-wrap:wrap;gap:10px 18px;margin:20px 2px 10px;font-size:10px;color:#425572}
+#teacherApp .v16-progress-row{display:grid;grid-template-columns:1fr 34px;align-items:center;gap:9px;margin-top:auto}
+#teacherApp .v16-progress-row i{height:9px;border-radius:999px;background:#edf1f5;overflow:hidden}
+#teacherApp .v16-progress-row i b{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#33b36b,#66c986)}
+#teacherApp .v16-progress-row span{font-size:10px;color:#385070;text-align:right}
+#teacherApp .v16-activity-actions{display:grid!important;grid-template-columns:minmax(145px,1.35fr) minmax(90px,.85fr) 42px!important;gap:7px!important;margin-top:13px!important;max-width:none!important;width:100%!important}
+#teacherApp .v16-activity-actions .btn{min-width:0!important;min-height:39px!important;height:39px!important;justify-content:center!important;font-size:11px!important}
+
+/* Performance tasks */
+#teacherApp #performanceTaskList.assignment-list{display:block!important}
+#teacherApp .v16-task-summary{display:flex;align-items:center;gap:34px;padding:13px 18px;margin-bottom:12px;border:1px solid #e5e9ee;border-radius:12px;background:#fff;color:#31435f;font-size:11px}
+#teacherApp .v16-task-summary span{display:flex;align-items:center;gap:8px}
+#teacherApp .v16-task-summary b{font-size:13px;color:#13213d}
+#teacherApp .v16-task-summary .dot{width:13px;height:13px;border-radius:50%;background:#c4cad5}
+#teacherApp .v16-task-summary .dot.open{background:#23ad61}
+#teacherApp .v16-task-summary .dot.scheduled{background:#4c9cf2}
+#teacherApp .v16-performance-list{display:grid;gap:12px}
+#teacherApp .v16-performance-card{display:grid;grid-template-columns:minmax(235px,33%) minmax(0,1fr);min-height:245px;border:1px solid #e3e7ed;border-radius:14px;background:#fff;box-shadow:var(--v16-shadow-soft);overflow:visible}
+#teacherApp .v16-performance-image{min-height:245px;overflow:hidden;border-radius:13px 0 0 13px;background:#eef4fa}
+#teacherApp .v16-performance-image img{width:100%;height:100%;object-fit:cover}
+#teacherApp .v16-performance-body{display:flex;flex-direction:column;padding:16px 16px 13px;min-width:0}
+#teacherApp .v16-performance-title-row{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+#teacherApp .v16-performance-title-row h3{margin:0 0 8px!important;font-size:22px!important;line-height:1.05!important;letter-spacing:-.7px!important}
+#teacherApp .v16-class-pill-with-logo img{width:17px;height:17px;border-radius:5px;object-fit:cover}
+#teacherApp .v16-task-blurb{margin:11px 0 10px!important;font-size:12px!important;line-height:1.4!important;color:#40516d!important;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#teacherApp .v16-performance-meta,#teacherApp .v16-performance-submission-meta{display:flex;flex-wrap:wrap;gap:8px 16px;font-size:10px;color:#4b5c76;margin-top:7px}
+#teacherApp .v16-performance-submission-meta{margin-top:10px}
+#teacherApp .v16-performance-submission-meta .needs-review{color:#e24018}
+#teacherApp .v16-performance-actions{display:grid!important;grid-template-columns:minmax(140px,1.4fr) minmax(90px,.8fr) minmax(70px,.65fr) 42px!important;gap:7px!important;margin-top:auto!important;padding-top:13px!important;max-width:none!important}
+#teacherApp .v16-performance-actions .btn{min-width:0!important;min-height:39px!important;height:39px!important;justify-content:center!important;font-size:10px!important}
+
+/* Submissions */
+#teacherApp .v16-submission-search{max-width:420px;margin:0 0 10px}
+#teacherApp .submission-kind-tabs{display:grid!important;grid-template-columns:repeat(2,minmax(0,180px))!important;gap:0!important;width:max-content!important;margin:0 0 12px!important;border:1px solid #dfe4ec!important;border-radius:10px!important;background:#fff!important;overflow:hidden!important;padding:0!important}
+#teacherApp .submission-kind-tab{min-height:39px!important;border:0!important;border-radius:0!important;background:#fff!important;color:#31425e!important;font-size:11px!important}
+#teacherApp .submission-kind-tab.active{background:#fff0e6!important;color:var(--v16-orange)!important;box-shadow:inset 0 -2px var(--v16-orange)!important}
+#teacherApp .submission-section-summary{display:flex!important;flex-wrap:wrap!important;gap:6px!important;margin:0 0 10px!important;border:0!important;background:transparent!important;padding:0!important}
+#teacherApp .submission-section-summary span{padding:5px 8px!important;border-radius:999px!important;background:#fff4eb!important;color:#b34716!important;font-size:9px!important}
+#teacherApp .submission-section-group{margin:0 0 12px!important;border:0!important;background:transparent!important;padding:0!important}
+#teacherApp .submission-section-group-title{display:none!important}
+#teacherApp .submission-section-flat-list,#teacherApp .submission-combined-list{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+#teacherApp .submission-card{display:grid!important;grid-template-columns:45px minmax(0,1fr)!important;gap:9px!important;min-height:160px!important;padding:13px!important;border:1px solid #e3e7ed!important;border-radius:13px!important;background:#fff!important;box-shadow:var(--v16-shadow-soft)!important;position:relative!important}
+#teacherApp .submission-card .submission-status-icon{width:43px!important;height:43px!important;border-radius:11px!important;background:#eef2ff!important;color:#3d56d6!important;display:grid!important;place-items:center!important}
+#teacherApp .submission-card-body{min-width:0!important}
+#teacherApp .submission-student-row{display:flex!important;align-items:center!important;gap:5px!important;flex-wrap:wrap!important}
+#teacherApp .submission-student-name{font-size:12px!important;font-weight:750!important;color:#182741!important;text-align:left!important}
+#teacherApp .submission-card .gender-pill,#teacherApp .submission-card .submission-team-pill{display:none!important}
+#teacherApp .submission-review-pill,#teacherApp .submission-late-pill{font-size:8px!important;padding:4px 7px!important;border-radius:999px!important}
+#teacherApp .submission-assignment-title{margin:5px 0 2px!important;font-size:15px!important;letter-spacing:-.3px!important}
+#teacherApp .submission-class-label{margin:0!important;font-size:10px!important;color:#46825d!important}
+#teacherApp .submission-meta-grid{display:flex!important;gap:10px!important;flex-wrap:wrap!important;margin-top:9px!important}
+#teacherApp .submission-meta-grid span{display:block!important;border:0!important;background:transparent!important;padding:0!important;min-width:0!important}
+#teacherApp .submission-meta-grid span:nth-child(1),#teacherApp .submission-meta-grid span:nth-child(2){display:none!important}
+#teacherApp .submission-meta-grid small{display:none!important}
+#teacherApp .submission-meta-grid b{font-size:9px!important;font-weight:600!important;color:#5d6c80!important}
+#teacherApp .submission-review-btn{grid-column:1/-1!important;width:100%!important;min-height:36px!important;height:36px!important;margin-top:2px!important}
+
+/* Archive */
+#teacherApp .v16-archive-heading{min-height:118px;align-items:center!important;border-radius:14px;background:linear-gradient(90deg,#fff8ef,#fffdf9);padding:18px 22px!important;border:1px solid #eee7df}
+#teacherApp .v16-archive-heading img{width:200px;height:86px;object-fit:cover;object-position:center;border-radius:12px;mix-blend-mode:multiply}
+#teacherApp .v16-archive-tools .v16-search-field{flex:1}
+#teacherApp .archive-summary-grid{display:none!important}
+#teacherApp .archive-center-list{display:grid!important;gap:0!important;border:1px solid #e3e7ed!important;border-radius:13px!important;background:#fff!important;overflow:hidden!important;box-shadow:var(--v16-shadow-soft)!important}
+#teacherApp .archive-record{display:grid!important;grid-template-columns:54px minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important;padding:13px 14px!important;border:0!important;border-bottom:1px solid #edf0f4!important;border-radius:0!important;background:#fff!important;box-shadow:none!important}
+#teacherApp .archive-record:last-child{border-bottom:0!important}
+#teacherApp .archive-record-icon{width:48px!important;height:48px!important;border-radius:11px!important;background:#eef4ff!important;color:#2369dd!important;display:grid!important;place-items:center!important}
+#teacherApp .archive-record-title{display:flex!important;align-items:center!important;gap:8px!important}
+#teacherApp .archive-record-title h3{font-size:14px!important;margin:0!important}
+#teacherApp .archive-type-pill{order:2!important;font-size:8px!important;padding:4px 7px!important;border-radius:999px!important}
+#teacherApp .archive-record-body>p{margin:4px 0!important;font-size:10px!important;color:#607087!important}
+#teacherApp .archive-record-body .assignment-meta{margin:4px 0 0!important}
+#teacherApp .archive-record-body .meta-chip{font-size:8px!important;padding:3px 6px!important}
+#teacherApp .archive-record-actions{display:flex!important;gap:7px!important;flex-wrap:nowrap!important}
+#teacherApp .archive-record-actions .btn{min-height:35px!important;height:35px!important;padding:0 12px!important;font-size:9px!important;white-space:nowrap}
+
+/* Calendar */
+#teacherApp .v16-calendar-toolbar{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:12px}
+#teacherApp .v16-calendar-toolbar>label{display:grid;gap:6px;font-size:10px;font-weight:700;color:#53617a}
+#teacherApp .v16-calendar-toolbar select{height:42px;min-width:190px}
+#teacherApp .v16-calendar-legend{display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:10px;color:#40516a}
+#teacherApp .v16-calendar-legend span{display:flex;align-items:center;gap:6px}
+#teacherApp .v16-calendar-legend i{width:12px;height:12px;border-radius:50%}
+#teacherApp .v16-calendar-shell{overflow:hidden;border:1px solid #e2e6ed;border-radius:14px;background:#fff;box-shadow:var(--v16-shadow-soft)}
+#teacherApp .v16-calendar-shell>header{height:62px;display:grid;grid-template-columns:42px auto 42px 1fr;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #e9edf2}
+#teacherApp .v16-calendar-shell>header h2{margin:0;font-size:21px;letter-spacing:-.5px}
+#teacherApp .v16-calendar-shell>header .btn{justify-self:end}
+#teacherApp .v16-calendar-weekdays{display:grid;grid-template-columns:repeat(7,1fr);height:38px;border-bottom:1px solid #e9edf2;background:#fcfcfd}
+#teacherApp .v16-calendar-weekdays span{display:grid;place-items:center;font-size:9px;color:#607088}
+#teacherApp .v16-teacher-calendar-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+#teacherApp .v16-calendar-day{height:100px;position:relative;display:block;padding:10px;border:0;border-right:1px solid #edf0f3;border-bottom:1px solid #edf0f3;background:#fff;text-align:left;cursor:pointer;overflow:hidden}
+#teacherApp .v16-calendar-day:nth-child(7n){border-right:0}
+#teacherApp .v16-calendar-day:hover{background:#fffaf6}
+#teacherApp .v16-calendar-day.outside{color:#a6afbc;background:#fcfcfd}
+#teacherApp .v16-calendar-day.today .v16-calendar-number{border:2px solid var(--v16-orange);border-radius:50%;width:29px;height:29px;display:grid;place-items:center;color:#1a2740}
+#teacherApp .v16-calendar-day.selected{background:#fff2e8}
+#teacherApp .v16-calendar-day.selected .v16-calendar-number{background:var(--v16-orange);color:#fff;border-radius:50%;width:29px;height:29px;display:grid;place-items:center}
+#teacherApp .v16-calendar-number{font-size:12px;font-weight:650}
+#teacherApp .v16-day-events{display:grid;gap:4px;margin-top:9px}
+#teacherApp .v16-day-events i{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:4px 6px;border-radius:999px;background:color-mix(in srgb,var(--event-color) 16%,white);color:#334a69;font-style:normal;font-size:8px;position:relative;padding-left:16px}
+#teacherApp .v16-day-events i:before{content:'';position:absolute;left:6px;top:50%;transform:translateY(-50%);width:6px;height:6px;border-radius:50%;background:var(--event-color)}
+#teacherApp .v16-day-events small{font-size:8px;color:#7b8798}
+#teacherApp .v16-calendar-agenda{margin-top:12px;border:1px solid #e2e6ed;border-radius:14px;background:#fff;padding:14px;box-shadow:var(--v16-shadow-soft)}
+#teacherApp .v16-calendar-agenda>header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+#teacherApp .v16-calendar-agenda h2{font-size:19px;margin:0}
+#teacherApp .v16-calendar-agenda small{font-size:9px;color:#68768a}
+#teacherApp #v16CalendarAgenda{display:grid;gap:8px}
+#teacherApp .v16-agenda-item{display:grid;grid-template-columns:56px minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px;border:1px solid #e8ebef;border-radius:11px;background:#fff}
+#teacherApp .v16-agenda-item>img{width:52px;height:52px;border-radius:11px;object-fit:cover}
+#teacherApp .v16-agenda-item h3{margin:3px 0 2px;font-size:14px}
+#teacherApp .v16-agenda-item p{margin:0;font-size:10px;color:#617087}
+#teacherApp .v16-class-pill{display:inline-flex;padding:4px 8px;border-radius:999px;background:#e7f8ec;color:#168b45;font-size:8px;font-weight:700}
+
+/* Compact filters / modals */
+#teacherApp .compact-filter-panel{border:1px solid #e1e5ec!important;border-radius:12px!important;background:#fff!important;box-shadow:0 16px 38px rgba(26,36,56,.12)!important;padding:15px!important}
+#teacherApp .compact-filter-panel-head h3{font-size:15px!important}
+#teacherApp .performance-task-filter-grid{gap:10px!important}
+#teacherApp .performance-task-filter-grid label{font-size:10px!important}
+#teacherApp .performance-task-filter-grid select{height:39px!important;font-size:11px!important}
+#teacherApp .modal-box{border-radius:16px!important;border:1px solid #e3e7ed!important;box-shadow:0 24px 70px rgba(23,32,50,.18)!important;background:#fff!important}
+#teacherApp .modal-box h2{letter-spacing:-.6px;color:#11182c}
+#teacherApp .assignment-editor-heading p.muted{max-width:560px}
+
+/* Hide excess teacher text without removing function */
+#teacherApp .assignment-editor-badge{display:none!important}
+#teacherApp .tiny-note{font-size:10px!important;line-height:1.45!important}
+#teacherApp .field-help{font-size:9px!important;line-height:1.4!important;color:#7a8798!important}
+
+@media (max-width:1100px){
+  :root{--v16-sidebar:190px}
+  #teacherApp .workspace-content{padding:20px!important}
+  #teacherApp .v16-overview-copy h2{font-size:36px}
+  #teacherApp .v16-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #teacherApp .v16-dashboard-grid{grid-template-columns:1fr}
+  #teacherApp .v16-dashboard-classes,#teacherApp .v16-coming-up,#teacherApp .v16-latest-submissions,#teacherApp .v16-dashboard-quote{grid-column:1;grid-row:auto}
+  #teacherApp .v16-dashboard-quote{display:none}
+  #teacherApp .v16-performance-card{grid-template-columns:230px 1fr}
+  #teacherApp .v16-performance-actions{grid-template-columns:1.2fr .75fr 42px}
+  #teacherApp .v16-performance-actions>[data-edit-performance-task]{display:none}
+}
+
+@media (max-width:800px){
+  :root{--v16-sidebar:0px}
+  body.teacher-menu-open{overflow:hidden}
+  #teacherApp .sidebar{width:min(86vw,320px)!important;transform:translateX(-105%);transition:transform .22s ease;padding:18px 15px!important;box-shadow:0 20px 60px rgba(15,23,42,.22)!important;z-index:120!important}
+  #teacherApp .sidebar.open{transform:translateX(0)}
+  #teacherApp .sidebar-close{display:grid!important;place-items:center!important;width:34px;height:34px;border:0;background:#fff3ea;color:#c2410c;border-radius:9px;font-size:21px}
+  #teacherApp .teacher-sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(16,24,40,.32);z-index:110;border:0}
+  #teacherApp .teacher-sidebar-backdrop.open{display:block}
+  #teacherApp .workspace-main{margin-left:0!important}
+  #teacherApp .workspace-topbar{height:64px!important;min-height:64px!important;grid-template-columns:42px 1fr 42px!important;padding:0 14px!important;gap:8px!important}
+  #teacherApp .mobile-side-toggle{display:grid!important;width:38px!important;height:38px!important;place-items:center!important;border:0!important;background:transparent!important;color:#13223e!important}
+  #teacherApp .mobile-side-toggle .ui-icon{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:2}
+  #teacherApp .v16-topbar-breadcrumb,#teacherApp .v16-global-search{display:none!important}
+  #teacherApp .v16-mobile-brand{display:flex!important;align-items:center;justify-content:center;gap:5px;text-decoration:none;color:var(--v16-ink);font-weight:800;font-size:22px;letter-spacing:-.8px}
+  #teacherApp .v16-mobile-brand img{width:40px;height:34px}
+  #teacherApp .v10-notification-button{width:38px!important;height:38px!important;justify-self:end}
+  #teacherApp .workspace-content{padding:15px 12px 24px!important}
+  #teacherApp .section-row{display:grid!important;grid-template-columns:1fr!important;gap:13px!important;margin-bottom:14px!important}
+  #teacherApp .section-row h2{font-size:30px!important;letter-spacing:-1.2px!important}
+  #teacherApp .section-row .muted{font-size:13px!important;margin-top:4px!important}
+  #teacherApp .section-row .row-actions,#teacherApp .section-row>.btn{width:100%!important}
+  #teacherApp .section-row .row-actions .btn,#teacherApp .section-row>.btn{flex:1!important;justify-content:center!important}
+  #teacherApp .v16-page-toolbar,#teacherApp .v16-archive-tools{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px}
+  #teacherApp .v16-page-toolbar>.v16-search-field{grid-column:1/-1}
+
+  #teacherApp .v16-overview-hero{min-height:258px;grid-template-columns:1fr;position:relative;margin-bottom:12px}
+  #teacherApp .v16-overview-copy{padding:20px 12px 14px;max-width:72%;z-index:3}
+  #teacherApp .v16-overview-copy>p{font-size:13px;max-width:155px}
+  #teacherApp .v16-overview-copy h2{font-size:29px;line-height:1.02;letter-spacing:-1.2px}
+  #teacherApp .v16-overview-hero>img{position:absolute;right:0;top:0;width:54%;height:148px;min-height:0;object-fit:cover;mask-image:linear-gradient(90deg,transparent,#000 28%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 28%);border-radius:0 14px 0 14px}
+  #teacherApp .v16-hero-actions{display:grid;grid-template-columns:1fr;gap:7px;margin-top:22px;width:calc(100vw - 48px);max-width:360px}
+  #teacherApp .v16-hero-actions .btn{width:100%;justify-content:center}
+  #teacherApp .v16-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+  #teacherApp .v16-stats-grid article{min-height:92px!important;padding:12px!important;gap:9px!important}
+  #teacherApp .v16-stats-grid .stat-icon{width:38px!important;height:38px!important;flex-basis:38px!important}
+  #teacherApp .v16-stats-grid b{font-size:22px!important}
+  #teacherApp .v16-stats-grid em{font-size:8px;white-space:normal}
+  #teacherApp .v16-dashboard-panel{padding:12px}
+  #teacherApp .v16-dashboard-panel>header h2{font-size:18px}
+  #teacherApp .v16-coming-up{order:3}
+  #teacherApp .v16-latest-submissions{display:none}
+
+  #teacherApp .class-grid,#teacherApp #dashboardClassGrid.class-grid{grid-template-columns:1fr!important;gap:10px!important}
+  #teacherApp #dashboardClassGrid .v16-class-card:nth-child(n+2){display:none}
+  #teacherApp .v16-class-cover{height:111px}
+  #teacherApp .v16-class-card-main{padding:11px}
+  #teacherApp .v16-class-title-line h3{font-size:20px!important}
+  #teacherApp .v16-class-actions{grid-template-columns:1.15fr .9fr 40px!important}
+  #teacherApp #dashboardClassGrid .v16-class-actions{grid-template-columns:1fr!important}
+
+  #teacherApp .v16-bulk-toolbar{display:none!important}
+  #teacherApp .v16-activity-grid{grid-template-columns:1fr;gap:10px}
+  #teacherApp .v16-activity-card{min-height:0!important;padding:12px!important}
+  #teacherApp .v16-activity-head{grid-template-columns:46px minmax(0,1fr) auto;gap:8px;padding-right:14px}
+  #teacherApp .v16-activity-logo{width:44px;height:44px;border-radius:10px}
+  #teacherApp .v16-activity-title h3{font-size:15px!important;margin-bottom:5px!important}
+  #teacherApp .v16-status-pill{font-size:8px;padding:5px 7px}
+  #teacherApp .v16-activity-details{margin:12px 0 8px;gap:6px 11px;font-size:9px}
+  #teacherApp .v16-activity-actions{grid-template-columns:1fr 1fr 40px!important;margin-top:10px!important}
+
+  #teacherApp .v16-task-summary{gap:13px;padding:10px 11px;overflow-x:auto;font-size:9px;white-space:nowrap}
+  #teacherApp .v16-performance-card{grid-template-columns:1fr;min-height:0;overflow:hidden}
+  #teacherApp .v16-performance-image{min-height:0;height:128px;border-radius:13px 13px 0 0}
+  #teacherApp .v16-performance-body{padding:12px}
+  #teacherApp .v16-performance-title-row h3{font-size:17px!important}
+  #teacherApp .v16-task-blurb{font-size:11px!important;margin:8px 0!important;-webkit-line-clamp:2}
+  #teacherApp .v16-performance-meta,#teacherApp .v16-performance-submission-meta{font-size:9px;gap:6px 10px}
+  #teacherApp .v16-performance-actions{grid-template-columns:1fr .9fr 40px!important;margin-top:11px!important}
+  #teacherApp .v16-performance-actions>[data-edit-performance-task]{display:none}
+
+  #teacherApp .submission-kind-tabs{grid-template-columns:1fr 1fr!important;width:100%!important}
+  #teacherApp .v16-submission-search{max-width:none}
+  #teacherApp .submission-section-flat-list,#teacherApp .submission-combined-list{grid-template-columns:1fr!important}
+  #teacherApp .submission-card{min-height:0!important}
+
+  #teacherApp .v16-archive-heading{min-height:100px;padding:15px!important;position:relative;overflow:hidden}
+  #teacherApp .v16-archive-heading img{position:absolute;right:-8px;bottom:-4px;width:150px;height:90px;opacity:.85;mask-image:linear-gradient(90deg,transparent,#000 28%);-webkit-mask-image:linear-gradient(90deg,transparent,#000 28%)}
+  #teacherApp .v16-archive-heading>div{position:relative;z-index:2;max-width:65%}
+  #teacherApp .archive-center-list{border:0!important;background:transparent!important;box-shadow:none!important;gap:10px!important;overflow:visible!important}
+  #teacherApp .archive-record{grid-template-columns:48px 1fr!important;padding:12px!important;border:1px solid #e3e7ed!important;border-radius:12px!important;box-shadow:var(--v16-shadow-soft)!important}
+  #teacherApp .archive-record-actions{grid-column:1/-1;display:grid!important;grid-template-columns:1fr 1fr!important}
+  #teacherApp .archive-record-actions .btn:nth-child(n+3){display:none!important}
+
+  #teacherApp .v16-calendar-toolbar{display:grid;gap:8px;margin-bottom:10px}
+  #teacherApp .v16-calendar-toolbar select{width:100%;min-width:0}
+  #teacherApp .v16-calendar-legend{display:none}
+  #teacherApp .v16-calendar-shell>header{height:58px;grid-template-columns:38px 1fr 38px;padding:0 9px}
+  #teacherApp .v16-calendar-shell>header h2{text-align:center;font-size:19px}
+  #teacherApp .v16-calendar-shell>header .btn{display:none}
+  #teacherApp .v16-calendar-weekdays{height:32px}
+  #teacherApp .v16-calendar-weekdays span{font-size:7px}
+  #teacherApp .v16-calendar-day{height:58px;padding:5px;text-align:center}
+  #teacherApp .v16-calendar-number{font-size:9px}
+  #teacherApp .v16-calendar-day.today .v16-calendar-number,#teacherApp .v16-calendar-day.selected .v16-calendar-number{width:25px;height:25px;margin:auto}
+  #teacherApp .v16-day-events{display:flex;justify-content:center;gap:3px;margin-top:4px}
+  #teacherApp .v16-day-events i{width:6px;height:6px;border-radius:50%;padding:0;background:var(--event-color);font-size:0}
+  #teacherApp .v16-day-events i:before,#teacherApp .v16-day-events small{display:none}
+  #teacherApp .v16-calendar-agenda{padding:10px}
+  #teacherApp .v16-calendar-agenda>header{align-items:flex-start}
+  #teacherApp .v16-calendar-agenda h2{font-size:18px}
+  #teacherApp .v16-agenda-item{grid-template-columns:48px 1fr;padding:10px}
+  #teacherApp .v16-agenda-item>img{width:45px;height:45px}
+  #teacherApp .v16-agenda-item .btn{grid-column:1/-1;width:100%;justify-content:center}
+
+  .v16-background-choice-row{grid-auto-columns:150px}
+  .v16-bg-choice{width:148px;height:65px}
+  .v16-logo-choice-row{grid-auto-columns:65px}
+  .v16-logo-choice{width:63px;height:63px}
+}
+
+@media (max-width:430px){
+  #teacherApp .workspace-content{padding:13px 10px 22px!important}
+  #teacherApp .v16-overview-copy{max-width:74%;padding-left:12px}
+  #teacherApp .v16-overview-copy h2{font-size:28px}
+  #teacherApp .v16-hero-actions{width:calc(100vw - 42px)}
+  #teacherApp .v16-class-actions{grid-template-columns:1.05fr .95fr 38px!important}
+  #teacherApp .v16-class-actions .btn{padding:0 8px!important;font-size:10px!important}
+  #teacherApp .v16-activity-actions{grid-template-columns:1fr .82fr 38px!important}
+  #teacherApp .v16-performance-actions{grid-template-columns:1fr .8fr 38px!important}
+  #teacherApp .archive-record-title{display:grid!important;gap:4px!important}
+}

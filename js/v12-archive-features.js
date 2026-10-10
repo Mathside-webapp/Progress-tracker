@@ -41,31 +41,36 @@
   // ---------------------------------------------------------------
   // CLASS HELPERS / RENDERING
   // ---------------------------------------------------------------
+  function v16LogoPath(section) {
+    const key = /^logo-\d{2}$/.test(String(section?.logo_key || '')) ? section.logo_key : 'logo-01';
+    return `assets/v16/class-logos/${key}.jpg`;
+  }
+  function v16BackgroundPath(section) {
+    const key = /^bg-\d{2}$/.test(String(section?.background_key || '')) ? section.background_key : 'bg-01';
+    return `assets/v16/class-backgrounds/${key}.jpg`;
+  }
+
   classCard = function(section, dashboard = false) {
     const studentCount = studentsForSection(section.id).length;
     const sectionAssignments = state.assignments.filter(a => a.section_id === section.id);
     const activeAssignmentCount = sectionAssignments.filter(a => a.status !== 'archived').length;
     const archivedAssignmentCount = sectionAssignments.filter(a => a.status === 'archived').length;
     const archived = Boolean(section.archived_at);
-    return `<article class="class-card ${archived ? 'class-card-archived' : ''}" data-class-card-id="${section.id}" ${dashboard ? 'data-dashboard-class="true"' : ''}>
-      <div class="class-card-top">
-        <div class="class-card-heading">
-          <span class="class-icon">${iconSvg('class', 'class-card-icon')}</span>
-          <div class="class-card-copy"><small>${archived ? 'ARCHIVED CLASS' : 'CLASS'}</small><h3 title="${esc(section.name)}">${esc(section.name)}</h3></div>
+    const bg = v16BackgroundPath(section);
+    const logo = v16LogoPath(section);
+    return `<article class="class-card v16-class-card ${archived ? 'class-card-archived' : ''}" data-class-card-id="${section.id}" data-grade="${esc(section.grade_level)}" ${dashboard ? 'data-dashboard-class="true"' : ''}>
+      <div class="v16-class-cover"><img src="${bg}" alt="" loading="lazy"></div>
+      <div class="v16-class-card-main">
+        <div class="v16-class-heading"><img class="v16-class-logo" src="${logo}" alt="" loading="lazy"><div><div class="v16-class-title-line"><h3 title="${esc(section.name)}">${esc(section.name)}</h3><span class="grade-pill">Grade ${esc(section.grade_level)}</span></div><p>Mathematics</p></div></div>
+        <div class="v16-class-meta"><span>${iconSvg('people','v16-inline-icon')} ${studentCount} student${studentCount===1?'':'s'}</span><span>${iconSvg('assignment','v16-inline-icon')} ${activeAssignmentCount} activit${activeAssignmentCount===1?'y':'ies'}</span>${archivedAssignmentCount?`<span>${archivedAssignmentCount} archived</span>`:''}</div>
+        <div class="class-card-actions v16-class-actions">
+          <button class="btn btn-orange" type="button" data-view-class-students="${section.id}">Open class <span aria-hidden="true">→</span></button>
+          ${dashboard ? '' : `<button class="btn btn-light class-view-students-btn" type="button" data-view-class-students="${section.id}">${iconSvg('people','btn-icon')} Students</button>
+          <details class="v16-card-menu"><summary aria-label="Class actions">•••</summary><div class="v16-card-menu-popover"><button type="button" data-v16-customize-class="${section.id}">Customize</button>${archived?`<button type="button" data-unarchive-class="${section.id}">Restore</button><button type="button" data-create-from-archive="${section.id}">Reuse students</button>`:`<button type="button" data-archive-class="${section.id}">Archive class</button>`}<button class="danger" type="button" data-delete-class="${section.id}">Delete class</button></div></details>`}
         </div>
-        <span class="grade-pill">Grade ${esc(section.grade_level)}</span>
-      </div>
-      <footer><span><b>${studentCount}</b> student${studentCount === 1 ? '' : 's'}</span><span>${activeAssignmentCount} active${archivedAssignmentCount ? ` · ${archivedAssignmentCount} archived` : ''}</span></footer>
-      <div class="class-card-actions">
-        <button class="btn btn-light class-view-students-btn" type="button" data-view-class-students="${section.id}">${iconSvg('people', 'btn-icon')}View students</button>
-        ${dashboard ? '' : `${archived
-          ? `<button class="btn btn-unarchive" type="button" data-unarchive-class="${section.id}">Unarchive</button><button class="btn btn-light" type="button" data-create-from-archive="${section.id}">Reuse students</button>`
-          : `<button class="btn btn-danger-outline" type="button" data-archive-class="${section.id}">Archive class</button>`}
-          <button class="btn btn-danger" type="button" data-delete-class="${section.id}">Delete class</button>`}
       </div>
     </article>`;
   };
-
   renderClasses = function() {
     const grid = $('#classGrid');
     if (!grid) return;
@@ -157,7 +162,9 @@
           teacher_id: state.user.id,
           grade_level: grade,
           name,
-          color: colors[grade] || '#ff6b00'
+          color: colors[grade] || '#ff6b00',
+          logo_key: String(form.get('logo_key') || 'logo-01'),
+          background_key: String(form.get('background_key') || 'bg-01')
         }).select().single();
         if (error) throw error;
         created = data;

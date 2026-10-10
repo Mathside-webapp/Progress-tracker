@@ -8,7 +8,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Mathside" />
-  <title>Mathside</title>
+  <title>Mathside — Mathematics Classroom</title>
   <meta name="description" content="An energetic Mathematics classroom for teachers and students." />
   <link rel="icon" type="image/svg+xml" href="assets/mathside-icon.svg?v=12.3" />
   <link rel="manifest" href="manifest.webmanifest" />
@@ -17,10 +17,11 @@
   <link rel="stylesheet" href="css/art-theme.css?v=7.0" />
   <link rel="stylesheet" href="css/student-v8.css?v=10.6" />
   <link rel="stylesheet" href="css/design-v9.css?v=9.1">
-  <link rel="stylesheet" href="css/v10-features.css?v=11.5">
+  <link rel="stylesheet" href="css/v10-features.css?v=24.15">
   <link rel="stylesheet" href="css/v12-archive-features.css?v=12.4" />
   <link rel="stylesheet" href="css/v14-layout-fixes.css?v=14.0" />
   <link rel="stylesheet" href="css/v15-performance-calendar.css?v=15.11" />
+  <link rel="stylesheet" href="css/v16-reference-redesign.css?v=24.14" />
 </head>
 <body>
   <div id="appLoading" class="app-loading" hidden>
@@ -155,11 +156,12 @@
         <div><b id="teacherName">Teacher</b><small>Teacher account</small></div>
       </div>
       <nav class="side-nav">
-        <button class="side-link active" data-view="dashboard"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 4l8 7.5V20h-6v-5h-4v5H4z"/></svg><span>Dashboard</span></button>
-        <button class="side-link" data-view="classes"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 5V3h8v2M8 10h8M8 14h5"/></svg><span>Classes</span></button>
+        <button class="side-link active" data-view="dashboard"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.5 12 4l8 7.5V20h-6v-5h-4v5H4z"/></svg><span>Overview</span></button>
+        <button class="side-link" data-view="classes"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM17 8h4M19 6v4"/></svg><span>My Classes</span></button>
         <button class="side-link" data-view="assignments"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 11h6M9 15h6"/></svg><span>Activities</span></button>
-        <button class="side-link" data-view="performance"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5M7 3v4M17 3v4"/></svg><span>Performance Tasks</span></button>
-        <button class="side-link" data-view="submissions"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17l9-10M4 4h10M4 8h7"/></svg><span>Submissions</span></button>
+        <button class="side-link" data-view="performance"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20V7"/></svg><span>Performance Tasks</span></button>
+        <button class="side-link" data-view="submissions"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM7 9h10M7 13h6"/></svg><span>Submissions</span><span id="v16SubmissionNavBadge" class="v16-nav-badge" hidden>0</span></button>
+        <button class="side-link" data-view="calendar"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6M17 2v6M3 11h18"/></svg><span>Calendar</span></button>
         <button class="side-link" data-view="archive"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>Archived</span></button>
       </nav>
       <button class="side-link signout" id="teacherSignout"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/></svg><span>Sign out</span></button>
@@ -169,35 +171,42 @@
     <div class="workspace-main">
       <header class="workspace-topbar">
         <button class="mobile-side-toggle icon-button" id="teacherMenuBtn" aria-label="Open teacher menu"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-        <div><p class="eyebrow">TEACHER WORKSPACE</p><h1 id="teacherPageTitle">Dashboard</h1></div>
+        <div class="v16-topbar-breadcrumb"><span>Workspace</span><i>/</i><strong id="teacherPageTitle">Overview</strong></div>
+        <a class="v16-mobile-brand" href="#" aria-label="Mathside"><img src="assets/mathside-icon.svg?v=12.3" alt=""/><span>Mathside</span></a>
+        <label class="v16-global-search"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="teacherGlobalSearch" type="search" placeholder="Search this page…" autocomplete="off"></label>
         <button type="button" class="v10-notification-button" id="teacherNotificationBtn" aria-label="Open notifications" title="Notifications"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span id="teacherNotificationBadge" hidden>0</span></button>
       </header>
 
       <main class="workspace-content">
         <section class="app-view active" id="view-dashboard">
-          <div class="welcome-panel energetic-panel">
-            <div><p class="eyebrow">GOOD DAY, TEACHER!</p><h2>Ready for class?</h2><p>Create the classes you teach, choose each grade level, and keep students and Mathematics tasks together.</p></div>
-            <div class="welcome-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 5V3h8v2M8 10h8M8 14h5"/></svg></div>
+          <div class="v16-overview-hero">
+            <div class="v16-overview-copy"><p id="v16WelcomeBack">Welcome back, Teacher.</p><h2>A good day to<br>make progress.</h2><div class="v16-hero-actions"><button class="btn btn-orange" id="v16CreateActivityBtn">＋ Create activity</button><button class="btn btn-light" data-go-view="submissions">View submissions</button></div></div>
+            <img src="assets/v16/illustrations/overview.jpg" alt="Mathematics books, notebook, calculator and study tools">
           </div>
-
-          <div class="stats-grid">
-            <article><span class="stat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM17 8h4M19 6v4"/></svg></span><b id="studentTotal">0</b><small>Students</small></article>
-            <article><span class="stat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 5V3h8v2M8 10h8M8 14h5"/></svg></span><b id="classTotal">0</b><small>Classes</small></article>
-            <article><span class="stat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 11h6M9 15h6"/></svg></span><b id="assignmentTotal">0</b><small>Activities</small></article>
-            <article><span class="stat-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5M7 3v4M17 3v4"/></svg></span><b id="performanceTotal">0</b><small>Performance Tasks</small></article>
+          <div class="stats-grid v16-stats-grid">
+            <article><span class="stat-icon v16-stat-green">▦</span><div><small>Classes</small><b id="classTotal">0</b><em>Active this term</em></div></article>
+            <article><span class="stat-icon v16-stat-blue">●</span><div><small>Students</small><b id="studentTotal">0</b><em>Total learners</em></div></article>
+            <article><span class="stat-icon v16-stat-orange">▤</span><div><small>New submissions</small><b id="v16NewSubmissionTotal">0</b><em>Since your last visit</em></div></article>
+            <article><span class="stat-icon v16-stat-purple">✓</span><div><small>To review</small><b id="v16ReviewTotal">0</b><em>Awaiting feedback</em></div></article>
           </div>
-
-          <div class="section-row"><div><p class="eyebrow">MY CLASSES</p><p class="muted">Quick access to your classes</p></div><div class="row-actions"><button class="btn btn-light" data-go-view="classes">Manage classes</button><button class="btn btn-orange" id="dashboardCreateClass"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Create class</button></div></div>
-          <div class="class-grid" id="dashboardClassGrid"></div>
+          <span id="assignmentTotal" hidden>0</span><span id="performanceTotal" hidden>0</span>
+          <div class="v16-dashboard-grid">
+            <section class="v16-dashboard-panel v16-dashboard-classes"><header><h2>Your classes</h2><button class="v16-text-link" data-go-view="classes">View all →</button></header><div class="class-grid" id="dashboardClassGrid"></div></section>
+            <section class="v16-dashboard-panel v16-coming-up"><header><h2>Coming up</h2><button class="v16-text-link" data-go-view="calendar">View calendar →</button></header><div id="v16UpcomingList" class="v16-upcoming-list"></div></section>
+            <section class="v16-dashboard-panel v16-latest-submissions"><header><h2>Latest submissions</h2><button class="v16-text-link" data-go-view="submissions">View all submissions →</button></header><div id="v16LatestSubmissions"></div></section>
+            <aside class="v16-dashboard-quote"><div><strong>Small steps.<br>Stronger learners.</strong><p>Consistent practice builds confidence.</p></div><img src="assets/v16/illustrations/submissions.jpg" alt="Reviewed student work"></aside>
+          </div>
         </section>
 
         <section class="app-view" id="view-classes">
-          <div class="section-row"><div><p class="eyebrow">STUDENT ORGANIZATION</p><h2>Classes</h2><p class="muted">Create a class, choose its grade level, then add students to that class.</p></div><button class="btn btn-orange" id="createClassBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Create class</button></div>
+          <div class="section-row"><div><h2>My classes</h2><p class="muted">A space for every class you teach.</p></div><button class="btn btn-orange" id="createClassBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Create class</button></div>
+          <div class="v16-page-toolbar"><label class="v16-search-field"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="v16ClassSearch" type="search" placeholder="Search classes…"></label><button class="btn btn-light" id="v16ClassFilterToggle" type="button">Filters</button></div>
           <div class="class-grid" id="classGrid"></div>
         </section>
 
         <section class="app-view" id="view-assignments">
-          <div class="section-row"><div><p class="eyebrow">CLASSWORK</p><h2>Activities</h2><p class="muted">Post question-based Mathematics activities to one or more classes.</p></div><div class="row-actions"><button class="btn btn-light compact-filter-button" id="activityFilterBtn" type="button" aria-expanded="false" aria-controls="activityFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="activityFilterBadge" class="filter-count-badge" hidden>0</span></button><button class="btn btn-orange" id="postAssignmentBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New activity</button></div></div>
+          <div class="section-row"><div><h2>Activities</h2><p class="muted">Practice, progress, and everyday learning.</p></div><div class="row-actions"><button class="btn btn-light compact-filter-button" id="activityFilterBtn" type="button" aria-expanded="false" aria-controls="activityFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="activityFilterBadge" class="filter-count-badge" hidden>0</span></button><button class="btn btn-orange" id="postAssignmentBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New activity</button></div></div>
+          <div class="v16-page-toolbar"><label class="v16-search-field"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="v16ActivitySearch" type="search" placeholder="Search activities…"></label></div>
           <div class="compact-filter-wrap">
             <div id="activityFilterPanel" class="compact-filter-panel" hidden>
               <div class="compact-filter-panel-head"><div><p class="eyebrow">FILTER ACTIVITIES</p><h3>Show only what you need</h3></div><button type="button" class="icon-button compact-filter-close" id="activityFilterClose" aria-label="Close filters">×</button></div>
@@ -213,7 +222,8 @@
         </section>
 
         <section class="app-view" id="view-performance">
-          <div class="section-row"><div><p class="eyebrow">PERFORMANCE TASK</p><h2>Performance Tasks</h2><p class="muted">Post project-based tasks with instructions, pictures, rubric, deadlines, reminders, and assigned sections.</p></div><div class="row-actions"><button class="btn btn-light compact-filter-button" id="performanceTaskFilterBtn" type="button" aria-expanded="false" aria-controls="performanceTaskFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="performanceTaskFilterBadge" class="filter-count-badge" hidden>0</span></button><button class="btn btn-orange" id="postPerformanceTaskBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New performance task</button></div></div>
+          <div class="section-row"><div><h2>Performance tasks</h2><p class="muted">Turn learning into something students can show.</p></div><div class="row-actions"><button class="btn btn-light compact-filter-button" id="performanceTaskFilterBtn" type="button" aria-expanded="false" aria-controls="performanceTaskFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="performanceTaskFilterBadge" class="filter-count-badge" hidden>0</span></button><button class="btn btn-orange" id="postPerformanceTaskBtn"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New performance task</button></div></div>
+          <div class="v16-page-toolbar"><label class="v16-search-field"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="v16PerformanceSearch" type="search" placeholder="Search performance tasks…"></label></div>
           <div class="compact-filter-wrap">
             <div id="performanceTaskFilterPanel" class="compact-filter-panel" hidden>
               <div class="compact-filter-panel-head"><div><p class="eyebrow">FILTER PERFORMANCE TASKS</p><h3>Show only what you need</h3></div><button type="button" class="icon-button compact-filter-close" id="performanceTaskFilterClose" aria-label="Close filters">×</button></div>
@@ -230,7 +240,7 @@
         </section>
 
         <section class="app-view" id="view-archive">
-          <div class="section-row"><div><p class="eyebrow">ARCHIVE CENTER</p><h2>Archived</h2><p class="muted">Archived classes, activities, and performance tasks are kept here and hidden from their regular panels.</p></div><button class="btn btn-light compact-filter-button" id="archiveFilterBtn" type="button" aria-expanded="false" aria-controls="archiveFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="archiveFilterBadge" class="filter-count-badge" hidden>0</span></button></div>
+          <div class="section-row v16-archive-heading"><div><h2>Archived</h2><p class="muted">Past work, kept organized and easy to find.</p></div><img src="assets/v16/illustrations/archive.jpg" alt="Archive box"></div><div class="v16-archive-tools"><label class="v16-search-field"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="v16ArchiveSearch" type="search" placeholder="Search archived items…"></label><button class="btn btn-light compact-filter-button" id="archiveFilterBtn" type="button" aria-expanded="false" aria-controls="archiveFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="archiveFilterBadge" class="filter-count-badge" hidden>0</span></button></div>
           <div class="archive-summary-grid" aria-label="Archive summary">
             <article><span>Classes</span><b id="archivedClassCount">0</b></article>
             <article><span>Activities</span><b id="archivedActivityCount">0</b></article>
@@ -250,7 +260,8 @@
         </section>
 
         <section class="app-view" id="view-submissions">
-          <div class="section-row"><div><p class="eyebrow">STUDENT WORK</p><h2>Submissions</h2><p class="muted">Choose Activities or Performance Tasks, then use Filter only when you need it.</p></div><button class="btn btn-light compact-filter-button" id="submissionFilterBtn" type="button" aria-expanded="false" aria-controls="submissionFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="submissionFilterBadge" class="filter-count-badge" hidden>0</span></button></div>
+          <div class="section-row"><div><h2>Submissions</h2><p class="muted"><span id="v16SubmissionHeaderCount">0</span> need review</p></div><button class="btn btn-light compact-filter-button" id="submissionFilterBtn" type="button" aria-expanded="false" aria-controls="submissionFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="submissionFilterBadge" class="filter-count-badge" hidden>0</span></button></div>
+          <label class="v16-search-field v16-submission-search"><svg class="ui-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input id="v16SubmissionSearch" type="search" placeholder="Search students…"></label>
           <div class="submission-kind-tabs" id="submissionTypeTabs" role="tablist" aria-label="Submission category">
             <button type="button" class="submission-kind-tab active" data-submission-type="written_work">Activities <span id="writtenSubmissionCount">0</span></button>
             <button type="button" class="submission-kind-tab" data-submission-type="performance_task">Performance Tasks <span id="performanceSubmissionCount">0</span></button>
@@ -294,6 +305,17 @@
           </div>
           <div id="submissionSectionSummary" class="submission-section-summary"></div>
           <div id="submissionList" class="assignment-list"></div>
+        </section>
+
+        <section class="app-view" id="view-calendar">
+          <div class="section-row"><div><h2>Calendar</h2><p class="muted">A clear view of what is coming next.</p></div></div>
+          <div class="v16-calendar-toolbar"><label>Class<select id="v16CalendarClassFilter"><option value="all">All classes</option></select></label><div id="v16CalendarLegend" class="v16-calendar-legend"></div></div>
+          <section class="v16-calendar-shell">
+            <header><button type="button" class="icon-button" id="v16CalendarPrev" aria-label="Previous month">‹</button><h2 id="v16CalendarMonth">Month</h2><button type="button" class="icon-button" id="v16CalendarNext" aria-label="Next month">›</button><button type="button" class="btn btn-light" id="v16CalendarToday">Today</button></header>
+            <div class="v16-calendar-weekdays"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span></div>
+            <div id="v16TeacherCalendarGrid" class="v16-teacher-calendar-grid"></div>
+          </section>
+          <section class="v16-calendar-agenda"><header><h2 id="v16CalendarAgendaTitle">Deadlines</h2><small>Deadlines follow your local time.</small></header><div id="v16CalendarAgenda"></div></section>
         </section>
       </main>
     </div>
@@ -367,9 +389,24 @@
           </select>
         </label>
         <label>Class name<input name="name" placeholder="e.g. Beryl" required maxlength="60" /></label>
-        <label>Reuse students from another class <select name="import_archived_section" id="importArchivedSection"><option value="">No — start with an empty class</option></select><small class="field-help">Choose any of your existing classes. Mathside will keep the students’ accounts and enroll them in the new class too.</small></label>
+        <div class="v16-class-visual-picker">
+          <div><span class="field-label">Class logo</span><input type="hidden" name="logo_key" id="sectionLogoKey" value="logo-01"><div id="sectionLogoChoices" class="v16-logo-choice-row"></div></div>
+          <div><span class="field-label">Class background</span><input type="hidden" name="background_key" id="sectionBackgroundKey" value="bg-01"><div id="sectionBackgroundChoices" class="v16-background-choice-row"></div></div>
+        </div>
+        <label>Reuse students from another class <select name="import_archived_section" id="importArchivedSection"><option value="">No — start with an empty class</option></select><small class="field-help">Reuse existing student accounts if you need the same roster.</small></label>
         <div class="modal-actions"><button type="button" class="btn btn-light" data-close="sectionModal">Cancel</button><button class="btn btn-orange" type="submit">Create class</button></div>
       </form>
+    </div>
+  </dialog>
+
+  <!-- CUSTOMIZE CLASS MODAL -->
+  <dialog id="classVisualModal" class="modal">
+    <div class="modal-box v16-visual-modal">
+      <button class="modal-close" data-close="classVisualModal" aria-label="Close">×</button>
+      <p class="eyebrow">CLASS STYLE</p><h2 id="classVisualTitle">Customize class</h2><p class="muted">Choose one logo and one background.</p>
+      <input type="hidden" id="classVisualSectionId">
+      <div class="v16-class-visual-picker"><div><span class="field-label">Class logo</span><input type="hidden" id="classVisualLogoKey"><div id="classVisualLogoChoices" class="v16-logo-choice-row"></div></div><div><span class="field-label">Class background</span><input type="hidden" id="classVisualBackgroundKey"><div id="classVisualBackgroundChoices" class="v16-background-choice-row"></div></div></div>
+      <div class="modal-actions"><button type="button" class="btn btn-light" data-close="classVisualModal">Cancel</button><button type="button" class="btn btn-orange" id="saveClassVisualBtn">Save style</button></div>
     </div>
   </dialog>
 
@@ -950,13 +987,14 @@
   <!-- Converts iPhone/iPad HEIC photos to JPEG before Supabase upload. -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script id="mathliveScript" defer src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
-  <script src="js/app.js?v=16.6"></script>
+  <script src="js/app.js?v=24.15"></script>
   <script src="js/student-v8.js?v=15.1"></script>
-  <script src="js/v10-features.js?v=15.6"></script>
+  <script src="js/v10-features.js?v=24.15"></script>
 <script src="js/design-v9.js?v=9"></script>
   <script src="js/pwa.js?v=6.9.15"></script>
-  <script src="js/push-notifications.js?v=6.10"></script>
+  <script src="js/push-notifications.js?v=24.15"></script>
   <script src="js/v12-archive-features.js?v=15.7"></script>
   <script src="js/v15-performance-tasks.js?v=24.12"></script>
+  <script src="js/v16-reference-redesign.js?v=24.14"></script>
 </body>
 </html>
