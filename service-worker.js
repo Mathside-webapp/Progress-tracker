@@ -1,8 +1,8 @@
-/* Mathside PWA — V24.14 Reference Redesign
+/* Mathside PWA — V24.17 Classic Create-Class
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-v24-15-notification-reliability';
+const CACHE_NAME = 'mathside-v24-17-classic-class-panel';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -20,46 +20,20 @@ const APP_SHELL = [
   './css/art-theme.css?v=7.0',
   './css/student-v8.css?v=10.6',
   './css/design-v9.css?v=9.1',
-  './css/v10-features.css?v=24.15',
-  './js/app.js?v=24.15',
+  './css/v10-features.css?v=24.16',
+  './js/app.js?v=24.16',
   './js/student-v8.js?v=15.1',
-  './js/v10-features.js?v=24.15',
+  './js/v10-features.js?v=24.16',
   './js/design-v9.js?v=9',
   './js/pwa.js?v=6.9.15',
-  './js/push-notifications.js?v=24.15',
+  './js/push-notifications.js?v=24.16',
   './css/v12-archive-features.css?v=12.4',
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.11',
-  './js/v12-archive-features.js?v=15.7',
-  './js/v15-performance-tasks.js?v=24.12',
-  './css/v16-reference-redesign.css?v=24.14',
-  './js/v16-reference-redesign.js?v=24.14',
-  './assets/v16/class-logos/logo-01.jpg',
-  './assets/v16/class-logos/logo-02.jpg',
-  './assets/v16/class-logos/logo-03.jpg',
-  './assets/v16/class-logos/logo-04.jpg',
-  './assets/v16/class-logos/logo-05.jpg',
-  './assets/v16/class-logos/logo-06.jpg',
-  './assets/v16/class-logos/logo-07.jpg',
-  './assets/v16/class-logos/logo-08.jpg',
-  './assets/v16/class-logos/logo-09.jpg',
-  './assets/v16/class-logos/logo-10.jpg',
-  './assets/v16/class-backgrounds/bg-01.jpg',
-  './assets/v16/class-backgrounds/bg-02.jpg',
-  './assets/v16/class-backgrounds/bg-03.jpg',
-  './assets/v16/class-backgrounds/bg-04.jpg',
-  './assets/v16/class-backgrounds/bg-05.jpg',
-  './assets/v16/class-backgrounds/bg-06.jpg',
-  './assets/v16/class-backgrounds/bg-07.jpg',
-  './assets/v16/class-backgrounds/bg-08.jpg',
-  './assets/v16/class-backgrounds/bg-09.jpg',
-  './assets/v16/class-backgrounds/bg-10.jpg',
-  './assets/v16/illustrations/overview.jpg',
-  './assets/v16/illustrations/archive.jpg',
-  './assets/v16/illustrations/calendar.jpg',
-  './assets/v16/illustrations/submissions.jpg',
-  './assets/v16/illustrations/performance.jpg',
-  './assets/v16/illustrations/classes.jpg'
+  './js/v12-archive-features.js?v=24.17',
+  './js/v15-performance-tasks.js?v=24.17',
+  './css/classic-extras.css?v=24.17',
+  './js/classic-extras.js?v=24.17'
 ];
 
 self.addEventListener('install', (event) => {

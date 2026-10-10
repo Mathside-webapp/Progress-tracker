@@ -208,8 +208,8 @@
       selectedAssignmentIds.clear();
       const hasFilter = activitySectionFilter !== 'all' || activityStatusFilter !== 'all' || activitySort !== 'newest';
       list.innerHTML = allGroups.length
-        ? `<div class="assignment-empty v9-empty"><b>No activities match these filters</b><p>Try another class or status.</p></div>`
-        : `<div class="assignment-empty v9-empty"><b>No activities yet</b><p>Create your first Mathematics activity.</p><button class="btn btn-orange" type="button" data-v9-new-assignment>＋ Create activity</button></div>`;
+        ? `<div class="assignment-empty v9-empty"><span class="v9-empty-icon">⌁</span><b>No activities match these filters</b><p>Tap Filter and choose another section or status.</p></div>`
+        : `<div class="assignment-empty v9-empty"><span class="v9-empty-icon">${iconSvg('assignment','assignment-line-icon')}</span><b>No activities yet</b><p>Create your first question-based Mathematics activity.</p><button class="btn btn-orange" type="button" data-v9-new-assignment>＋ New activity</button></div>`;
       return;
     }
     const cards = groups.map(group => {
@@ -217,27 +217,21 @@
       const groupIds = group.map(item => item.id);
       const groupIdsAttr = groupIds.join(',');
       const sectionLabels = assignmentGroupSectionLabels(group);
+      const questions = questionsFor(assignment.id);
+      const missingAnswers = questions.filter(question => !(keyFor(question.id)?.correct_answer || '').trim()).length;
       const scheduled = assignment.status === 'draft' && assignment.publish_at && new Date(assignment.publish_at).getTime() > Date.now();
+      const archived = group.every(item => item.status === 'archived');
       const selected = group.every(item => selectedAssignmentIds.has(item.id));
-      const sectionIds = [...new Set(group.map(item => item.section_id).filter(Boolean))];
-      const totalLearners = sectionIds.reduce((sum,id) => sum + studentsForSection(id).length, 0);
-      const submissions = state.submissions.filter(sub => groupIds.includes(sub.assignment_id));
-      const submitted = new Set(submissions.map(sub => sub.student_id)).size;
-      const needsReview = submissions.filter(sub => sub.status !== 'graded').length;
-      const percent = totalLearners ? Math.min(100, Math.round((submitted / totalLearners) * 100)) : 0;
-      const firstSection = sectionById(group[0]?.section_id);
-      const logoKey = /^logo-\d{2}$/.test(String(firstSection?.logo_key || '')) ? firstSection.logo_key : 'logo-01';
-      const logo = `assets/v16/class-logos/${logoKey}.jpg`;
-      const status = scheduled ? 'Scheduled' : 'Open';
-      return `<article class="assignment-card assignment-group-card v16-activity-card ${selected?'is-selected':''} ${scheduled?'assignment-scheduled':''}" data-v16-search="${esc(`${assignment.title} ${sectionLabels.join(' ')}`)}">
-        <label class="assignment-select-check"><input class="row-check" type="checkbox" data-select-assignment="${assignment.id}" data-assignment-group-ids="${esc(groupIdsAttr)}" ${selected?'checked':''}><span class="sr-only">Select ${esc(assignment.title)}</span></label>
-        <div class="v16-activity-head"><img class="v16-activity-logo" src="${logo}" alt=""><div class="v16-activity-title"><h3>${esc(assignment.title)}</h3><div class="v16-class-pills">${sectionLabels.slice(0,3).map(label=>`<span>${esc(label)}</span>`).join('')}${sectionLabels.length>3?`<span>+${sectionLabels.length-3}</span>`:''}</div></div><span class="v16-status-pill ${scheduled?'is-scheduled':'is-open'}">${status}</span></div>
-        <div class="v16-activity-details">${assignment.due_at?`<span>▣ Due ${esc(formatDeadlineDate(assignment.due_at))}</span>`:''}${scheduled?`<span>◷ Opens ${esc(formatDeadlineDate(assignment.publish_at))}</span>`:`<span>♙ ${submitted} / ${totalLearners} submitted</span><span>▤ ${needsReview} need review</span>`}</div>
-        ${scheduled?'':`<div class="v16-progress-row"><i><b style="width:${percent}%"></b></i><span>${percent}%</span></div>`}
-        <div class="assignment-card-actions v16-activity-actions">${scheduled?`<button class="btn btn-orange" data-preview-assignment="${assignment.id}">Preview <span>→</span></button>`:`<button class="btn btn-orange" data-v16-go-submissions="${assignment.id}">View submissions <span>→</span></button>`}<button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><details class="v16-card-menu"><summary>•••</summary><div class="v16-card-menu-popover"><button data-preview-assignment="${assignment.id}">Preview</button><button data-archive-assignment-group="${esc(groupIdsAttr)}">Archive</button><button class="danger" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div></details></div>
+      const classSummary = sectionLabels.length === 1 ? `<span class="meta-chip">${esc(sectionLabels[0])}</span>` : `<span class="meta-chip assignment-group-count">${sectionLabels.length} classes</span>`;
+      const classList = sectionLabels.length > 1 ? `<div class="assignment-class-list" aria-label="Classes">${sectionLabels.map(label => `<span>${esc(label)}</span>`).join('')}</div>` : '';
+      return `<article class="assignment-card assignment-group-card ${selected ? 'is-selected' : ''} ${scheduled ? 'assignment-scheduled' : ''} ${archived ? 'assignment-archived' : ''}">
+        <label class="assignment-select-check"><input class="row-check" type="checkbox" data-select-assignment="${assignment.id}" data-assignment-group-ids="${esc(groupIdsAttr)}" ${selected ? 'checked' : ''}><span class="sr-only">Select ${esc(assignment.title)}</span></label>
+        <div class="assignment-thumb">${assignment.image_url ? `<img src="${esc(assignment.image_url)}" alt="Activity image" data-assignment-storage-path="${esc(assignment.image_path || '')}">` : iconSvg('assignment','assignment-line-icon')}</div>
+        <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared activity</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}${archived ? '<span class="archived-badge">Archived</span>' : ''}</div><p>${esc(assignment.instructions || 'Mathematics activity')}</p>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
+        <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button>${archived ? `<button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(groupIdsAttr)}">Unarchive</button>` : `<button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(groupIdsAttr)}">Archive</button>`}<button class="btn btn-danger" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
       </article>`;
     }).join('');
-    list.innerHTML = `<div class="bulk-toolbar assignment-bulk-toolbar v16-bulk-toolbar"><label class="bulk-select-all"><input id="selectAllAssignments" class="row-check" type="checkbox"><span>Select all</span></label><span class="bulk-selected-count" id="selectedAssignmentCount">0 selected</span><div class="bulk-actions"><button class="btn btn-archive" id="bulkArchiveAssignmentsBtn" type="button" disabled>Archive</button><button class="btn btn-danger" id="bulkDeleteAssignmentsBtn" type="button" disabled>Delete</button></div></div><div class="v16-activity-grid">${cards}</div>`;
+    list.innerHTML = `<div class="bulk-toolbar assignment-bulk-toolbar"><label class="bulk-select-all"><input id="selectAllAssignments" class="row-check" type="checkbox"><span>Select all activities</span></label><span class="bulk-selected-count" id="selectedAssignmentCount">0 selected</span><div class="bulk-actions"><button class="btn btn-archive" id="bulkArchiveAssignmentsBtn" type="button" disabled>Archive selected</button><button class="btn btn-danger" id="bulkDeleteAssignmentsBtn" type="button" disabled>Delete selected</button></div></div>${cards}`;
     updateAssignmentBulkToolbar();
   };
 
@@ -1041,37 +1035,21 @@
     });
     if (!groups.length) {
       const hasFilter = performanceTaskSectionFilter !== 'all' || performanceTaskStatusFilter !== 'all' || performanceTaskModeFilter !== 'all' || performanceTaskSort !== 'newest';
-      list.innerHTML = `<div class="assignment-empty v9-empty"><b>${hasFilter?'No performance tasks match these filters':'No performance tasks yet'}</b><p>${hasFilter?'Try another filter.':'Create a project-based task when you are ready.'}</p></div>`;
+      list.innerHTML = `<div class="assignment-empty v9-empty"><span class="v9-empty-icon">▣</span><b>${hasFilter?'No performance tasks match these filters':'No performance tasks yet'}</b><p>${hasFilter?'Tap Filter and choose another section or status.':'Post a task with instructions, pictures, rubric, deadline, and assigned sections.'}</p></div>`;
       return;
     }
-    const openCount = groups.filter(g=>performanceTaskGroupState(g)==='posted').length;
-    const scheduledCount = groups.filter(g=>performanceTaskGroupState(g)==='scheduled').length;
-    const summary = `<div class="v16-task-summary"><span><b>${groups.length}</b> tasks</span><span><i class="dot open"></i><b>${openCount}</b> open</span><span><i class="dot scheduled"></i><b>${scheduledCount}</b> scheduled</span></div>`;
-    const cards = groups.map(group => {
+    list.innerHTML = groups.map(group => {
       const a = group[0], ids = group.map(x=>x.id), labels = groupSectionLabels(group);
       const scheduled = performanceTaskGroupState(group) === 'scheduled';
-      const submissions = state.submissions.filter(sub => ids.includes(sub.assignment_id));
-      const sectionIds = [...new Set(group.map(item => item.section_id).filter(Boolean))];
-      const totalLearners = sectionIds.reduce((sum,id)=>sum+studentsForSection(id).length,0);
-      const submitted = new Set(submissions.map(sub=>sub.student_id)).size;
-      const needsReview = submissions.filter(sub=>sub.status!=='graded').length;
-      const firstSection = sectionById(a.section_id);
-      const logoKey = /^logo-\d{2}$/.test(String(firstSection?.logo_key || '')) ? firstSection.logo_key : 'logo-01';
-      const logo = `assets/v16/class-logos/${logoKey}.jpg`;
-      const image = a.image_url || 'assets/v16/illustrations/performance.jpg';
-      const blurb = String(a.instructions || '').trim().replace(/\s+/g,' ');
-      const shortBlurb = blurb.length > 118 ? `${blurb.slice(0,115)}…` : blurb;
-      return `<article class="v16-performance-card" data-v16-search="${esc(`${a.title} ${labels.join(' ')} ${shortBlurb}`)}">
-        <div class="v16-performance-image"><img src="${esc(image)}" alt="" loading="lazy"></div>
-        <div class="v16-performance-body"><div class="v16-performance-title-row"><div><h3>${esc(a.title)}</h3><div class="v16-class-pills"><span class="v16-class-pill-with-logo"><img src="${logo}" alt="">${esc(labels[0]||'Class')}</span>${labels.length>1?`<span>+${labels.length-1} classes</span>`:''}</div></div><span class="v16-status-pill ${scheduled?'is-scheduled':'is-open'}">${scheduled?'Scheduled':'Open'}</span></div>
-        ${shortBlurb?`<p class="v16-task-blurb">${esc(shortBlurb)}</p>`:''}
-        <div class="v16-performance-meta">${a.due_at?`<span>▣ Due ${esc(formatDeadlineDate(a.due_at))}</span>`:'<span>No due date</span>'}<span>☆ ${Number(a.max_points||0)} points</span><span>${esc(collaborationLabel(a))}</span></div>
-        <div class="v16-performance-submission-meta"><span>♙ ${submitted} / ${totalLearners} submitted</span><span class="needs-review">! ${needsReview} need review</span></div>
-        <div class="assignment-card-actions v16-performance-actions"><button class="btn btn-orange" data-v16-go-submissions="${a.id}">View submissions <span>→</span></button><button class="btn btn-light" data-preview-assignment="${a.id}">Preview</button><button class="btn btn-light" data-edit-performance-task="${a.id}">Edit</button><details class="v16-card-menu"><summary>•••</summary><div class="v16-card-menu-popover"><button data-archive-assignment-group="${esc(ids.join(','))}">Archive</button><button class="danger" data-delete-assignment-group="${esc(ids.join(','))}">Delete</button></div></details></div>
-        </div>
+      const archived = performanceTaskGroupState(group) === 'archived';
+      const images = assignmentTaskImages(a);
+      const classList = labels.length > 1 ? `<div class="assignment-class-list">${labels.map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : '';
+      return `<article class="assignment-card assignment-group-card performance-task-card performance-group-card ${scheduled?'assignment-scheduled':''} ${archived?'assignment-archived':''}">
+        <div class="assignment-thumb performance-thumb">${a.image_url?`<img src="${esc(a.image_url)}" alt="Performance task picture" data-assignment-storage-path="${esc(a.image_path||'')}">`:'▣'}</div>
+        <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(a.title)}</h3>${group.length>1?'<span class="shared-assignment-badge">Shared performance task</span>':''}${scheduled?'<span class="scheduled-badge">Scheduled</span>':''}${archived?'<span class="archived-badge">Archived</span>':''}</div>${classList}<div class="assignment-meta"><span class="meta-chip">${labels.length===1?esc(labels[0]):`${labels.length} classes`}</span><span class="meta-chip">${Number(a.max_points||0)} pts</span><span class="meta-chip">${esc(collaborationLabel(a))}</span>${a.due_at?`<span class="meta-chip">Due ${esc(formatDeadlineDate(a.due_at))}</span>`:''}${images.length?`<span class="meta-chip">${images.length} picture${images.length===1?'':'s'}</span>`:''}${a.rubric_path?'<span class="meta-chip rubric-chip">Rubric attached</span>':''}${scheduled?`<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(a.publish_at))}</span>`:''}</div></div>
+        <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${a.id}">Preview</button>${archived?`<button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(ids.join(','))}">Unarchive</button>`:`<button class="btn btn-light" data-edit-performance-task="${a.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(ids.join(','))}">Archive</button>`}<button class="btn btn-danger" data-delete-assignment-group="${esc(ids.join(','))}">Delete</button></div>
       </article>`;
     }).join('');
-    list.innerHTML = summary + `<div class="v16-performance-list">${cards}</div>`;
   }
   window.renderPerformanceTasks = renderPerformanceTasks;
 
@@ -1122,8 +1100,8 @@
     const labels = assignmentGroupSectionLabels(group);
     return `<article class="archive-record archive-record-activity">
       <div class="archive-record-icon">${iconSvg('assignment','assignment-line-icon')}</div>
-      <div class="archive-record-body"><div class="archive-record-title"><span class="archive-type-pill">Activity</span><h3>${esc(a.title)}</h3></div><div class="assignment-meta"><span class="meta-chip">${labels.length===1?esc(labels[0]):`${labels.length} classes`}</span><span class="meta-chip">${esc(archiveDateLabel(a.archived_at))}</span></div></div>
-      <div class="archive-record-actions"><button class="btn btn-light" data-preview-assignment="${esc(a.id)}">Preview</button><button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(ids.join(','))}">Unarchive</button><button class="btn btn-danger-outline" data-delete-assignment-group="${esc(ids.join(','))}">Delete</button></div>
+      <div class="archive-record-body"><div class="archive-record-title"><span class="archive-type-pill">Activity</span><h3>${esc(a.title)}</h3></div><p>${esc(a.instructions || 'Mathematics activity')}</p><div class="assignment-meta"><span class="meta-chip">${labels.length===1?esc(labels[0]):`${labels.length} classes`}</span><span class="meta-chip">${esc(archiveDateLabel(a.archived_at))}</span></div></div>
+      <div class="archive-record-actions"><button class="btn btn-light" data-preview-assignment="${esc(a.id)}">Preview</button><button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(ids.join(','))}">Unarchive</button><button class="btn btn-danger" data-delete-assignment-group="${esc(ids.join(','))}">Delete</button></div>
     </article>`;
   }
 
@@ -1133,8 +1111,8 @@
     const labels = groupSectionLabels(group);
     return `<article class="archive-record archive-record-performance">
       <div class="archive-record-icon">▣</div>
-      <div class="archive-record-body"><div class="archive-record-title"><span class="archive-type-pill">Performance Task</span><h3>${esc(a.title)}</h3></div><div class="assignment-meta"><span class="meta-chip">${labels.length===1?esc(labels[0]):`${labels.length} classes`}</span><span class="meta-chip">${esc(collaborationLabel(a))}</span><span class="meta-chip">${esc(archiveDateLabel(a.archived_at))}</span></div></div>
-      <div class="archive-record-actions"><button class="btn btn-light" data-preview-assignment="${esc(a.id)}">Preview</button><button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(ids.join(','))}">Unarchive</button><button class="btn btn-danger-outline" data-delete-assignment-group="${esc(ids.join(','))}">Delete</button></div>
+      <div class="archive-record-body"><div class="archive-record-title"><span class="archive-type-pill">Performance Task</span><h3>${esc(a.title)}</h3></div><p>${esc(a.instructions || 'Performance task')}</p><div class="assignment-meta"><span class="meta-chip">${labels.length===1?esc(labels[0]):`${labels.length} classes`}</span><span class="meta-chip">${esc(collaborationLabel(a))}</span><span class="meta-chip">${esc(archiveDateLabel(a.archived_at))}</span></div></div>
+      <div class="archive-record-actions"><button class="btn btn-light" data-preview-assignment="${esc(a.id)}">Preview</button><button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(ids.join(','))}">Unarchive</button><button class="btn btn-danger" data-delete-assignment-group="${esc(ids.join(','))}">Delete</button></div>
     </article>`;
   }
 

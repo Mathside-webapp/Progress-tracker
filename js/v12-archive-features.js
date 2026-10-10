@@ -41,36 +41,31 @@
   // ---------------------------------------------------------------
   // CLASS HELPERS / RENDERING
   // ---------------------------------------------------------------
-  function v16LogoPath(section) {
-    const key = /^logo-\d{2}$/.test(String(section?.logo_key || '')) ? section.logo_key : 'logo-01';
-    return `assets/v16/class-logos/${key}.jpg`;
-  }
-  function v16BackgroundPath(section) {
-    const key = /^bg-\d{2}$/.test(String(section?.background_key || '')) ? section.background_key : 'bg-01';
-    return `assets/v16/class-backgrounds/${key}.jpg`;
-  }
-
   classCard = function(section, dashboard = false) {
     const studentCount = studentsForSection(section.id).length;
     const sectionAssignments = state.assignments.filter(a => a.section_id === section.id);
     const activeAssignmentCount = sectionAssignments.filter(a => a.status !== 'archived').length;
     const archivedAssignmentCount = sectionAssignments.filter(a => a.status === 'archived').length;
     const archived = Boolean(section.archived_at);
-    const bg = v16BackgroundPath(section);
-    const logo = v16LogoPath(section);
-    return `<article class="class-card v16-class-card ${archived ? 'class-card-archived' : ''}" data-class-card-id="${section.id}" data-grade="${esc(section.grade_level)}" ${dashboard ? 'data-dashboard-class="true"' : ''}>
-      <div class="v16-class-cover"><img src="${bg}" alt="" loading="lazy"></div>
-      <div class="v16-class-card-main">
-        <div class="v16-class-heading"><img class="v16-class-logo" src="${logo}" alt="" loading="lazy"><div><div class="v16-class-title-line"><h3 title="${esc(section.name)}">${esc(section.name)}</h3><span class="grade-pill">Grade ${esc(section.grade_level)}</span></div><p>Mathematics</p></div></div>
-        <div class="v16-class-meta"><span>${iconSvg('people','v16-inline-icon')} ${studentCount} student${studentCount===1?'':'s'}</span><span>${iconSvg('assignment','v16-inline-icon')} ${activeAssignmentCount} activit${activeAssignmentCount===1?'y':'ies'}</span>${archivedAssignmentCount?`<span>${archivedAssignmentCount} archived</span>`:''}</div>
-        <div class="class-card-actions v16-class-actions">
-          <button class="btn btn-orange" type="button" data-view-class-students="${section.id}">Open class <span aria-hidden="true">→</span></button>
-          ${dashboard ? '' : `<button class="btn btn-light class-view-students-btn" type="button" data-view-class-students="${section.id}">${iconSvg('people','btn-icon')} Students</button>
-          <details class="v16-card-menu"><summary aria-label="Class actions">•••</summary><div class="v16-card-menu-popover"><button type="button" data-v16-customize-class="${section.id}">Customize</button>${archived?`<button type="button" data-unarchive-class="${section.id}">Restore</button><button type="button" data-create-from-archive="${section.id}">Reuse students</button>`:`<button type="button" data-archive-class="${section.id}">Archive class</button>`}<button class="danger" type="button" data-delete-class="${section.id}">Delete class</button></div></details>`}
+    return `<article class="class-card ${archived ? 'class-card-archived' : ''}" data-class-card-id="${section.id}" ${dashboard ? 'data-dashboard-class="true"' : ''}>
+      <div class="class-card-top">
+        <div class="class-card-heading">
+          <span class="class-icon">${iconSvg('class', 'class-card-icon')}</span>
+          <div class="class-card-copy"><small>${archived ? 'ARCHIVED CLASS' : 'CLASS'}</small><h3 title="${esc(section.name)}">${esc(section.name)}</h3></div>
         </div>
+        <span class="grade-pill">Grade ${esc(section.grade_level)}</span>
+      </div>
+      <footer><span><b>${studentCount}</b> student${studentCount === 1 ? '' : 's'}</span><span>${activeAssignmentCount} active${archivedAssignmentCount ? ` · ${archivedAssignmentCount} archived` : ''}</span></footer>
+      <div class="class-card-actions">
+        <button class="btn btn-light class-view-students-btn" type="button" data-view-class-students="${section.id}">${iconSvg('people', 'btn-icon')}View students</button>
+        ${dashboard ? '' : `${archived
+          ? `<button class="btn btn-unarchive" type="button" data-unarchive-class="${section.id}">Unarchive</button><button class="btn btn-light" type="button" data-create-from-archive="${section.id}">Reuse students</button>`
+          : `<button class="btn btn-archive" type="button" data-archive-class="${section.id}">Archive class</button>`}
+          <button class="btn btn-danger" type="button" data-delete-class="${section.id}">Delete class</button>`}
       </div>
     </article>`;
   };
+
   renderClasses = function() {
     const grid = $('#classGrid');
     if (!grid) return;
@@ -162,9 +157,7 @@
           teacher_id: state.user.id,
           grade_level: grade,
           name,
-          color: colors[grade] || '#ff6b00',
-          logo_key: String(form.get('logo_key') || 'logo-01'),
-          background_key: String(form.get('background_key') || 'bg-01')
+          color: colors[grade] || '#ff6b00'
         }).select().single();
         if (error) throw error;
         created = data;
@@ -235,8 +228,8 @@
       return `<article class="assignment-card assignment-group-card ${selected ? 'is-selected' : ''} ${scheduled ? 'assignment-scheduled' : ''} ${archived ? 'assignment-archived' : ''}">
         <label class="assignment-select-check"><input class="row-check" type="checkbox" data-select-assignment="${assignment.id}" data-assignment-group-ids="${esc(groupIdsAttr)}" ${selected ? 'checked' : ''}><span class="sr-only">Select ${esc(assignment.title)}</span></label>
         <div class="assignment-thumb">${assignment.image_url ? `<img src="${esc(assignment.image_url)}" alt="Assignment image" data-assignment-storage-path="${esc(assignment.image_path || '')}">` : iconSvg('assignment', 'assignment-line-icon')}</div>
-        <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared assignment</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}${archived ? '<span class="archived-badge">Archived</span>' : ''}</div><p>${esc(assignment.instructions || 'Mathematics assignment')}</p>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
-        <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button>${archived ? `<button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(groupIdsAttr)}">Unarchive</button>` : `<button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(groupIdsAttr)}">Archive</button>`}<button class="btn btn-danger-outline" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
+        <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared assignment</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}${archived ? '<span class="archived-badge">Archived</span>' : ''}</div>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
+        <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button>${archived ? `<button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(groupIdsAttr)}">Unarchive</button>` : `<button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(groupIdsAttr)}">Archive</button>`}<button class="btn btn-danger" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
       </article>`;
     }).join('');
     list.innerHTML = `<div class="bulk-toolbar assignment-bulk-toolbar"><label class="bulk-select-all"><input id="selectAllAssignments" class="row-check" type="checkbox"><span>Select all activities</span></label><span class="bulk-selected-count" id="selectedAssignmentCount">0 selected</span><div class="bulk-actions"><button class="btn btn-archive" id="bulkArchiveAssignmentsBtn" type="button" disabled>Archive selected</button><button class="btn btn-unarchive" id="bulkUnarchiveAssignmentsBtn" type="button" disabled>Unarchive selected</button><button class="btn btn-danger" id="bulkDeleteAssignmentsBtn" type="button" disabled>Delete selected</button></div></div>${cards}`;
