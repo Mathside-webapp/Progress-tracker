@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-v24-17-classic-class-panel';
+const CACHE_NAME = 'mathside-pwa-v25-student-alert-toggle';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -16,24 +16,24 @@ const APP_SHELL = [
   './icons/maskable-512.png',
   './assets/mathside-icon.svg?v=12.3',
   './assets/mathside-maintenance.png',
-  './css/styles.css?v=12.8',
-  './css/art-theme.css?v=7.0',
-  './css/student-v8.css?v=10.6',
-  './css/design-v9.css?v=9.1',
-  './css/v10-features.css?v=24.16',
-  './js/app.js?v=24.16',
-  './js/student-v8.js?v=15.1',
-  './js/v10-features.js?v=24.16',
-  './js/design-v9.js?v=9',
-  './js/pwa.js?v=6.9.15',
-  './js/push-notifications.js?v=24.16',
-  './css/v12-archive-features.css?v=12.4',
-  './css/v14-layout-fixes.css?v=14.0',
-  './css/v15-performance-calendar.css?v=15.11',
-  './js/v12-archive-features.js?v=24.17',
-  './js/v15-performance-tasks.js?v=24.17',
-  './css/classic-extras.css?v=24.17',
-  './js/classic-extras.js?v=24.17'
+  './css/styles.css?v=25.0',
+  './css/art-theme.css?v=25.0',
+  './css/student-v8.css?v=25.0',
+  './css/design-v9.css?v=25.0',
+  './css/v10-features.css?v=25.0',
+  './js/app.js?v=25.0',
+  './js/student-v8.js?v=25.0',
+  './js/v10-features.js?v=25.1',
+  './js/design-v9.js?v=25.0',
+  './js/pwa.js?v=25.0',
+  './js/push-notifications.js?v=25.1',
+  './css/v12-archive-features.css?v=25.0',
+  './css/v14-layout-fixes.css?v=25.0',
+  './css/v15-performance-calendar.css?v=25.0',
+  './js/v12-archive-features.js?v=25.0',
+  './js/v15-performance-tasks.js?v=25.0',
+  './css/v16-reference-redesign.css?v=25.0',
+  './js/v16-reference-redesign.js?v=25.0'
 ];
 
 self.addEventListener('install', (event) => {

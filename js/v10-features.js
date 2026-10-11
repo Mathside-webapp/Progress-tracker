@@ -296,7 +296,7 @@
   // ------------------------------------------------------------------
   function ensureNotificationDialog() {
     if (document.getElementById('v10NotificationDialog')) return;
-    document.body.insertAdjacentHTML('beforeend', `<dialog id="v10NotificationDialog" class="modal v10-notification-dialog"><div class="modal-box v10-notification-box"><button class="modal-close" type="button" id="v10NotificationClose" aria-label="Close">×</button><div class="v10-notification-title"><div><p class="eyebrow">MATHSIDE UPDATES</p><h2>Notifications</h2></div><div class="v10-notification-actions"><button type="button" class="btn btn-light btn-small" id="v10PushNotificationBtn">Enable app alerts</button><button type="button" class="btn btn-light btn-small" id="v10MarkAllRead">Mark all read</button><button type="button" class="btn btn-danger-outline btn-small" id="v10ClearNotifications">Clear all</button></div></div><p id="v10PushStatus" class="v10-push-status" role="status"></p><p id="v10NotificationError" class="v10-notification-error" role="alert" hidden></p><div id="v10NotificationList" class="v10-notification-list"></div></div></dialog>`);
+    document.body.insertAdjacentHTML('beforeend', `<dialog id="v10NotificationDialog" class="modal v10-notification-dialog"><div class="modal-box v10-notification-box"><button class="modal-close" type="button" id="v10NotificationClose" aria-label="Close">×</button><div class="v10-notification-title"><div><p class="eyebrow">MATHSIDE UPDATES</p><h2>Notifications</h2></div><div class="v10-notification-actions"><button type="button" class="btn btn-light btn-small" id="v10PushNotificationBtn" hidden>Enable app alerts</button><button type="button" class="btn btn-light btn-small" id="v10MarkAllRead">Mark all read</button><button type="button" class="btn btn-danger-outline btn-small" id="v10ClearNotifications">Clear all</button></div></div><p id="v10PushStatus" class="v10-push-status" role="status"></p><p id="v10NotificationError" class="v10-notification-error" role="alert" hidden></p><div id="v10NotificationList" class="v10-notification-list"></div></div></dialog>`);
     document.getElementById('v10NotificationClose')?.addEventListener('click', () => document.getElementById('v10NotificationDialog')?.close());
     document.getElementById('v10MarkAllRead')?.addEventListener('click', async () => {
       if (!connected()) return;
@@ -442,6 +442,8 @@
 
   async function openNotifications() {
     ensureNotificationDialog();
+    // Update role-sensitive actions each time the bell is opened.
+    window.MathsidePush?.updateUi?.();
     await refreshNotifications({ force: true });
     Promise.resolve(window.MathsidePush?.syncExistingSubscription?.()).catch(() => {});
     const dialog = document.getElementById('v10NotificationDialog');
