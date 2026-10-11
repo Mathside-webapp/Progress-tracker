@@ -1,0 +1,13 @@
+Mathside — true classic interface restoration (October 11, 2026)
+
+Source layout: Mathside V24.17 classic (the actual original template and cards), not a CSS approximation.
+Restored dashboard, Classes, Activities, Performance Tasks, Calendar, Archived, Submissions, teacher navigation and mobile design.
+Removed v16 large picture banners, leaf logos, activity progress cards, landscape art, new menus, and alternative search/filter panels.
+Kept the latest JS app core, teacher push/notification updates and student app-alerts removal.
+Kept existing math keyboard, images/compression, editable assignments, manual grading, filters, performance tasks, archive workflows and Supabase config.
+Instructions remain available in task preview, removed from visible activity/performance listing cards.
+No database/SQL changes, no data deletion.
+
+GitHub Pages updating: use the changed-files ZIP to replace those same relative paths.
+Wait for GitHub Pages to deploy, reload/reopen the installed PWA to get updated service-worker cache.
+Live Supabase action testing should be done on a test class before production use.

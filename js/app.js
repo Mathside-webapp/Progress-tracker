@@ -3044,7 +3044,7 @@ function renderAssignments() {
     return `<article class="assignment-card assignment-group-card ${selected ? 'is-selected' : ''} ${scheduled ? 'assignment-scheduled' : ''}">
       <label class="assignment-select-check"><input class="row-check" type="checkbox" data-select-assignment="${assignment.id}" data-assignment-group-ids="${esc(groupIdsAttr)}" ${selected ? 'checked' : ''}><span class="sr-only">Select ${esc(assignment.title)}</span></label>
       <div class="assignment-thumb">${assignment.image_url ? `<img src="${esc(assignment.image_url)}" alt="Assignment image" data-assignment-storage-path="${esc(assignment.image_path || '')}">` : iconSvg('assignment', 'assignment-line-icon')}</div>
-      <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared assignment</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}</div><p>${esc(assignment.instructions || 'Mathematics assignment')}</p>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
+      <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared assignment</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}</div>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
       <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button><button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button class="btn btn-danger" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
     </article>`;
   }).join('');
@@ -3414,7 +3414,7 @@ function renderStudentNextUp() {
   const overdue = assignment.due_at && new Date(assignment.due_at).getTime() < Date.now();
   holder.innerHTML = `<div class="student-next-content">
     <h3>${esc(assignment.title)}</h3>
-    <p>${esc(assignment.instructions || 'Open this task and work through it one question at a time.')}</p>
+    
     <div class="student-next-meta"><span>${esc(sectionLabel(section))}</span><span>${qs.length} question${qs.length === 1 ? '' : 's'}</span>${due ? `<span class="${overdue ? 'is-overdue' : ''}">${overdue ? 'Past due' : 'Due'} ${esc(due)}</span>` : ''}</div>
     <button class="btn btn-orange" type="button" data-answer-assignment="${assignment.id}">Start this task</button>
   </div>`;
@@ -3511,7 +3511,7 @@ function renderStudentAssignments() {
       <div class="student-task-body">
         <span class="student-card-section-name">${esc(section?.name || 'Class')}</span>
         <div class="student-task-title-row"><h3>${esc(a.title)}</h3><span class="student-status ${statusClass}">${esc(status)}</span></div>
-        <p>${esc(a.instructions || 'Open the task and submit your answers.')}</p>
+        
         <div class="assignment-meta">
           ${section?.grade_level ? `<span class="meta-chip">Grade ${esc(section.grade_level)}</span>` : ''}
           <span class="meta-chip">${qs.length} question${qs.length === 1 ? '' : 's'}</span>
