@@ -1,4 +1,4 @@
-/* Mathside PWA Push Notifications — v6.11.1 (Android registration diagnostics)
+/* Mathside PWA Push Notifications — v6.12 Android repair
    - Works only for authenticated users.
    - Uses the installed PWA service worker + Web Push.
    - VAPID public key is fetched securely from the authenticated Edge Function.
@@ -13,6 +13,11 @@
   let pushSyncPromise = null;
   let busy = false;
   let promptTimer = null;
+  let registrationFailure = null;
+  let vapidCache = null;
+  let lastFailedStage = null;
+  let lastError = null;
+  const SW_TIMEOUT_MS = 14000;
 
   const isStandalone = () =>
     window.matchMedia('(display-mode: standalone)').matches ||
@@ -22,11 +27,6 @@
     'serviceWorker' in navigator &&
     'PushManager' in window &&
     'Notification' in window;
-
-  // Only teachers can offer/manage browser push from the interface. Students
-  // retain their normal in-app notification bell (mathside_notifications).
-  const isTeacherAccount = () =>
-    typeof state !== 'undefined' && state?.profile?.role === 'teacher';
 
   const currentUser = async () => {
     if (typeof db === 'undefined' || !db) return null;
@@ -44,18 +44,159 @@
     return Uint8Array.from([...rawData].map(char => char.charCodeAt(0)));
   };
 
-  async function getRegistration() {
-    if (!supported()) throw new Error('Push notifications are not supported on this browser.');
-    return navigator.serviceWorker.ready;
+  function errorWithStage(stage, error) {
+    const wrapped = error instanceof Error ? error : new Error(String(error || stage));
+    wrapped.mathsideStage = stage;
+    return wrapped;
+  }
+
+  function timeout(promise, ms, label) {
+    let timer;
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(errorWithStage('service-worker', new Error(`${label} timed out.`))), ms);
+      })
+    ]).finally(() => clearTimeout(timer));
+  }
+
+  async function getRegistration({ refresh = false } = {}) {
+    if (!window.isSecureContext) throw errorWithStage('secure-context', new Error('Mathside must be opened over HTTPS to receive push alerts.'));
+    if (!supported()) throw errorWithStage('compatibility', new Error('This browser does not support Web Push. Open Mathside in Chrome or another Web Push-capable browser.'));
+    const reg = await timeout(navigator.serviceWorker.ready, SW_TIMEOUT_MS, 'Mathside service worker');
+    if (refresh) {
+      try { await timeout(reg.update(), SW_TIMEOUT_MS, 'Service worker update'); }
+      catch (error) { console.warn('Mathside service worker update check failed:', error); }
+    }
+    if (!reg.active) throw errorWithStage('service-worker', new Error('Mathside service worker has not activated. Reload the app and retry.'));
+    return reg;
   }
 
   async function fetchVapidPublicKey() {
-    if (typeof db === 'undefined' || !db) throw new Error('Mathside is not connected to Supabase.');
+    if (vapidCache) return vapidCache;
+    if (typeof db === 'undefined' || !db) throw errorWithStage('configuration', new Error('Mathside is not connected to Supabase.'));
     const { data, error } = await db.functions.invoke(FUNCTION_NAME, { method: 'GET' });
-    if (error) throw error;
+    if (error) throw errorWithStage('configuration', error);
     const key = String(data?.publicKey || '').trim();
-    if (!key) throw new Error('Push notifications are not configured yet. Add the VAPID secrets to Supabase.');
-    return key;
+    if (!key) throw errorWithStage('configuration', new Error('Push notifications are not configured. Add valid VAPID secrets in Supabase.'));
+    let raw;
+    try { raw = base64ToUint8Array(key); }
+    catch (error) { throw errorWithStage('configuration', new Error('Invalid VAPID public key encoding.')); }
+    if (raw.length !== 65 || raw[0] !== 4) {
+      throw errorWithStage('configuration', new Error('The public push key is invalid. Contact the Mathside administrator.'));
+    }
+    vapidCache = raw;
+    return raw;
+  }
+
+  function keysMatch(subscription, key) {
+    const existing = subscription?.options?.applicationServerKey;
+    if (!existing) return true; // Older browsers may not expose the key.
+    const a = new Uint8Array(existing);
+    return a.length === key.length && a.every((value, i) => value === key[i]);
+  }
+
+  async function removeStaleSubscription(subscription) {
+    if (!subscription) return;
+    // Remove only this device's obsolete endpoint. Never delete user notifications.
+    if (typeof db !== 'undefined' && db) {
+      const { error } = await db.rpc('mathside_remove_push_subscription', { p_endpoint: subscription.endpoint });
+      if (error) console.warn('Mathside old endpoint cleanup failed:', error.message);
+    }
+    const ok = await subscription.unsubscribe();
+    if (!ok) throw errorWithStage('stale-subscription', new Error('Chrome could not replace the old push subscription.'));
+    localStorage.removeItem(PUSH_SYNC_KEY);
+  }
+
+  function describeFailure(error, stage) {
+    const message = String(error?.message || error || '').trim();
+    const name = String(error?.name || 'Error');
+    if (stage === 'push-service' && /push service|registration failed|aborterror|network/i.test(`${name} ${message}`)) {
+      return 'Your Android browser could not register with its push provider. Mathside reached this step correctly. You can try Repair and retry; if it still fails, try Mathside in Firefox for Android to test a different push provider.';
+    }
+    if (stage === 'permission') return 'Notifications are blocked or were not allowed. Enable them for Chrome and Mathside in Android settings.';
+    if (stage === 'service-worker') return 'Mathside could not activate its background service worker. Reload Mathside online and try again.';
+    if (stage === 'secure-context') return 'Open Mathside through its secure HTTPS address.';
+    if (stage === 'configuration') return message || 'Mathside notification configuration is unavailable.';
+    if (stage === 'database') return 'Your phone registered, but Mathside could not save its subscription. Sign in again and retry.';
+    if (stage === 'stale-subscription') return 'Chrome has an old device registration that needs repair.';
+    return message || 'Mathside could not activate notifications.';
+  }
+
+  function failureDiagnostic(error, stage) {
+    return {
+      stage,
+      errorName: String(error?.name || 'Error'),
+      errorMessage: String(error?.message || error || '').slice(0, 400),
+      permission: supported() ? Notification.permission : 'unsupported',
+      standalone: isStandalone(),
+      secureContext: Boolean(window.isSecureContext),
+      activeServiceWorker: Boolean(navigator.serviceWorker?.controller),
+      browser: navigator.userAgent.slice(0, 200),
+      checkedAt: new Date().toISOString()
+    };
+  }
+
+  function showFailureDialog(error, stage) {
+    lastFailedStage = stage;
+    lastError = error;
+    registrationFailure = failureDiagnostic(error, stage);
+    let dlg = document.getElementById('mathsidePushRepairDialog');
+    if (!dlg) {
+      dlg = document.createElement('dialog');
+      dlg.id = 'mathsidePushRepairDialog';
+      dlg.className = 'pwa-dialog mathside-push-dialog';
+      dlg.innerHTML = `<div class="pwa-card mathside-push-card" style="max-width:460px;text-align:left">
+        <div class="pwa-card-eyebrow">MATHSIDE · APP ALERTS</div>
+        <h2 style="margin:10px 0">Phone registration failed</h2>
+        <p id="mathsidePushRepairExplanation" style="line-height:1.55"></p>
+        <div class="mathside-push-note">This does not affect your grades, classes, submissions, or notifications in Mathside. A phone popup test checks local notification permission; it is not a push delivery test.</div>
+        <p id="mathsidePushRepairStage" style="margin:8px 0;font-size:12px;color:#775b4c"></p>
+        <div class="pwa-card-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+          <button type="button" class="pwa-btn pwa-btn-light" id="mathsidePushLocalTest">Test phone popup</button>
+          <button type="button" class="pwa-btn pwa-btn-light" id="mathsidePushCopyError">Copy error</button>
+          <button type="button" class="pwa-btn pwa-btn-orange" id="mathsidePushRepairButton">Repair and retry</button>
+          <button type="button" class="pwa-btn pwa-btn-light" id="mathsidePushRepairClose">Close</button>
+        </div>
+      </div>`;
+      document.body.appendChild(dlg);
+      dlg.querySelector('#mathsidePushRepairClose').addEventListener('click', () => dlg.close());
+      dlg.querySelector('#mathsidePushCopyError').addEventListener('click', async () => {
+        const detail = JSON.stringify(registrationFailure || {}, null, 2);
+        try { await navigator.clipboard.writeText(detail); if (typeof toast === 'function') toast('Error details copied.', 'success'); }
+        catch (_) { window.prompt('Copy these details:', detail); }
+      });
+      dlg.querySelector('#mathsidePushLocalTest').addEventListener('click', async () => {
+        try {
+          if (Notification.permission !== 'granted') throw new Error('Notifications are not allowed on this phone.');
+          const reg = await getRegistration();
+          await reg.showNotification('Mathside notification test', {
+            body: 'Your phone can display local Mathside alerts. This is not a push service delivery test.',
+            icon: './icons/icon-192.png', tag: 'mathside-local-test'
+          });
+          if (typeof toast === 'function') toast('Phone popup test sent. Check your notifications.', 'success');
+        } catch (err) { if (typeof toast === 'function') toast(String(err?.message || err), 'orange'); }
+      });
+      dlg.querySelector('#mathsidePushRepairButton').addEventListener('click', async () => {
+        const button = dlg.querySelector('#mathsidePushRepairButton');
+        if (button.disabled) return;
+        button.disabled = true; button.textContent = 'Repairing…';
+        try {
+          const reg = await getRegistration({ refresh: true });
+          const key = await fetchVapidPublicKey();
+          const existing = await reg.pushManager.getSubscription();
+          if (existing && !keysMatch(existing, key)) await removeStaleSubscription(existing);
+          dlg.close();
+          await enable({ repair: true });
+        } catch (err) { showFailureDialog(err, err.mathsideStage || 'service-worker'); }
+        finally { button.disabled = false; button.textContent = 'Repair and retry'; }
+      });
+    }
+    dlg.querySelector('#mathsidePushRepairExplanation').textContent = describeFailure(error, stage);
+    dlg.querySelector('#mathsidePushRepairStage').textContent = `Failed at: ${stage}. ${error?.name || 'Error'}: ${String(error?.message || '').slice(0, 150)}`;
+    const prompt = document.getElementById('mathsidePushPrompt');
+    if (prompt?.open) prompt.close();
+    if (!dlg.open && typeof dlg.showModal === 'function') dlg.showModal();
   }
 
   async function saveSubscription(subscription) {
@@ -78,15 +219,16 @@
   }
 
   async function syncExistingSubscription({ force = false } = {}) {
-    // Don't re-register background push for student accounts.
-    if (!isTeacherAccount() || !supported() || Notification.permission !== 'granted') return false;
+    if (!supported() || Notification.permission !== 'granted') return false;
     const user = await currentUser();
     if (!user) return false;
     const registration = await getRegistration();
     const subscription = await registration.pushManager.getSubscription();
     if (!subscription) return false;
 
-    const lastSync = Number(localStorage.getItem(PUSH_SYNC_KEY) || 0);
+    const syncValue = localStorage.getItem(PUSH_SYNC_KEY) || '';
+    const [syncUserId, syncTime] = syncValue.split(':');
+    const lastSync = syncUserId === user.id ? Number(syncTime || 0) : 0;
     if (!force && lastSync && Date.now() - lastSync < PUSH_SYNC_TTL_MS) {
       updateUi();
       return true;
@@ -95,7 +237,7 @@
 
     pushSyncPromise = (async () => {
       await saveSubscription(subscription);
-      localStorage.setItem(PUSH_SYNC_KEY, String(Date.now()));
+      localStorage.setItem(PUSH_SYNC_KEY, `${user.id}:${Date.now()}`);
       updateUi();
       return true;
     })();
@@ -107,131 +249,56 @@
     }
   }
 
-  // V6.11.1 — Diagnose Web Push registration without exposing secrets or
-  // deleting the website's stored data, service worker, or subscriptions.
-  let latestDiagnostic = null;
-  function explainPushFailure(error, stage) {
-    const name = String(error?.name || 'Error');
-    const message = String(error?.message || error || 'Unknown error');
-    if (stage === 'push-service' && /push service|registration failed|aborterror|network/i.test(`${name} ${message}`)) {
-      return 'Android could not connect to its push service. Mathside settings loaded, but Chrome/Google Play services did not create a subscription. Update Chrome and Google Play services, restart your phone, try a different network, and temporarily disable Private DNS or VPN filtering.';
-    }
-    if (stage === 'permission') return 'Phone notification permission was not granted. Allow notifications for Mathside in Android settings, then try again.';
-    if (stage === 'service-worker') return 'Mathside could not activate its service worker. Open the website in Chrome while online, reload, then try again.';
-    if (stage === 'vapid') return 'Mathside could not load its notification configuration. Check the internet connection and Supabase Edge Function.';
-    if (stage === 'database') return 'The phone created a subscription, but Mathside could not save it. Sign in again and retry.';
-    return message || 'Could not enable app notifications.';
-  }
-
-  function reportPushFailure(error, stage) {
-    latestDiagnostic = {
-      stage: stage || 'unknown',
-      errorName: String(error?.name || 'Error'),
-      errorMessage: String(error?.message || error || 'Unknown error').slice(0, 500),
-      notificationPermission: supported() ? Notification.permission : 'unsupported',
-      secureContext: Boolean(window.isSecureContext),
-      standalone: isStandalone(),
-      timestamp: new Date().toISOString(),
-      browser: navigator.userAgent.slice(0, 240)
-    };
-    return explainPushFailure(error, stage);
-  }
-
-  function showPushHelp(message, stage) {
-    let dialog = document.getElementById('mathsidePushDiagnostic');
-    if (!dialog) {
-      dialog = document.createElement('dialog');
-      dialog.id = 'mathsidePushDiagnostic';
-      dialog.className = 'pwa-dialog mathside-push-dialog';
-      dialog.innerHTML = `
-        <div class="pwa-card mathside-push-card" style="max-width:490px;text-align:left">
-          <div class="pwa-card-eyebrow">MATHSIDE · NOTIFICATION CHECK</div>
-          <h2 style="margin:9px 0 12px;font-size:25px">Phone alerts could not be enabled</h2>
-          <p id="mathsidePushFailureText" style="line-height:1.5;margin-bottom:14px"></p>
-          <div class="mathside-push-note" style="text-align:left">
-            <b>On Android, try this:</b>
-            <ol style="margin:9px 0 0;padding-left:20px;line-height:1.7">
-              <li>Update <b>Chrome</b> and <b>Google Play services</b>; restart the phone.</li>
-              <li>Allow notifications and unrestricted background/battery usage for Chrome and Google Play services.</li>
-              <li>Turn off VPN, ad-blocking Private DNS, or network filters temporarily; try mobile data instead of Wi-Fi.</li>
-              <li>Open Mathside in Chrome or its installed app and tap <b>Enable app alerts</b> again.</li>
-            </ol>
-          </div>
-          <p id="mathsidePushFailureStage" style="font-size:11px;color:#8b5d44;margin-top:10px"></p>
-          <div class="pwa-card-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:15px">
-            <button type="button" class="pwa-btn pwa-btn-light" id="mathsidePushCopyDiagnostic">Copy error details</button>
-            <button type="button" class="pwa-btn pwa-btn-orange" id="mathsidePushDiagnosticClose">Close</button>
-          </div>
-        </div>`;
-      document.body.appendChild(dialog);
-      dialog.querySelector('#mathsidePushDiagnosticClose')?.addEventListener('click', () => dialog.close());
-      dialog.querySelector('#mathsidePushCopyDiagnostic')?.addEventListener('click', async () => {
-        const data = JSON.stringify(latestDiagnostic || { stage: 'unknown' }, null, 2);
-        try {
-          await navigator.clipboard.writeText(data);
-          const btn = dialog.querySelector('#mathsidePushCopyDiagnostic');
-          if (btn) btn.textContent = 'Copied — send to support';
-        } catch (_) {
-          const pre = document.createElement('textarea');
-          pre.value = data; pre.setAttribute('readonly','');
-          pre.style.cssText = 'width:100%;height:130px;margin-top:10px;font-size:11px;';
-          dialog.querySelector('.pwa-card')?.appendChild(pre);
-          pre.focus(); pre.select();
-        }
-      });
-    }
-    dialog.querySelector('#mathsidePushFailureText').textContent = message;
-    dialog.querySelector('#mathsidePushFailureStage').textContent = `Failed at: ${stage}. Your Mathside data has not been changed.`;
-    if (!dialog.open) {
-      const prompt = document.getElementById('mathsidePushPrompt');
-      if (prompt?.open) prompt.close();
-      if (typeof dialog.showModal === 'function') dialog.showModal();
-    }
-  }
-
-  async function enable({ quiet = false } = {}) {
-    if (!isTeacherAccount() || busy) return false;
+  async function enable({ quiet = false, repair = false } = {}) {
+    if (busy) return false;
     busy = true;
     let stage = 'compatibility';
     updateUi();
     try {
-      if (!supported()) throw new Error('This device/browser does not support Web Push.');
-      if (!window.isSecureContext) throw new Error('Push notifications require an HTTPS connection.');
-      const user = await currentUser();
-      if (!user) throw new Error('Sign in before enabling app notifications.');
-
+      if (!supported()) throw errorWithStage(stage, new Error('This browser does not support Web Push.'));
+      if (!window.isSecureContext) throw errorWithStage('secure-context', new Error('Mathside requires HTTPS.'));
+      // Request permission before any network call while the user's tap is still active.
       stage = 'permission';
       let permission = Notification.permission;
-      if (permission !== 'granted') permission = await Notification.requestPermission();
+      if (permission === 'default') permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        if (permission === 'denied') throw new Error('Notifications are blocked. Allow notifications for Mathside in your device/browser settings.');
+        if (permission === 'denied') throw errorWithStage(stage, new Error('Notifications were blocked.'));
         return false;
       }
-
+      stage = 'account';
+      const user = await currentUser();
+      if (!user) throw errorWithStage(stage, new Error('Sign in before enabling app notifications.'));
       stage = 'service-worker';
-      const registration = await getRegistration();
+      const registration = await getRegistration({ refresh: repair });
+      stage = 'configuration';
+      const key = await fetchVapidPublicKey();
+      stage = 'push-service';
       let subscription = await registration.pushManager.getSubscription();
+      if (subscription && !keysMatch(subscription, key)) {
+        stage = 'stale-subscription';
+        await removeStaleSubscription(subscription);
+        subscription = null;
+      }
       if (!subscription) {
-        stage = 'vapid';
-        const publicKey = await fetchVapidPublicKey();
         stage = 'push-service';
+        // Only subscribe following an explicit user tap (or the optional repair tap).
         subscription = await registration.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: base64ToUint8Array(publicKey)
+          applicationServerKey: key
         });
       }
       stage = 'database';
       await saveSubscription(subscription);
-      latestDiagnostic = null;
-      localStorage.setItem(PUSH_SYNC_KEY, String(Date.now()));
+      localStorage.setItem(PUSH_SYNC_KEY, `${user.id}:${Date.now()}`);
       localStorage.removeItem(PROMPT_KEY);
-      if (!quiet && typeof toast === 'function') toast('App notifications are on. Mathside can alert you even when the installed app is closed.', 'success', 'Notifications enabled');
+      registrationFailure = null;
+      if (!quiet && typeof toast === 'function') toast('App alerts enabled on this device.', 'success', 'Notifications enabled');
       updateUi();
       return true;
     } catch (error) {
-      console.error('Mathside push enable failed at', stage, error);
-      const guidance = reportPushFailure(error, stage);
-      if (!quiet) showPushHelp(guidance, stage);
+      stage = error?.mathsideStage || stage;
+      console.warn('Mathside notification registration failed:', stage, error?.name, error?.message);
+      if (!quiet) showFailureDialog(error, stage);
       updateUi();
       return false;
     } finally {
@@ -287,30 +354,18 @@
   async function updateUi() {
     const button = document.getElementById('v10PushNotificationBtn');
     if (!button) return;
-    // Hide the action entirely for students, including when the notification
-    // dialog was created before the account role had finished loading.
-    if (!isTeacherAccount() || !supported()) {
+    if (!supported()) {
       button.hidden = true;
-      button.disabled = true;
       return;
     }
     try {
       const info = await status();
-      // The user may have signed out while Web Push status was being checked.
-      if (!isTeacherAccount()) {
-        button.hidden = true;
-        button.disabled = true;
-        return;
-      }
       button.hidden = false;
       button.disabled = busy;
       button.classList.toggle('push-enabled', info.enabled);
       button.textContent = busy ? 'Checking…' : (info.enabled ? 'App alerts on' : 'Enable app alerts');
       button.title = info.enabled ? 'Turn off push notifications on this device' : 'Receive Mathside notifications outside the app';
     } catch (_) {
-      const teacher = isTeacherAccount();
-      button.hidden = !teacher;
-      button.disabled = !teacher || busy;
       button.textContent = 'Enable app alerts';
     }
   }
@@ -345,14 +400,9 @@
 
   async function maybeOfferPush() {
     clearTimeout(promptTimer);
-    if (!isTeacherAccount()) {
-      const dialog = document.getElementById('mathsidePushPrompt');
-      if (dialog?.open) dialog.close();
-      return;
-    }
     promptTimer = setTimeout(async () => {
       try {
-        if (!isTeacherAccount() || !isStandalone() || !supported() || Notification.permission === 'denied') return;
+        if (!isStandalone() || !supported() || Notification.permission === 'denied') return;
         if (localStorage.getItem(PROMPT_KEY) === '1') return;
         const user = await currentUser();
         if (!user) return;
@@ -410,10 +460,11 @@
     if (!button || button.dataset.bound === '1') return;
     button.dataset.bound = '1';
     button.addEventListener('click', async () => {
-      if (!isTeacherAccount()) return;
-      const info = await status();
-      if (info.enabled) await disable();
-      else await enable();
+      try {
+        const info = await status();
+        if (info.enabled) await disable();
+        else await enable();
+      } catch (error) { showFailureDialog(error, error.mathsideStage || 'service-worker'); }
     });
     updateUi();
   }
@@ -424,7 +475,6 @@
     style.id = 'mathsidePushStyles';
     style.textContent = `
       .v10-notification-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
-      #v10PushNotificationBtn[hidden]{display:none!important}
       #v10PushNotificationBtn{border-color:#ffb47b!important;color:#c94f00!important;background:#fff6ef!important}
       #v10PushNotificationBtn.push-enabled{background:#ff6500!important;border-color:#ff6500!important;color:#fff!important}
       .mathside-push-note{margin-top:14px;padding:11px 12px;border-radius:13px;background:#fff7ef;color:#6e4b34;font-size:12px;line-height:1.45;border:1px solid #ffe0c8}
@@ -469,9 +519,8 @@
     disable,
     status,
     syncExistingSubscription,
-    updateUi,
     unregisterForCurrentUser,
     maybeOfferPush,
-    lastDiagnostic: () => latestDiagnostic
+    getDiagnostic: () => registrationFailure
   };
 })();

@@ -13,15 +13,14 @@
   <link rel="icon" type="image/svg+xml" href="assets/mathside-icon.svg?v=12.3" />
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="css/styles.css?v=26.1-classic-original" />
-  <link rel="stylesheet" href="css/art-theme.css?v=26.1-classic-original" />
-  <link rel="stylesheet" href="css/student-v8.css?v=26.1-classic-original" />
-  <link rel="stylesheet" href="css/design-v9.css?v=26.1-classic-original">
-  <link rel="stylesheet" href="css/v10-features.css?v=26.1-classic-original">
-  <link rel="stylesheet" href="css/v12-archive-features.css?v=26.1-classic-original" />
-  <link rel="stylesheet" href="css/v14-layout-fixes.css?v=26.1-classic-original" />
-  <link rel="stylesheet" href="css/v15-performance-calendar.css?v=26.1-classic-original" />
-  <link rel="stylesheet" href="css/classic-extras.css?v=26.1-classic-original" />
+  <link rel="stylesheet" href="css/styles.css?v=12.8" />
+  <link rel="stylesheet" href="css/art-theme.css?v=7.0" />
+  <link rel="stylesheet" href="css/student-v8.css?v=10.6" />
+  <link rel="stylesheet" href="css/design-v9.css?v=9.1">
+  <link rel="stylesheet" href="css/v10-features.css?v=11.5">
+  <link rel="stylesheet" href="css/v12-archive-features.css?v=24.12" />
+  <link rel="stylesheet" href="css/v14-layout-fixes.css?v=14.0" />
+  <link rel="stylesheet" href="css/v15-performance-calendar.css?v=15.11" />
 </head>
 <body>
   <div id="appLoading" class="app-loading" hidden>
@@ -161,7 +160,6 @@
         <button class="side-link" data-view="assignments"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 11h6M9 15h6"/></svg><span>Activities</span></button>
         <button class="side-link" data-view="performance"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 9h8M8 13h5M7 3v4M17 3v4"/></svg><span>Performance Tasks</span></button>
         <button class="side-link" data-view="submissions"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17l9-10M4 4h10M4 8h7"/></svg><span>Submissions</span></button>
-        <button class="side-link" data-view="calendar"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6M17 2v6M3 11h18"/></svg><span>Calendar</span></button>
         <button class="side-link" data-view="archive"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"/></svg><span>Archived</span></button>
       </nav>
       <button class="side-link signout" id="teacherSignout"><svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/></svg><span>Sign out</span></button>
@@ -231,15 +229,8 @@
           <div id="performanceTaskList" class="assignment-list"></div>
         </section>
 
-        <section class="app-view" id="view-calendar">
-          <div class="section-row"><div><p class="eyebrow">MY CLASS SCHEDULE</p><h2>Calendar</h2><p class="muted">Upcoming activity and performance task deadlines.</p></div></div>
-          <div class="classic-calendar-toolbar"><label>Class <select id="classicCalendarClass"><option value="all">All classes</option></select></label><div class="classic-calendar-month-nav"><button class="btn btn-light" type="button" id="classicCalendarPrev" aria-label="Previous month">‹</button><strong id="classicCalendarMonth">Month</strong><button class="btn btn-light" type="button" id="classicCalendarNext" aria-label="Next month">›</button><button class="btn btn-orange" type="button" id="classicCalendarToday">Today</button></div></div>
-          <div class="classic-calendar-wrapper"><div class="classic-calendar-weekdays"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span></div><div id="classicCalendarGrid" class="classic-calendar-grid"></div></div>
-          <section class="classic-calendar-agenda"><h3 id="classicAgendaTitle">Deadlines</h3><div id="classicAgendaList"></div></section>
-        </section>
-
         <section class="app-view" id="view-archive">
-          <div class="section-row"><div><p class="eyebrow">ARCHIVE CENTER</p><h2>Archived</h2><p class="muted">Archived classes, activities, and performance tasks are kept here and hidden from their regular panels.</p></div><button class="btn btn-light compact-filter-button" id="archiveFilterBtn" type="button" aria-expanded="false" aria-controls="archiveFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="archiveFilterBadge" class="filter-count-badge" hidden>0</span></button></div>
+          <div class="section-row"><div><p class="eyebrow">ARCHIVE CENTER</p><h2>Archived</h2><p class="muted">Archived tasks are retained, but their student submissions and files are permanently removed. Checked scores remain in Class Record export.</p></div><div class="row-actions"><button id="retryArchiveCleanupBtn" class="btn btn-light" type="button">Retry file cleanup</button><button class="btn btn-light compact-filter-button" id="archiveFilterBtn" type="button" aria-expanded="false" aria-controls="archiveFilterPanel"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M7 12h10M10 19h4"/></svg>Filter <span id="archiveFilterBadge" class="filter-count-badge" hidden>0</span></button></div></div>
           <div class="archive-summary-grid" aria-label="Archive summary">
             <article><span>Classes</span><b id="archivedClassCount">0</b></article>
             <article><span>Activities</span><b id="archivedActivityCount">0</b></article>
@@ -878,8 +869,9 @@
       <p class="eyebrow">ARCHIVE ACTIVITY</p>
       <h2 id="archiveAssignmentTitle">Archive this activity?</h2>
       <p id="archiveAssignmentText" class="muted"></p>
-      <div class="archive-warning"><b>Before archiving</b><span>Mathside will download an Excel archive containing the activity summary, student submissions, scores, and answer details. Students can still view the archived activity, but they cannot upload or submit anything to it.</span></div>
-      <div class="modal-actions"><button class="btn btn-light" type="button" data-close="archiveAssignmentModal">Cancel</button><button id="confirmArchiveAssignmentBtn" class="btn btn-orange" type="button">Download Excel & archive</button></div>
+      <div class="archive-warning danger"><b>Permanent deletion of submitted work</b><span>All submitted answers, checked responses, feedback, uploaded student files, and performance-task team records will be permanently deleted, including from Supabase Storage. Unarchiving will NOT restore them. Only checked final scores will remain in Export Class Record. An Excel backup downloads first.</span></div>
+      <label class="archive-confirm-ack"><input id="archiveDeletionAck" type="checkbox"><span>I understand that submitted work and files cannot be recovered after archiving.</span></label>
+      <div class="modal-actions"><button class="btn btn-light" type="button" data-close="archiveAssignmentModal">Cancel</button><button id="confirmArchiveAssignmentBtn" class="btn btn-danger" type="button" disabled>Download backup & permanently archive</button></div>
     </div>
   </dialog>
 
@@ -952,22 +944,20 @@
     </div>
   </dialog>
 
-  <script src="js/config.js?v=26.1-classic-original"></script>
+  <script src="js/config.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
   <!-- Converts iPhone/iPad HEIC photos to JPEG before Supabase upload. -->
-
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script id="mathliveScript" defer src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
-  <script src="js/app.js?v=26.1-classic-original"></script>
-  <script src="js/student-v8.js?v=26.1-classic-original"></script>
-  <script src="js/v10-features.js?v=26.1-classic-original"></script>
-<script src="js/design-v9.js?v=26.1-classic-original"></script>
-  <script src="js/pwa.js?v=26.1-classic-original"></script>
-  <script src="js/push-notifications.js?v=26.1-classic-original"></script>
-  <script src="js/v12-archive-features.js?v=26.1-classic-original"></script>
-  <script src="js/v15-performance-tasks.js?v=26.1-classic-original"></script>
-  <script src="js/classic-extras.js?v=26.1-classic-original"></script>
+  <script src="js/app.js?v=16.4"></script>
+  <script src="js/student-v8.js?v=15.1"></script>
+  <script src="js/v10-features.js?v=24.12"></script>
+<script src="js/design-v9.js?v=9"></script>
+  <script src="js/pwa.js?v=6.9.15"></script>
+  <script src="js/push-notifications.js?v=6.12"></script>
+  <script src="js/v12-archive-features.js?v=24.12"></script>
+  <script src="js/v15-performance-tasks.js?v=15.18"></script>
 </body>
 </html>

@@ -9,13 +9,11 @@
     calendarSelectedDay: '',
     draftTimer: null,
     notifications: [],
+    notificationCleanupDone: false,
     notificationFetchedAt: 0,
     notificationFetchPromise: null,
     notificationUserId: null,
-    pollTimer: null,
-    notificationFailures: 0,
-    nextNotificationRetryAt: 0,
-    notificationLastError: ''
+    pollTimer: null
   };
 
   const safeDate = value => {
@@ -51,8 +49,8 @@
     if (days <= 7) return { label: `Due in ${days} days`, key: 'soon' };
     return { label: `Due ${formatFullDate(d)}`, key: 'later' };
   };
-  const NOTIFICATION_CACHE_MS = 120000;
-  const NOTIFICATION_POLL_MS = 300000;
+  const NOTIFICATION_CACHE_MS = 60000;
+  const NOTIFICATION_POLL_MS = 180000;
   const currentUserId = () => state.user?.id || null;
   const connected = () => Boolean(db && currentUserId());
   const studentAssignments = () => state.assignments.filter(a => a.status === 'published');
@@ -296,7 +294,7 @@
   // ------------------------------------------------------------------
   function ensureNotificationDialog() {
     if (document.getElementById('v10NotificationDialog')) return;
-    document.body.insertAdjacentHTML('beforeend', `<dialog id="v10NotificationDialog" class="modal v10-notification-dialog"><div class="modal-box v10-notification-box"><button class="modal-close" type="button" id="v10NotificationClose" aria-label="Close">×</button><div class="v10-notification-title"><div><p class="eyebrow">MATHSIDE UPDATES</p><h2>Notifications</h2></div><div class="v10-notification-actions"><button type="button" class="btn btn-light btn-small" id="v10PushNotificationBtn" hidden>Enable app alerts</button><button type="button" class="btn btn-light btn-small" id="v10MarkAllRead">Mark all read</button><button type="button" class="btn btn-danger-outline btn-small" id="v10ClearNotifications">Clear all</button></div></div><p id="v10PushStatus" class="v10-push-status" role="status"></p><p id="v10NotificationError" class="v10-notification-error" role="alert" hidden></p><div id="v10NotificationList" class="v10-notification-list"></div></div></dialog>`);
+    document.body.insertAdjacentHTML('beforeend', `<dialog id="v10NotificationDialog" class="modal v10-notification-dialog"><div class="modal-box v10-notification-box"><button class="modal-close" type="button" id="v10NotificationClose" aria-label="Close">×</button><div class="v10-notification-title"><div><p class="eyebrow">MATHSIDE UPDATES</p><h2>Notifications</h2></div><div class="v10-notification-actions"><button type="button" class="btn btn-light btn-small" id="v10PushNotificationBtn">Enable app alerts</button><button type="button" class="btn btn-light btn-small" id="v10MarkAllRead">Mark all read</button><button type="button" class="btn btn-danger-outline btn-small" id="v10ClearNotifications">Clear all</button></div></div><div id="v10NotificationList" class="v10-notification-list"></div></div></dialog>`);
     document.getElementById('v10NotificationClose')?.addEventListener('click', () => document.getElementById('v10NotificationDialog')?.close());
     document.getElementById('v10MarkAllRead')?.addEventListener('click', async () => {
       if (!connected()) return;
@@ -374,11 +372,6 @@
     setBadge('studentNotificationBadge', state.profile?.role === 'student' ? unread.length : 0);
     setBadge('studentFeedbackNavBadge', state.profile?.role === 'student' ? unread.filter(n => n.type === 'feedback').length : 0);
     if (!box) return;
-    const errorLine = document.getElementById('v10NotificationError');
-    if (errorLine) {
-      errorLine.hidden = !feature.notificationLastError;
-      errorLine.textContent = feature.notificationLastError || '';
-    }
     box.innerHTML = feature.notifications.length ? feature.notifications.map(n => `<div class="v10-notification-row ${n.read_at ? '' : 'unread'}"><button type="button" class="v10-notification-open" data-notification-id="${esc(n.id)}"><span class="v10-notification-kind">${notificationIcon(n.type)}</span><span class="v10-notification-copy"><b>${esc(n.title || 'Mathside update')}</b><small>${esc(n.body || '')}</small><time>${esc(formatDateTime(n.created_at))}</time></span>${n.read_at ? '' : '<i></i>'}</button><button type="button" class="v10-notification-delete" data-notification-delete="${esc(n.id)}" aria-label="Delete ${esc(n.title || 'notification')}" title="Delete notification">×</button></div>`).join('') : featureEmpty('You’re all caught up.', 'New class updates will appear here.');
   }
 
@@ -389,27 +382,26 @@
       feature.notificationUserId = userId;
       feature.notifications = [];
       feature.notificationFetchedAt = 0;
+      feature.notificationCleanupDone = false;
       feature.notificationFetchPromise = null;
-      feature.notificationFailures = 0;
-      feature.nextNotificationRetryAt = 0;
-      feature.notificationLastError = '';
     }
     if (feature.notificationFetchPromise) return feature.notificationFetchPromise;
-    if (!navigator.onLine) {
-      feature.notificationLastError = 'Offline. Your previously loaded updates remain visible.';
-      renderNotifications();
-      return;
-    }
-    if (!force && Date.now() < feature.nextNotificationRetryAt) return;
     if (!force && feature.notificationFetchedAt && Date.now() - feature.notificationFetchedAt < NOTIFICATION_CACHE_MS) {
       renderNotifications();
       return;
     }
 
     feature.notificationFetchPromise = (async () => {
-      // Notifications are retained for seven days. Expired database rows are
-      // removed by the server-side scheduled cleanup; the client only applies the
-      // same cutoff so old items never appear while that daily job is pending.
+      // Notifications are retained for seven days only. The RPC removes expired
+      // database rows; the date filter also guarantees that an expired item never
+      // appears in the UI while an older deployment is being upgraded.
+      if (!feature.notificationCleanupDone) {
+        const { error: cleanupError } = await db.rpc('mathside_cleanup_old_notifications');
+        if (cleanupError && !String(cleanupError.message || '').toLowerCase().includes('could not find')) {
+          console.warn('Notification cleanup:', cleanupError.message || cleanupError);
+        }
+        feature.notificationCleanupDone = true;
+      }
       const retentionCutoff = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString();
       const { data, error } = await db.from('mathside_notifications')
         .select('*')
@@ -418,16 +410,9 @@
         .order('created_at', { ascending: false })
         .limit(60);
       if (error) {
-        feature.notificationFailures = Math.min(feature.notificationFailures + 1, 5);
-        feature.nextNotificationRetryAt = Date.now() + Math.min(15 * 60 * 1000, 60000 * Math.pow(2, feature.notificationFailures - 1));
-        feature.notificationLastError = 'Could not load new notifications. Your saved updates are shown; tap the bell to retry.';
-        console.warn('Mathside notification refresh failed:', error.message || error);
-        renderNotifications();
+        console.warn('Notifications not ready:', error.message || error);
         return;
       }
-      feature.notificationFailures = 0;
-      feature.nextNotificationRetryAt = 0;
-      feature.notificationLastError = '';
       feature.notifications = data || [];
       feature.notificationFetchedAt = Date.now();
       renderNotifications();
@@ -442,10 +427,7 @@
 
   async function openNotifications() {
     ensureNotificationDialog();
-    // Update role-sensitive actions each time the bell is opened.
-    window.MathsidePush?.updateUi?.();
-    await refreshNotifications({ force: true });
-    Promise.resolve(window.MathsidePush?.syncExistingSubscription?.()).catch(() => {});
+    await refreshNotifications();
     const dialog = document.getElementById('v10NotificationDialog');
     if (dialog && !dialog.open) dialog.showModal();
   }
@@ -691,7 +673,11 @@
     return result;
   }
 
-  function performanceTaskExportScore(assignment, studentId, performanceData) {
+  function performanceTaskExportScore(assignment, studentId, performanceData, archivedScores) {
+    const savedGrade = archivedScores.get(assignment.id)?.get(String(studentId));
+    // After archiving, all response/team records are gone: archived score is the
+    // ONLY durable grade. It must remain available even after unarchiving.
+    if (savedGrade !== undefined) return { value: savedGrade, note: 'Checked final score saved when submitted work was permanently archived.' };
     const ownSubmission = state.submissions.find(s => s.assignment_id === assignment.id && s.student_id === studentId);
     if ((assignment.collaboration_mode || 'individual') === 'individual') {
       if (!ownSubmission) return { value: '—', note: '' };
@@ -764,7 +750,19 @@
     try {
       let buffer = null;
       await withLoading('Preparing class record…', 'Creating separate Written Works and Performance Tasks sheets.', async () => {
-        const performanceData = await loadPerformanceTaskExportData(performanceAssignments);
+        const archivedScores = new Map();
+        if (assignments.length) {
+          const { data: savedScores, error: scoreError } = await db
+            .from('mathside_archived_scores')
+            .select('assignment_id, student_id, score')
+            .in('assignment_id', assignments.map(a => a.id));
+          if (scoreError && scoreError.code !== '42P01' && scoreError.code !== 'PGRST205') throw scoreError;
+          (savedScores || []).forEach(row => {
+            if (!archivedScores.has(row.assignment_id)) archivedScores.set(row.assignment_id, new Map());
+            archivedScores.get(row.assignment_id).set(String(row.student_id), Number(row.score));
+          });
+        }
+        const performanceData = await loadPerformanceTaskExportData(performanceAssignments.filter(a => a.status !== 'archived' && !archivedScores.has(a.id)));
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Mathside';
         workbook.created = new Date();
@@ -836,7 +834,8 @@
 
           const scoreValues = writtenAssignments.map(a => {
             const sub = state.submissions.find(s => s.assignment_id === a.id && s.student_id === student.id);
-            if (!sub) return '—';
+            const savedGrade = archivedScores.get(a.id)?.get(String(student.id));
+            if (!sub) return savedGrade !== undefined ? savedGrade : '—';
             const numericScore = submissionNumericScore(sub);
             if (numericScore !== null) return numericScore;
             return sub.status === 'graded' ? 'Pending' : (sub.auto_score === null || sub.auto_score === undefined ? 'Pending' : Number(sub.auto_score));
@@ -917,7 +916,7 @@
             performanceRowNumber += 1;
           }
 
-          const scoreDetails = performanceAssignments.map(a => performanceTaskExportScore(a, student.id, performanceData));
+          const scoreDetails = performanceAssignments.map(a => performanceTaskExportScore(a, student.id, performanceData, archivedScores));
           const row = performanceSheet.getRow(performanceRowNumber);
           row.values = [student.display_name || '', classRecordGenderLabel(student.gender), ...scoreDetails.map(item => item.value)];
           row.height = 22;
@@ -1058,12 +1057,9 @@
   const studentApp = document.getElementById('studentApp');
   if (teacherApp) new MutationObserver(syncWorkspace).observe(teacherApp, { attributes: true, attributeFilter: ['hidden'] });
   if (studentApp) new MutationObserver(syncWorkspace).observe(studentApp, { attributes: true, attributeFilter: ['hidden'] });
-  window.addEventListener('focus', () => {
-    if (document.visibilityState === 'visible') syncWorkspace().catch(() => {});
-  });
-  window.addEventListener('online', () => refreshNotifications({ force: true }).catch(() => {}));
+  window.addEventListener('focus', () => syncWorkspace().catch(() => {}));
   feature.pollTimer = setInterval(() => {
-    if (navigator.onLine && document.visibilityState === 'visible' && connected() && state.profile) refreshNotifications().catch(() => {});
+    if (document.visibilityState === 'visible' && connected() && state.profile) refreshNotifications().catch(() => {});
   }, NOTIFICATION_POLL_MS);
 
   window.MathsideV10 = {

@@ -60,7 +60,7 @@
         <button class="btn btn-light class-view-students-btn" type="button" data-view-class-students="${section.id}">${iconSvg('people', 'btn-icon')}View students</button>
         ${dashboard ? '' : `${archived
           ? `<button class="btn btn-unarchive" type="button" data-unarchive-class="${section.id}">Unarchive</button><button class="btn btn-light" type="button" data-create-from-archive="${section.id}">Reuse students</button>`
-          : `<button class="btn btn-archive" type="button" data-archive-class="${section.id}">Archive class</button>`}
+          : `<button class="btn btn-danger-outline" type="button" data-archive-class="${section.id}">Archive class</button>`}
           <button class="btn btn-danger" type="button" data-delete-class="${section.id}">Delete class</button>`}
       </div>
     </article>`;
@@ -228,8 +228,8 @@
       return `<article class="assignment-card assignment-group-card ${selected ? 'is-selected' : ''} ${scheduled ? 'assignment-scheduled' : ''} ${archived ? 'assignment-archived' : ''}">
         <label class="assignment-select-check"><input class="row-check" type="checkbox" data-select-assignment="${assignment.id}" data-assignment-group-ids="${esc(groupIdsAttr)}" ${selected ? 'checked' : ''}><span class="sr-only">Select ${esc(assignment.title)}</span></label>
         <div class="assignment-thumb">${assignment.image_url ? `<img src="${esc(assignment.image_url)}" alt="Assignment image" data-assignment-storage-path="${esc(assignment.image_path || '')}">` : iconSvg('assignment', 'assignment-line-icon')}</div>
-        <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared assignment</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}${archived ? '<span class="archived-badge">Archived</span>' : ''}</div>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
-        <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button>${archived ? `<button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(groupIdsAttr)}">Unarchive</button>` : `<button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(groupIdsAttr)}">Archive</button>`}<button class="btn btn-danger" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
+        <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared assignment</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}${archived ? '<span class="archived-badge">Archived</span>' : ''}</div><p>${esc(assignment.instructions || 'Mathematics assignment')}</p>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
+        <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button>${archived ? `<button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(groupIdsAttr)}">Unarchive</button>` : `<button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(groupIdsAttr)}">Archive</button>`}<button class="btn btn-danger-outline" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
       </article>`;
     }).join('');
     list.innerHTML = `<div class="bulk-toolbar assignment-bulk-toolbar"><label class="bulk-select-all"><input id="selectAllAssignments" class="row-check" type="checkbox"><span>Select all activities</span></label><span class="bulk-selected-count" id="selectedAssignmentCount">0 selected</span><div class="bulk-actions"><button class="btn btn-archive" id="bulkArchiveAssignmentsBtn" type="button" disabled>Archive selected</button><button class="btn btn-unarchive" id="bulkUnarchiveAssignmentsBtn" type="button" disabled>Unarchive selected</button><button class="btn btn-danger" id="bulkDeleteAssignmentsBtn" type="button" disabled>Delete selected</button></div></div>${cards}`;
@@ -375,6 +375,59 @@
     return workbook;
   }
 
+  // V24.12 — Queue-aware cleanup. Retain failed paths in Supabase so a
+  // network interruption cannot silently leak the uploaded student files.
+  async function finishArchivedStorageCleanup({ notify = false } = {}) {
+    const { data: pending, error: listError } = await db
+      .from('mathside_archive_cleanup_queue')
+      .select('id, object_path')
+      .order('created_at', { ascending: true })
+      .limit(1000);
+    if (listError) throw listError;
+    if (!pending?.length) {
+      if (notify) toast('There are no pending student files to delete.', 'success', 'Storage clean');
+      return 0;
+    }
+    let failed = 0;
+    // Supabase Storage removes up to 100 object paths per request.
+    for (let start = 0; start < pending.length; start += 90) {
+      const batch = pending.slice(start, start + 90);
+      const paths = [...new Set(batch.map(row => row.object_path).filter(Boolean))];
+      if (!paths.length) continue;
+      const result = await db.storage.from('mathside-submission-proofs').remove(paths);
+      if (result.error) {
+        console.warn('Mathside archive storage cleanup failed:', result.error);
+        failed += batch.length;
+        continue;
+      }
+      // A successful Storage remove request also covers objects that were
+      // already missing from a previous partial cleanup attempt.
+      const ids = batch.map(row => row.id);
+      if (ids.length) {
+        const { error: clearError } = await db.from('mathside_archive_cleanup_queue').delete().in('id', ids);
+        if (clearError) throw clearError;
+      }
+    }
+    if (failed && notify) toast(`${failed} file cleanup item(s) still need attention. Tap Retry file cleanup again.`, 'orange', 'Cleanup incomplete');
+    else if (notify) toast('Archived student files were removed from Supabase Storage.', 'success', 'Cleanup complete');
+    return failed;
+  }
+
+  $('#retryArchiveCleanupBtn')?.addEventListener('click', async () => {
+    const btn = $('#retryArchiveCleanupBtn');
+    if (btn?.disabled) return;
+    if (btn) { btn.disabled = true; btn.textContent = 'Cleaning…'; }
+    try { await finishArchivedStorageCleanup({ notify: true }); }
+    catch (error) { console.error(error); toast(friendlyErrorMessage(error, 'Could not complete file cleanup.'), 'orange', 'Cleanup failed'); }
+    finally { if (btn) { btn.disabled = false; btn.textContent = 'Retry file cleanup'; } }
+  });
+
+  const archiveAck = $('#archiveDeletionAck');
+  archiveAck?.addEventListener('change', () => {
+    const confirm = $('#confirmArchiveAssignmentBtn');
+    if (confirm) confirm.disabled = !archiveAck.checked;
+  });
+
   function openArchiveAssignments(ids) {
     const valid = [...new Set((ids || []).filter(id => assignmentById(id) && assignmentById(id).status !== 'archived'))];
     const assignments = valid.map(id => assignmentById(id)).filter(Boolean);
@@ -390,12 +443,14 @@
     const warning = $('.archive-warning span', modal);
     if (eyebrow) eyebrow.textContent = allPerformance ? 'ARCHIVE PERFORMANCE TASK' : 'ARCHIVE ACTIVITY';
     if (warning) warning.textContent = allPerformance
-      ? 'Mathside will download an Excel archive containing the performance task summary, student submissions, scores, and available team information. Students can still view the archived performance task, but they cannot upload or submit anything to it.'
-      : 'Mathside will download an Excel archive containing the activity summary, student submissions, scores, and answer details. Students can still view the archived activity, but they cannot upload or submit anything to it.';
+      ? 'IMPORTANT: All submitted performance-task outputs, checked work, feedback, group memberships, participation ratings, and uploaded student files will be permanently deleted from Supabase, including Storage. This cannot be undone by unarchiving. Only checked final scores remain in Export Class Record. An Excel backup downloads first.'
+      : 'IMPORTANT: All submitted activity answers, checked work, feedback, and uploaded student solution files will be permanently deleted from Supabase, including Storage. Unarchiving will NOT restore them. Only checked final scores remain in Export Class Record. An Excel backup downloads first.';
+    if (archiveAck) archiveAck.checked = false;
+    if ($('#confirmArchiveAssignmentBtn')) $('#confirmArchiveAssignmentBtn').disabled = true;
     $('#archiveAssignmentTitle').textContent = `Archive ${title}?`;
     $('#archiveAssignmentText').textContent = valid.length === 1
-      ? `Mathside will save “${first?.title || `this ${kindSingular}`}” to Excel before marking it archived.`
-      : `Mathside will save ${valid.length} selected ${kindSingular} records to one Excel workbook before marking them archived.`;
+      ? `Mathside will download an Excel backup of “${first?.title || `this ${kindSingular}`}”, preserve checked grades, then permanently delete the student submissions.`
+      : `Mathside will download one Excel backup for ${valid.length} selected ${kindSingular} records before permanently deleting their submissions.`;
     openDialog('archiveAssignmentModal');
   }
 
@@ -409,7 +464,7 @@
     try {
       await withLoading(
         allPerformance ? 'Unarchiving performance task…' : 'Unarchiving activity…',
-        'Restoring the task for students and keeping its existing submissions and scores.',
+        'Restoring the task only. Old submissions, proof files, and feedback cannot be recovered; checked scores stay in Class Record export.',
         async () => {
           const now = Date.now();
           const scheduledIds = assignments
@@ -436,7 +491,7 @@
         }
       );
       toast(
-        allPerformance ? 'Performance task restored.' : 'Activity restored.',
+        allPerformance ? 'Performance task restored without old submissions. Saved grades remain in Class Record export.' : 'Activity restored without old submissions. Saved grades remain in Class Record export.',
         'success',
         'Unarchived'
       );
@@ -464,6 +519,7 @@
   $('#confirmArchiveAssignmentBtn')?.addEventListener('click', async () => {
     const ids = archiveState.assignmentIds.filter(id => assignmentById(id)?.status !== 'archived');
     if (!ids.length) return closeDialog('archiveAssignmentModal');
+    if (!archiveAck?.checked) return toast('Please acknowledge that submitted work and files will be permanently deleted.', 'orange', 'Confirmation required');
     const assignments = ids.map(id => assignmentById(id)).filter(Boolean);
     const allPerformance = assignments.length > 0 && assignments.every(isPerformanceTask);
     const kindSingular = allPerformance ? 'performance task' : 'activity';
@@ -472,27 +528,35 @@
       closeDialog('archiveAssignmentModal');
       await withLoading(
         allPerformance ? 'Archiving performance task…' : 'Archiving activity…',
-        allPerformance
-          ? 'Building the Excel archive and locking the performance task for students.'
-          : 'Building the Excel archive and locking the activity for students.',
+        'Downloading an Excel backup, preserving checked scores, and permanently clearing student submissions.',
         async () => {
           const workbook = await buildArchiveWorkbook(ids, allPerformance ? 'Performance Task Archive' : 'Activity Archive');
           const first = assignments[0];
           await downloadWorkbook(workbook, `Mathside-Archive-${archiveFileName(first?.title || (allPerformance ? 'Performance-Task' : 'Activities'))}-${nowStamp()}.xlsx`);
-          const { error } = await db.from('mathside_assignments').update({ status: 'archived', archived_at: new Date().toISOString() }).in('id', ids);
-          if (error) throw error;
+          // Secure server-side transaction preserves graded scores and removes
+          // submissions/answer rows/groups before the status becomes archived.
+          const { data: archivedResult, error } = await db.rpc('mathside_archive_assignments_clean', { p_assignment_ids: ids });
+          if (error) {
+            if (String(error.code) === 'PGRST202' || String(error.message || '').includes('mathside_archive_assignments_clean'))
+              throw new Error('Install sql/Mathside-V24-12-Archive-Cleanup-Scores.sql in your Mathside Supabase project first. No work was deleted.');
+            throw error;
+          }
           selectedAssignmentIds.clear();
           archiveState.assignmentIds = [];
+          let remainingCleanup = 0;
+          try { remainingCleanup = await finishArchivedStorageCleanup(); }
+          catch (cleanupError) {
+            console.warn('Archive completed but storage cleanup needs retry:', cleanupError);
+            remainingCleanup = Number(archivedResult?.files_queued || 1);
+          }
           await refreshTeacher();
           showTeacherView(targetView);
+          if (remainingCleanup) {
+            toast('Archive saved and checked scores preserved. Some uploaded files still need removal; use Archived → Retry file cleanup.', 'orange', 'Finish file cleanup');
+          } else {
+            toast(`Archive complete. ${Number(archivedResult?.deleted_submissions || 0)} responses permanently removed; checked scores kept for Class Record.`, 'success', 'Archived and cleaned');
+          }
         }
-      );
-      toast(
-        allPerformance
-          ? 'Performance task archived. Students can still view it, but submissions are locked.'
-          : 'Activity archived. Students can still view it, but submissions are locked.',
-        'success',
-        'Archive complete'
       );
     } catch (error) {
       console.error(error);

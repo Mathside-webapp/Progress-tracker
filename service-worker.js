@@ -1,8 +1,8 @@
-/* Mathside PWA — V24.17 Classic Create-Class
+/* Mathside PWA — V24.10 Separate Performance Task Class Record
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v26-1-true-classic';
+const CACHE_NAME = 'mathside-pwa-v24-12-classic-safe-archive';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -16,24 +16,23 @@ const APP_SHELL = [
   './icons/maskable-512.png',
   './assets/mathside-icon.svg?v=12.3',
   './assets/mathside-maintenance.png',
-  './css/styles.css?v=26.1-classic-original',
-  './css/art-theme.css?v=26.1-classic-original',
-  './css/student-v8.css?v=26.1-classic-original',
-  './css/design-v9.css?v=26.1-classic-original',
-  './css/v10-features.css?v=26.1-classic-original',
-  './js/app.js?v=26.1-classic-original',
-  './js/student-v8.js?v=26.1-classic-original',
-  './js/v10-features.js?v=26.1-classic-original',
-  './js/design-v9.js?v=26.1-classic-original',
-  './js/pwa.js?v=26.1-classic-original',
-  './js/push-notifications.js?v=26.1-classic-original',
-  './css/v12-archive-features.css?v=26.1-classic-original',
-  './css/v14-layout-fixes.css?v=26.1-classic-original',
-  './css/v15-performance-calendar.css?v=26.1-classic-original',
-  './js/v12-archive-features.js?v=26.1-classic-original',
-  './js/v15-performance-tasks.js?v=26.1-classic-original',
-  './css/classic-extras.css?v=26.1-classic-original',
-  './js/classic-extras.js?v=26.1-classic-original'
+  './css/styles.css?v=12.8',
+  './css/art-theme.css?v=7.0',
+  './css/student-v8.css?v=10.6',
+  './css/design-v9.css?v=9.1',
+  './css/v10-features.css?v=11.5',
+  './js/config.js',
+  './js/app.js?v=16.4',
+  './js/student-v8.js?v=15.1',
+  './js/v10-features.js?v=24.12',
+  './js/design-v9.js?v=9',
+  './js/pwa.js?v=6.9.15',
+  './js/push-notifications.js?v=6.12',
+  './css/v12-archive-features.css?v=24.12',
+  './css/v14-layout-fixes.css?v=14.0',
+  './css/v15-performance-calendar.css?v=15.11',
+  './js/v12-archive-features.js?v=24.12',
+  './js/v15-performance-tasks.js?v=15.18'
 ];
 
 self.addEventListener('install', (event) => {
@@ -68,15 +67,6 @@ self.addEventListener('fetch', (event) => {
 
   // Supabase/CDN/other third-party requests stay network-controlled.
   if (url.origin !== self.location.origin) return;
-
-  // Configuration is environment-specific and must never be served from an old PWA cache.
-  // Always request it from the network so GitHub Pages changes take effect immediately.
-  if (url.pathname.endsWith('/js/config.js')) {
-    event.respondWith(
-      fetch(request, { cache: 'no-store' }).catch(() => Response.error())
-    );
-    return;
-  }
 
   // Page navigations: use the network when Mathside is healthy.
   // If the website cannot be reached (or returns an error response), show the
