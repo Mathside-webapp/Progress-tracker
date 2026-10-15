@@ -2,12 +2,14 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-12-classic-safe-archive';
+const CACHE_NAME = 'mathside-pwa-v24-13-friendly-editors';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
   './',
   './index.html',
+  './css/friendly-editors.css?v=1',
+  './js/friendly-editors.js?v=1',
   './offline.html',
   './manifest.webmanifest',
   './icons/apple-touch-icon.png',
@@ -22,7 +24,7 @@ const APP_SHELL = [
   './css/design-v9.css?v=9.1',
   './css/v10-features.css?v=11.5',
   './js/config.js',
-  './js/app.js?v=16.4',
+  './js/app.js?v=16.5',
   './js/student-v8.js?v=15.1',
   './js/v10-features.js?v=24.12',
   './js/design-v9.js?v=9',

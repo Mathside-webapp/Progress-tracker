@@ -413,7 +413,21 @@
         console.warn('Notifications not ready:', error.message || error);
         return;
       }
-      feature.notifications = data || [];
+      // Archived tasks are no longer actionable. Old reminder rows can survive
+      // archive cleanup because notifications are stored independently.
+      const archivedTasks = (state.assignments || []).filter(a => a.status === 'archived' || a.archived_at);
+      const archivedIds = new Set(archivedTasks.map(a => String(a.id).toLowerCase()));
+      const reminderType = n => /remind|missing|pending|overdue|due|assignment|activity|performance|task/i.test(String(n.type || ''));
+      const refersToArchivedTask = n => {
+        if (!reminderType(n)) return false;
+        const candidates = [n.assignment_id, n.reference_id, n.entity_id, n.related_id, n.metadata?.assignment_id, n.data?.assignment_id];
+        if (candidates.some(id => id && archivedIds.has(String(id).toLowerCase()))) return true;
+        // Only match titles for explicit unfinished-work reminders, not general announcements.
+        if (!/remind|missing|pending|overdue|not submitted|incomplete/i.test(`${n.type || ''} ${n.title || ''} ${n.body || ''}`)) return false;
+        const message = `${n.title || ''} ${n.body || ''}`.toLowerCase();
+        return archivedTasks.some(a => a.title && a.title.length >= 5 && message.includes(String(a.title).toLowerCase()));
+      };
+      feature.notifications = (data || []).filter(n => state.profile?.role !== 'student' || !refersToArchivedTask(n));
       feature.notificationFetchedAt = Date.now();
       renderNotifications();
     })();

@@ -63,7 +63,8 @@
   function renderMetrics() {
     removeLegacyRankingCards();
     const marked=scores(),average=marked.length?Math.round(mean(marked)):null,highest=marked.length?Math.round(Math.max(...marked.map(x=>x.percent))):null;
-    const total=state.assignments.length,completed=state.assignments.filter(a=>submissionFor(a.id)).length;
+    const active=state.assignments.filter(a=>a.status==='published'&&!a.archived_at);
+    const total=active.length,completed=active.filter(a=>submissionFor(a.id)).length;
     const change=marked.length>=6?Math.round(mean(marked.slice(0,3))-mean(marked.slice(3,6))):null;
     const values={average:average===null?'—':`${average}%`,total:String(total),highest:highest===null?'—':`${highest}%`};
     const notes={average:change===null?(marked.length?'Reviewed work':'Awaiting grades'):`${change>=0?'↑':'↓'} ${Math.abs(change)}%`,total:`${completed} completed`,highest:highest===null?'Awaiting grades':highest===100?'Excellent!':'Keep it up!'};
@@ -102,7 +103,7 @@
   }
   function renderActivities() {
     const needle=studentTaskSearch.trim().toLowerCase();
-    const writtenAssignments=state.assignments.filter(a=>!isPerformanceTask(a));
+    const writtenAssignments=state.assignments.filter(a=>a.status==='published'&&!a.archived_at&&!isPerformanceTask(a));
     const list=writtenAssignments.filter(a=>(studentTaskFilter==='all' || studentAssignmentState(a)===studentTaskFilter) && (!needle || `${a.title || ''} ${a.instructions || ''} ${sectionLabel(sectionById(a.section_id))}`.toLowerCase().includes(needle)));
     list.sort((a,b)=>{const av=studentTaskSortValue(a,studentTaskSort),bv=studentTaskSortValue(b,studentTaskSort);return typeof av==='string'?av.localeCompare(String(bv)):av-bv;});
     $('#studentTaskSummary').textContent=`${list.length} activit${list.length===1?'y':'ies'} shown${needle?` for “${studentTaskSearch}”`:''}.`;

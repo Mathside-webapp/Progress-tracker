@@ -2483,7 +2483,7 @@ function setAssignmentEditorMode(assignment = null, assignmentGroup = []) {
     ? (classCount > 1
       ? `Update this shared assignment once. Changes will be applied to all ${classCount} linked classes.`
       : 'Update the activity, deadline, questions, choices, points, or answer key.')
-    : 'Build the activity, choose the classes, then review the questions before posting.';
+    : 'Start with the activity and your classes. Add questions below.';
   $('#assignmentSubmitBtn').textContent = isEditing ? 'Save changes' : 'Post assignment';
   $('#assignmentClassHint').textContent = isEditing
     ? (classCount > 1 ? `${classCount} linked classes` : 'Class is fixed while editing')
@@ -3195,7 +3195,7 @@ function formatStudentDate(value) {
 function studentAssignmentState(assignment) {
   const submission = submissionFor(assignment.id);
   if (submission) return 'submitted';
-  if (assignment?.status === 'archived') return 'missed';
+  if (assignment?.status === 'archived') return 'archived';
   const due = assignment?.due_at ? new Date(assignment.due_at) : null;
   if (due && Number.isFinite(due.getTime()) && due.getTime() < Date.now()) return 'missed';
   return 'ongoing';
@@ -3235,8 +3235,9 @@ function studentScorePercent() {
 }
 
 function renderStudentDashboard() {
-  const assigned = state.assignments.length;
-  const completed = state.assignments.filter(a => Boolean(submissionFor(a.id))).length;
+  const activeTasks = state.assignments.filter(a => a.status === 'published' && !a.archived_at);
+  const assigned = activeTasks.length;
+  const completed = activeTasks.filter(a => Boolean(submissionFor(a.id))).length;
   const todo = Math.max(0, assigned - completed);
   const completion = assigned ? Math.round((completed / assigned) * 100) : 0;
   const average = studentScorePercent();
@@ -3279,7 +3280,7 @@ function renderStudentDashboard() {
 function renderStudentNextUp() {
   const holder = $('#studentNextUp');
   const pending = state.assignments
-    .filter(a => !submissionFor(a.id))
+    .filter(a => a.status === 'published' && !a.archived_at && !submissionFor(a.id))
     .sort((a, b) => {
       const ad = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
       const bd = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;
@@ -3344,6 +3345,7 @@ function renderStudentAssignments() {
 
   const needle = studentTaskSearch.trim().toLowerCase();
   let filtered = state.assignments.filter(a => !isPerformanceTask(a)).filter(a => {
+    if (a.status === 'archived' || a.archived_at) return false;
     const matchesStatus = studentTaskFilter === 'all' || studentAssignmentState(a) === studentTaskFilter;
     const matchesSearch = !needle || `${a.title || ''} ${a.instructions || ''} ${sectionLabel(sectionById(a.section_id))}`.toLowerCase().includes(needle);
     return matchesStatus && matchesSearch;
