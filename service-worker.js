@@ -2,13 +2,18 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-13-friendly-editors';
+const CACHE_NAME = 'mathside-pwa-v24-19-exact-orange-panels';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
   './',
   './index.html',
-  './css/friendly-editors.css?v=1',
+  './css/friendly-editors.css?v=2',
+  './css/orange-create-panels.css?v=3',
+  './js/orange-exact-forms.js?v=3',
+  './assets/orange-exact/class-hero.png',
+  './assets/orange-exact/assignment-hero.png',
+  './assets/orange-exact/performance-hero.png',
   './js/friendly-editors.js?v=1',
   './offline.html',
   './manifest.webmanifest',
@@ -24,7 +29,7 @@ const APP_SHELL = [
   './css/design-v9.css?v=9.1',
   './css/v10-features.css?v=11.5',
   './js/config.js',
-  './js/app.js?v=16.5',
+  './js/app.js?v=16.6',
   './js/student-v8.js?v=15.1',
   './js/v10-features.js?v=24.12',
   './js/design-v9.js?v=9',
@@ -34,7 +39,7 @@ const APP_SHELL = [
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.11',
   './js/v12-archive-features.js?v=24.12',
-  './js/v15-performance-tasks.js?v=15.18'
+  './js/v15-performance-tasks.js?v=15.19'
 ];
 
 self.addEventListener('install', (event) => {

@@ -1976,7 +1976,6 @@ function normalizeExcelText(value = '') {
 }
 
 function applyExcelClassSelection(rawClasses) {
-  if (editingAssignmentId) return 1;
   if (!rawClasses) return 0;
   const wanted = String(rawClasses).split(/[;|\n]+/).map(normalizeExcelText).filter(Boolean);
   if (!wanted.length) return 0;
@@ -2486,9 +2485,23 @@ function setAssignmentEditorMode(assignment = null, assignmentGroup = []) {
     : 'Start with the activity and your classes. Add questions below.';
   $('#assignmentSubmitBtn').textContent = isEditing ? 'Save changes' : 'Post assignment';
   $('#assignmentClassHint').textContent = isEditing
-    ? (classCount > 1 ? `${classCount} linked classes` : 'Class is fixed while editing')
+    ? `${classCount} currently assigned · editable`
     : 'Select one or more';
+  const note = $('#assignmentSectionEditNote');
+  if (note) note.hidden = !isEditing;
 }
+
+function syncAssignmentEditingClasses() {
+  if (!editingAssignmentId) return;
+  const checked = selectedAssignmentSectionIds();
+  const hint = $('#assignmentClassHint');
+  if (hint) hint.textContent = `${checked.length} selected · editable`;
+  $$('input[name="assignment_sections"]', $('#assignmentSectionChecklist')).forEach(input => {
+    input.closest('.class-check-option')?.classList.toggle('editing-class-option', input.checked);
+  });
+}
+
+$('#assignmentSectionChecklist')?.addEventListener('change', syncAssignmentEditingClasses);
 
 function openAssignmentModal(assignmentId = null) {
   if (!state.sections.length) {
@@ -2516,7 +2529,7 @@ function openAssignmentModal(assignmentId = null) {
     const groupSectionIds = new Set((assignmentGroup.length ? assignmentGroup : [assignment]).map(item => item.section_id));
     $$('input[name="assignment_sections"]', $('#assignmentSectionChecklist')).forEach(input => {
       input.checked = groupSectionIds.has(input.value);
-      input.disabled = true;
+      input.disabled = false;
       input.closest('.class-check-option')?.classList.toggle('editing-class-option', input.checked);
     });
     if (assignment.image_url) {
@@ -2525,6 +2538,7 @@ function openAssignmentModal(assignmentId = null) {
       $('#assignmentImagePreview').dataset.existingPath = assignment.image_path || '';
     }
     loadAssignmentQuestions(assignment.id);
+    syncAssignmentEditingClasses();
   }
   openDialog('assignmentModal');
 }
@@ -2544,7 +2558,7 @@ $('#assignmentExcelInput')?.addEventListener('change', async event => {
   try {
     const result = await importAssignmentExcel(file);
     const classMessage = editingAssignmentId
-      ? ' The linked classes remain unchanged while editing.'
+      ? (result.matchedClasses ? ` ${result.matchedClasses} class${result.matchedClasses === 1 ? '' : 'es'} selected from Excel.` : ' You can adjust the assigned classes below.')
       : result.matchedClasses
         ? ` ${result.matchedClasses} class${result.matchedClasses === 1 ? '' : 'es'} matched from the Classes field.`
         : ' Choose the destination class or classes below if none were matched.';
@@ -2654,6 +2668,74 @@ async function updateExistingAssignment(assignment, form, questions, dueAt, remi
   }
 }
 
+// Changes to class targeting must never move an existing submission to a different
+// class or run the destructive archive RPC. Each class owns its own activity row.
+async function copyMathsideFilesForSection(sourcePaths, assignmentId, label = 'reference') {
+  const bucket = db.storage.from('mathside-assignment-images');
+  const copied = [];
+  try {
+    for (const originalPath of [...new Set((sourcePaths || []).filter(Boolean))]) {
+      const download = await bucket.download(originalPath);
+      if (download.error) throw download.error;
+      if (!download.data) throw new Error('Could not copy an existing reference file.');
+      const filename = originalPath.split('/').pop() || 'file';
+      const destination = `${state.user.id}/${assignmentId}/${label}-${Date.now()}-${copied.length}-${safeFileName(filename)}`;
+      const upload = await bucket.upload(destination, download.data, { upsert: false });
+      if (upload.error) throw upload.error;
+      copied.push(destination);
+    }
+    return copied;
+  } catch (error) {
+    if (copied.length) { try { await bucket.remove(copied); } catch (cleanupError) { console.warn('Reference copy cleanup failed', cleanupError); } }
+    throw error;
+  }
+}
+
+async function hideDeselectedClassCopies(existingCopies, selectedSectionIds) {
+  const activeIds = new Set(selectedSectionIds);
+  const removedIds = existingCopies.filter(item => !activeIds.has(item.section_id)).map(item => item.id);
+  if (!removedIds.length) return 0;
+  // Unlike the Archive action, this DOES NOT delete student answers, feedback,
+  // graded results, uploaded proof, or group membership records.
+  const update = await db.from('mathside_assignments').update({
+    status: 'archived', archived_at: new Date().toISOString()
+  }).in('id', removedIds);
+  if (update.error) throw update.error;
+  return removedIds.length;
+}
+
+async function createWrittenWorkForAddedClass(source, sectionId, questions) {
+  const insert = await db.from('mathside_assignments').insert({
+    section_id: sectionId,
+    teacher_id: state.user.id,
+    title: source.title,
+    instructions: source.instructions,
+    due_at: source.due_at,
+    reminder_hours_before: source.reminder_hours_before || 0,
+    status: source.status,
+    publish_at: source.publish_at,
+    allow_resubmission: Boolean(source.allow_resubmission),
+    work_type: source.work_type || 'written_work'
+  }).select().single();
+  if (insert.error) throw insert.error;
+  const added = insert.data;
+  let uploadedPaths = [];
+  try {
+    if (source.image_path) {
+      uploadedPaths = await copyMathsideFilesForSection([source.image_path], added.id, 'activity');
+      const result = await db.from('mathside_assignments').update({image_path: uploadedPaths[0]}).eq('id', added.id);
+      if (result.error) throw result.error;
+    }
+    await saveQuestionsForAssignment(added.id, questions);
+    return added;
+  } catch (error) {
+    const remove = await db.from('mathside_assignments').delete().eq('id', added.id);
+    if (remove.error) console.warn('Incomplete new-class activity cleanup', remove.error);
+    if (uploadedPaths.length) try { await db.storage.from('mathside-assignment-images').remove(uploadedPaths); } catch (_) {}
+    throw error;
+  }
+}
+
 $('#assignmentForm').addEventListener('submit', async event => {
   event.preventDefault();
   if (!requireSupabase()) return;
@@ -2715,18 +2797,36 @@ $('#assignmentForm').addEventListener('submit', async event => {
     const assignmentsToUpdate = (editingAssignmentIds.length ? editingAssignmentIds : [editingAssignmentId])
       .map(id => assignmentById(id))
       .filter(Boolean);
-    if (!assignmentsToUpdate.length) return toast('This assignment is no longer available. Refresh and try again.', 'orange');
+    if (!assignmentsToUpdate.length) { resetActionButton(submitBtn); return toast('This assignment is no longer available. Refresh and try again.', 'orange'); }
     try {
-      const copyCount = assignmentsToUpdate.length;
+      const selectedIds = new Set(sectionIds);
+      const unchanged = assignmentsToUpdate.filter(item => selectedIds.has(item.section_id));
+      const alreadyAssigned = new Set(assignmentsToUpdate.map(item => item.section_id));
+      const addedSections = sectionIds.filter(id => !alreadyAssigned.has(id));
+      const removedCount = assignmentsToUpdate.length - unchanged.length;
       await withLoading(
-        copyCount > 1 ? `Saving in ${copyCount} classes…` : 'Saving assignment…',
-        copyCount > 1
-          ? 'Updating every linked class copy, including questions, answer keys, deadline, and image.'
-          : 'Updating the activity, questions, answer keys, deadline, and image.',
+        `Saving assignment for ${sectionIds.length} class${sectionIds.length === 1 ? '' : 'es'}…`,
+        'Keeping existing submissions and scores while updating the selected classes.',
         async () => {
-          for (const assignment of assignmentsToUpdate) {
+          // Keep original IDs for retained sections: submissions stay attached.
+          for (const assignment of unchanged) {
             await updateExistingAssignment(assignment, form, questions, dueAt, reminderHours, publishStatus, publishAt);
           }
+          // If all old sections were deselected, update one source row temporarily
+          // to produce the latest content for the new, independent class copies.
+          let source = unchanged[0] || assignmentsToUpdate[0];
+          if (!unchanged.length && addedSections.length) {
+            await updateExistingAssignment(source, form, questions, dueAt, reminderHours, publishStatus, publishAt);
+          }
+          if (addedSections.length) {
+            const fetched = await db.from('mathside_assignments').select('*').eq('id', source.id).single();
+            if (fetched.error) throw fetched.error;
+            source = fetched.data;
+            for (const sectionId of addedSections) {
+              await createWrittenWorkForAddedClass(source, sectionId, questions);
+            }
+          }
+          await hideDeselectedClassCopies(assignmentsToUpdate, sectionIds);
           editingAssignmentId = null;
           editingAssignmentIds = [];
           await refreshTeacher();
@@ -2736,11 +2836,8 @@ $('#assignmentForm').addEventListener('submit', async event => {
       await finishActionButton(submitBtn, 'Done');
       closeDialog('assignmentModal');
       toast(
-        publishStatus === 'draft'
-          ? `Assignment scheduled for ${formatDeadlineDate(publishAt)}${copyCount > 1 ? ` in ${copyCount} classes` : ''}.`
-          : (copyCount > 1 ? `Assignment changes saved in ${copyCount} classes.` : 'Assignment changes saved.'),
-        'success',
-        publishStatus === 'draft' ? 'Assignment scheduled' : 'Assignment updated'
+        `Assignment saved for ${sectionIds.length} class${sectionIds.length === 1 ? '' : 'es'}.${addedSections.length ? ` Added to ${addedSections.length} new class${addedSections.length === 1 ? '' : 'es'}.` : ''}${removedCount ? ` Removed from ${removedCount} class${removedCount === 1 ? '' : 'es'} (old submissions and scores kept).` : ''}`,
+        'success', 'Assignment updated'
       );
     } catch (error) {
       resetActionButton(submitBtn);

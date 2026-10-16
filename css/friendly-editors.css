@@ -40,3 +40,9 @@
  .friendly-editor .performance-work-mode{grid-template-columns:1fr}
  .friendly-editor .editor-options summary{padding:14px 12px}
 }
+
+/* Posted activities: safe, editable section targeting */
+.section-edit-note { margin: 10px 0 0; padding: 10px 12px; border: 1px solid #e8dcd2;
+  border-radius: 12px; background: #fffaf5; color: #6f5240; font-size: .82rem; line-height: 1.5; }
+.section-edit-note[hidden] { display: none !important; }
+.class-check-option.editing-class-option { border-color: #e4b18e; background: #fff5ed; }

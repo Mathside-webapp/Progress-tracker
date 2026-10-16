@@ -721,6 +721,8 @@
     if ($('#performanceTeamPreview')) $('#performanceTeamPreview').innerHTML = '';
     editingPerformanceTaskId = null;
     editingPerformanceTaskIds = [];
+    if ($('#performanceSectionEditNote')) $('#performanceSectionEditNote').hidden = true;
+    if ($('#performanceClassHint')) $('#performanceClassHint').textContent = 'Select one or more';
     populatePerformanceSections();
     syncPerformanceTeamOptions();
   }
@@ -757,7 +759,9 @@
       syncPerformanceTeamOptions();
       const linkedTasks = group.length ? group : [task];
       const sectionIds = new Set(linkedTasks.map(item => item.section_id));
-      $$('input[name="performance_sections"]', $('#performanceSectionChecklist')).forEach(input => { input.checked = sectionIds.has(input.value); input.disabled = true; input.closest('.class-check-option')?.classList.toggle('editing-class-option', input.checked); });
+      $$('input[name="performance_sections"]', $('#performanceSectionChecklist')).forEach(input => { input.checked = sectionIds.has(input.value); input.disabled = false; input.closest('.class-check-option')?.classList.toggle('editing-class-option', input.checked); });
+      $('#performanceSectionEditNote').hidden = false;
+      syncPerformanceEditingClasses();
       if ((task.collaboration_mode || 'individual') !== 'individual' && (task.grouping_creator || 'teacher') === 'teacher') {
         try { await loadStoredTeacherGroupsIntoEditor(linkedTasks); }
         catch (error) { console.error('Could not load saved teacher groups into editor', error); }
@@ -819,7 +823,17 @@
     performanceLeaderDirty = false;
     renderPerformanceTeamPreview();
   });
+  function syncPerformanceEditingClasses() {
+    if (!editingPerformanceTaskId) return;
+    const selected = selectedPerformanceSections();
+    if ($('#performanceClassHint')) $('#performanceClassHint').textContent = `${selected.length} selected · editable`;
+    $$('input[name="performance_sections"]', $('#performanceSectionChecklist')).forEach(input => {
+      input.closest('.class-check-option')?.classList.toggle('editing-class-option', input.checked);
+    });
+  }
+
   $('#performanceSectionChecklist')?.addEventListener('change', () => {
+    syncPerformanceEditingClasses();
     populatePastPerformanceGroupSources();
     renderPerformanceTeamPreview();
   });
@@ -891,6 +905,41 @@
     }
   }
 
+  async function createPerformanceForAddedClass(source, sectionId) {
+    const insert = await db.from('mathside_assignments').insert({
+      section_id: sectionId, teacher_id: state.user.id,
+      title: source.title, instructions: source.instructions,
+      work_type: 'performance_task', max_points: source.max_points,
+      due_at: source.due_at, reminder_hours_before: source.reminder_hours_before || 0,
+      status: source.status, publish_at: source.publish_at,
+      allow_resubmission: Boolean(source.allow_resubmission),
+      collaboration_mode: source.collaboration_mode || 'individual',
+      grouping_creator: source.grouping_creator || 'teacher',
+      group_count: source.group_count || null, image_paths: []
+    }).select().single();
+    if (insert.error) throw insert.error;
+    const created = insert.data;
+    let copied = [];
+    try {
+      const oldImages = assignmentTaskImages(source);
+      const oldRubric = source.rubric_path || null;
+      copied = await copyMathsideFilesForSection([...oldImages, oldRubric].filter(Boolean), created.id, 'performance');
+      const newImages = copied.slice(0, oldImages.length);
+      const newRubric = oldRubric ? copied[oldImages.length] : null;
+      const update = await db.from('mathside_assignments').update({
+        image_path: newImages[0] || null, image_paths: newImages, rubric_path: newRubric
+      }).eq('id', created.id);
+      if (update.error) throw update.error;
+      await applyStoredPerformanceGrouping({ ...created, section_id: sectionId });
+      return created;
+    } catch (error) {
+      const remove = await db.from('mathside_assignments').delete().eq('id', created.id);
+      if (remove.error) console.warn('Incomplete new-class performance task cleanup', remove.error);
+      if (copied.length) try { await db.storage.from('mathside-assignment-images').remove(copied); } catch (_) {}
+      throw error;
+    }
+  }
+
   function readPerformanceSchedule(form) {
     const dueRaw = String(form.get('due_at') || '').trim();
     let dueAt = null;
@@ -937,15 +986,31 @@
 
     if (editingPerformanceTaskId) {
       const copies = editingPerformanceTaskIds.map(id => assignmentById(id)).filter(Boolean);
+      if (!copies.length) { window.MathsideActionButton?.reset(submitBtn); return toast('This performance task is no longer available. Refresh and try again.', 'orange'); }
+      const targetIds = new Set(sectionIds);
+      const retained = copies.filter(task => targetIds.has(task.section_id));
+      const oldIds = new Set(copies.map(task => task.section_id));
+      const newlyAssigned = sectionIds.filter(id => !oldIds.has(id));
+      const removedCount = copies.length - retained.length;
       try {
-        await withLoading(copies.length > 1 ? `Saving performance task in ${copies.length} classes…` : 'Saving performance task…', 'Updating instructions, deadline, pictures, rubric, and score settings.', async () => {
-          for (const task of copies) await savePerformanceCopy(task, form, schedule, taskImages, rubricFile, $('#removePerformanceImages')?.checked, $('#removePerformanceRubric')?.checked);
+        await withLoading(`Saving performance task for ${sectionIds.length} class${sectionIds.length === 1 ? '' : 'es'}…`, 'Keeping submitted work, scores, and existing group records in their original classes.', async () => {
+          for (const task of retained) await savePerformanceCopy(task, form, schedule, taskImages, rubricFile, $('#removePerformanceImages')?.checked, $('#removePerformanceRubric')?.checked);
+          let source = retained[0] || copies[0];
+          if (!retained.length && newlyAssigned.length) {
+            await savePerformanceCopy(source, form, schedule, taskImages, rubricFile, $('#removePerformanceImages')?.checked, $('#removePerformanceRubric')?.checked);
+          }
+          if (newlyAssigned.length) {
+            const fetched = await db.from('mathside_assignments').select('*').eq('id', source.id).single();
+            if (fetched.error) throw fetched.error;
+            for (const sectionId of newlyAssigned) await createPerformanceForAddedClass(fetched.data, sectionId);
+          }
+          await hideDeselectedClassCopies(copies, sectionIds);
           editingPerformanceTaskId = null; editingPerformanceTaskIds = [];
           await refreshTeacher(); showTeacherView('performance');
         });
         await window.MathsideActionButton.done(submitBtn, 'Done');
         closeDialog('performanceTaskModal');
-        toast(schedule.status === 'draft' ? `Performance task scheduled for ${formatDeadlineDate(schedule.publishAt)}.` : 'Performance task updated.', 'success');
+        toast(`Performance task saved for ${sectionIds.length} class${sectionIds.length === 1 ? '' : 'es'}.${newlyAssigned.length ? ` Added to ${newlyAssigned.length} new class${newlyAssigned.length === 1 ? '' : 'es'}.` : ''}${removedCount ? ` Removed from ${removedCount} class${removedCount === 1 ? '' : 'es'} (old submissions and scores kept).` : ''}`, 'success');
       } catch (error) { window.MathsideActionButton?.reset(submitBtn); console.error(error); toast(friendlyErrorMessage(error, 'Could not save the performance task.'), 'orange'); }
       return;
     }

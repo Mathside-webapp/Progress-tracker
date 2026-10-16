@@ -21,7 +21,8 @@
   <link rel="stylesheet" href="css/v12-archive-features.css?v=24.12" />
   <link rel="stylesheet" href="css/v14-layout-fixes.css?v=14.0" />
   <link rel="stylesheet" href="css/v15-performance-calendar.css?v=15.11" />
-  <link rel="stylesheet" href="css/friendly-editors.css?v=1" />
+  <link rel="stylesheet" href="css/friendly-editors.css?v=2" />
+  <link rel="stylesheet" href="css/orange-create-panels.css?v=3" />
 </head>
 <body>
   <div id="appLoading" class="app-loading" hidden>
@@ -356,20 +357,34 @@
   </section>
 
   <!-- CREATE CLASS MODAL -->
-  <dialog id="sectionModal" class="modal">
+  <dialog id="sectionModal" class="modal orange-create-modal">
     <div class="modal-box">
+      <div class="orange-panel-header orange-class-head">
+        <div class="orange-class-header-copy">
+          <h2>Create Class</h2>
+          <p>Set up a new class and start learning together.</p>
+        </div>
+      </div>
       <button class="modal-close" data-close="sectionModal" aria-label="Close">×</button>
-      <p class="eyebrow">CREATE CLASS</p>
-      <h2>New class</h2>
-      <form id="sectionForm" class="form-stack">
-        <label>Grade level
-          <select name="grade_level" id="sectionGrade" required>
-            <option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option>
-          </select>
-        </label>
-        <label>Class name<input name="name" placeholder="e.g. Beryl" required maxlength="60" /></label>
-        <label>Reuse students from another class <select name="import_archived_section" id="importArchivedSection"><option value="">No — start with an empty class</option></select><small class="field-help">Choose any of your existing classes. Mathside will keep the students’ accounts and enroll them in the new class too.</small></label>
-        <div class="modal-actions"><button type="button" class="btn btn-light" data-close="sectionModal">Cancel</button><button class="btn btn-orange" type="submit">Create class</button></div>
+      <form id="sectionForm" class="form-stack orange-class-form">
+        <div class="orange-class-field">
+          <div class="orange-class-stephead"><span class="orange-step">1</span><div><strong>Select grade level</strong><p>Choose the grade level for this class.</p></div></div>
+          <label class="orange-icon-input"><span class="orange-input-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="27" height="27" aria-hidden="true"><path fill="#fa6706" d="M12 2 1 8l11 6 9-4.91V17h2V8L12 2Zm-7 10v5l7 4 7-4v-5l-7 4-7-4Z"/></svg></span><span class="orange-sr-only">Grade level</span>
+            <select name="grade_level" id="sectionGrade" required>
+              <option value="7">Grade 7</option><option value="8">Grade 8</option><option value="9">Grade 9</option><option value="10">Grade 10</option><option value="11">Grade 11</option><option value="12">Grade 12</option>
+            </select>
+          </label>
+        </div>
+        <div class="orange-class-field">
+          <div class="orange-class-stephead"><span class="orange-step">2</span><div><strong>Class name</strong><p>Give your class a name.</p></div></div>
+          <label class="orange-icon-input"><span class="orange-input-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#f96a0a" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M3 17l11.7-11.7a2.1 2.1 0 0 1 3 0l1 1a2.1 2.1 0 0 1 0 3L7 21l-4 1 1-5Z"/></svg></span><span class="orange-sr-only">Class name</span><input name="name" placeholder="e.g. Beryl" required maxlength="60" /></label>
+        </div>
+        <div class="orange-class-field orange-reuse-field">
+          <div class="orange-class-stephead"><span class="orange-step">3</span><div><strong>Reuse students from another class</strong><p>You can start with an empty class or copy students from an existing class.</p></div></div>
+          <label class="orange-icon-input"><span class="orange-input-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="27" height="27" fill="#f96a0a" aria-hidden="true"><circle cx="9" cy="8" r="3.1"/><circle cx="17" cy="10" r="2.6"/><path d="M2.8 20a6.2 6.2 0 0 1 12.4 0v1H2.8v-1ZM15 15a5.2 5.2 0 0 1 6.2 5v1H17v-1a8 8 0 0 0-2-5Z"/></svg></span><span class="orange-sr-only">Reuse students from another class</span><select name="import_archived_section" id="importArchivedSection"><option value="">No — start with an empty class</option></select></label>
+          <p class="field-help"><span aria-hidden="true">ⓘ</span> Choose any of your existing classes. Mathside will keep the students’ accounts and enroll them in the new class too.</p>
+        </div>
+        <div class="modal-actions orange-class-actions"><button type="button" class="btn btn-light" data-close="sectionModal">Cancel</button><button class="btn btn-orange" type="submit"><span aria-hidden="true">＋</span> Create class</button></div>
       </form>
     </div>
   </dialog>
@@ -532,10 +547,11 @@
   </dialog>
 
   <!-- ASSIGNMENT MODAL -->
-  <dialog aria-labelledby="assignmentModalTitle" class="modal assignment-modal friendly-editor" id="assignmentModal">
+  <dialog aria-labelledby="assignmentModalTitle" class="modal assignment-modal friendly-editor orange-create-modal" id="assignmentModal">
 <div class="modal-box assignment-editor-box">
 <button aria-label="Close" class="modal-close" data-close="assignmentModal">×</button>
-<div class="assignment-editor-heading">
+<div class="assignment-editor-heading orange-assignment-head">
+
 <div>
 <p class="eyebrow" id="assignmentModalEyebrow">POST CLASSWORK</p>
 <h2 id="assignmentModalTitle">Create assignment</h2>
@@ -545,19 +561,21 @@
 </div>
 <form class="form-stack assignment-editor-form" id="assignmentForm">
 <section class="assignment-form-section">
-<div class="assignment-form-section-head"><div><h3>Assignment details</h3></div></div>
+<div class="assignment-form-section-head"><div><h3><span class="orange-step">1</span> Assignment details</h3></div></div>
 <div class="assignment-heading-grid">
 <div class="assignment-main-fields">
 <label>Title<small class="editor-required">Required</small><input name="title" placeholder="e.g. Linear Equations Practice" required=""/></label>
 <label>Instructions<textarea name="instructions" placeholder="Explain what students should do." rows="3"></textarea></label>
 </div>
 <div class="class-picker-field">
-<span class="field-label">Classes <small id="assignmentClassHint">Select one or more</small></span>
+<span class="field-label"><span class="orange-step">2</span> Select classes <small id="assignmentClassHint">Select one or more</small></span>
+<label class="orange-search-box" aria-label="Search classes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" id="assignmentClassSearch" placeholder="Search class name or grade level..." autocomplete="off"></label>
 <div aria-label="Choose classes" class="class-checklist" id="assignmentSectionChecklist" role="group"></div>
+<p class="section-edit-note" id="assignmentSectionEditNote" hidden>Change the selected classes, then save. New classes receive their own activity copy. Unchecked classes stop receiving it; their existing submissions and scores stay saved, and their copy moves to Archived.</p>
 </div>
 </div>
 </section><section class="assignment-form-section question-editor-section">
-<div class="question-builder-head"><div><h3>Add questions</h3><p class="muted">Correct answers may be added now or later. Questions without an answer will not be auto-checked.</p></div><button class="btn btn-light" id="addQuestionBtn" type="button"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add question</button></div>
+<div class="question-builder-head"><div><h3><span class="orange-step">3</span> Add questions</h3><p class="muted">Correct answers may be added now or later. Questions without an answer will not be auto-checked.</p></div><button class="btn btn-light" id="addQuestionBtn" type="button"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add question</button></div>
 <div id="questionBuilder"></div>
 </section>
 
@@ -678,12 +696,13 @@
   </dialog>
 
   <!-- PERFORMANCE TASK EDITOR -->
-  <dialog aria-labelledby="performanceTaskModalTitle" class="modal assignment-modal friendly-editor" id="performanceTaskModal">
+  <dialog aria-labelledby="performanceTaskModalTitle" class="modal assignment-modal friendly-editor orange-create-modal" id="performanceTaskModal">
 <div class="modal-box assignment-editor-box performance-editor-box">
 <button aria-label="Close" class="modal-close" data-close="performanceTaskModal">×</button>
-<div class="assignment-editor-heading"><div><p class="eyebrow">PERFORMANCE TASK</p><h2 id="performanceTaskModalTitle">Create performance task</h2><p class="muted">Tell students what to create, then choose how they will work.</p></div></div>
+<div class="assignment-editor-heading orange-performance-head"><div><p class="eyebrow">PERFORMANCE TASK</p><h2 id="performanceTaskModalTitle">Create performance task</h2><p class="muted">Tell students what to create, then choose how they will work.</p></div></div>
 <form class="form-stack assignment-editor-form" id="performanceTaskForm">
-<section class="assignment-form-section"><div class="assignment-form-section-head"><div><h3>Task details</h3></div></div><div class="assignment-heading-grid"><div class="assignment-main-fields"><label>Title<small class="editor-required">Required</small><input name="title" placeholder="Performance task title" required=""/></label><label>Instructions<small class="editor-required">Required</small><textarea name="instructions" placeholder="What should students create and submit? Add any materials or steps they need." required="" rows="3"></textarea></label><label>Total points<small class="editor-required">Required</small><input min="1" name="max_points" required="" step="1" type="number" value="100"/></label></div><div class="class-checklist-field"><span class="field-label">Classes <small>Select one or more</small></span><div aria-label="Choose classes for performance task" class="class-checklist" id="performanceSectionChecklist" role="group"></div></div></div></section>
+<section class="assignment-form-section"><div class="assignment-form-section-head"><div><h3><span class="orange-step">1</span> Task details</h3></div></div><div class="assignment-heading-grid"><div class="assignment-main-fields"><label>Title<small class="editor-required">Required</small><input name="title" placeholder="Performance task title" required=""/></label><label>Instructions<small class="editor-required">Required</small><textarea name="instructions" placeholder="What should students create and submit? Add any materials or steps they need." required="" rows="3"></textarea></label><label>Total points<small class="editor-required">Required</small><input min="1" name="max_points" required="" step="1" type="number" value="100"/></label></div></div></section><section class="assignment-form-section orange-performance-classes"><div class="class-checklist-field"><span class="field-label"><span class="orange-step">2</span> Select classes <small id="performanceClassHint">Select one or more</small></span><label class="orange-search-box" aria-label="Search classes"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 5 5"/></svg><input type="search" id="performanceClassSearch" placeholder="Search class name or grade level..." autocomplete="off"></label>
+<div aria-label="Choose classes for performance task" class="class-checklist" id="performanceSectionChecklist" role="group"></div><p class="section-edit-note" id="performanceSectionEditNote" hidden>Change the selected classes, then save. New classes receive a separate task and team setup. Unchecked classes no longer see it; their submitted work, scores, and groups remain saved in Archived.</p></div></section>
 <section class="assignment-form-section performance-team-section"><div class="assignment-form-section-head"><div><h3>How will students work?</h3></div></div>
 <div aria-label="Performance task work setup" class="performance-work-mode" id="performanceWorkMode" role="group">
 <label class="performance-mode-option"><input checked="" name="performance_mode" type="radio" value="individual"/><span><b>Individual</b><small>Each student submits their own output.</small></span></label>
@@ -947,14 +966,15 @@
   <!-- Converts iPhone/iPad HEIC photos to JPEG before Supabase upload. -->
   <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
   <script id="mathliveScript" defer src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
-  <script src="js/app.js?v=16.5"></script>
+  <script src="js/app.js?v=16.6"></script>
   <script src="js/student-v8.js?v=15.1"></script>
   <script src="js/v10-features.js?v=24.12"></script>
 <script src="js/design-v9.js?v=9"></script>
   <script src="js/pwa.js?v=6.9.15"></script>
   <script src="js/push-notifications.js?v=6.12"></script>
   <script src="js/v12-archive-features.js?v=24.12"></script>
-  <script src="js/v15-performance-tasks.js?v=15.18"></script>
+  <script src="js/v15-performance-tasks.js?v=15.19"></script>
   <script src="js/friendly-editors.js?v=1"></script>
+  <script src="js/orange-exact-forms.js?v=3"></script>
 </body>
 </html>
