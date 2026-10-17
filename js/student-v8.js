@@ -24,6 +24,7 @@
   }
   function status(a) {
     const sub=submissionFor(a.id);
+    if(!sub && studentHasRecordedSubmission(a.id)) return {key:'submitted',label:a.status==='archived'?'Submitted · Archived':'Submitted'};
     if(sub){
       const submittedAt=date(sub.submitted_at), dueAt=date(a.due_at);
       const late=Boolean(submittedAt && dueAt && submittedAt.getTime()>dueAt.getTime());
@@ -99,7 +100,7 @@
     });
   }
   function renderUpcoming() {
-    const list=state.assignments.filter(a=>a.status==='published' && !submissionFor(a.id)).sort((a,b)=>(date(a.due_at)?.getTime()??Infinity)-(date(b.due_at)?.getTime()??Infinity)).slice(0,3);
+    const list=state.assignments.filter(a=>studentNeedsToSubmit(a)).sort((a,b)=>(date(a.due_at)?.getTime()??Infinity)-(date(b.due_at)?.getTime()??Infinity)).slice(0,3);
     $('#v8UpcomingList').innerHTML=list.length?list.map(a=>{
       const k=kind(a);const upcoming=status(a).key==='upcoming';
       return `<button type="button" class="v8-upcoming-row" ${upcoming?'data-v8-action="upcoming"':`data-answer-assignment="${esc(a.id)}"`}><span class="v8-dot ${k.color}"></span><span class="v8-task-icon ${k.color}">${icon('task')}</span><span class="v8-task-title"><b>${esc(a.title)}</b></span>${due(a)}${statusMarkup(a)}</button>`;

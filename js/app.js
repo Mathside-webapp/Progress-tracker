@@ -511,6 +511,27 @@ function questionsFor(assignmentId) { return state.questions.filter(q => q.assig
 function keyFor(questionId) { return state.keys.find(k => k.question_id === questionId); }
 function submissionFor(assignmentId, studentId = state.user?.id) { return state.submissions.find(s => s.assignment_id === assignmentId && s.student_id === studentId); }
 
+// Completion is a permanent student credit, even after teachers archive and
+// remove the detailed submission. Live responses, archived progress and saved
+// checked scores all count; draft answers never count as a submission.
+function studentHasRecordedSubmission(assignmentId, studentId = state.user?.id) {
+  const id = String(assignmentId || '');
+  const learner = String(studentId || '');
+  if (!id || !learner) return false;
+  return state.submissions.some(s => String(s.assignment_id) === id && String(s.student_id) === learner)
+    || state.submissionHistory.some(h => String(h.assignment_id) === id && String(h.student_id) === learner)
+    || state.archivedScores.some(g => String(g.assignment_id) === id && String(g.student_id) === learner);
+}
+
+// Scheduled, archived, and unpublished work must never produce "unfinished"
+// reminders. The teacher can still find archived grades in student history.
+function studentNeedsToSubmit(assignment) {
+  if (!assignment || assignment.status !== 'published' || assignment.archived_at) return false;
+  const release = assignment.publish_at ? new Date(assignment.publish_at).getTime() : 0;
+  if (Number.isFinite(release) && release > Date.now()) return false;
+  return !studentHasRecordedSubmission(assignment.id);
+}
+
 // One durable record per learner and activity. Archiving removes answer files,
 // NOT the submitted/graded credit shown on student dashboards.
 function studentActivityProgress() {
@@ -611,7 +632,7 @@ function reminderLabel(hours) {
 function studentUrgentAssignments() {
   const now = Date.now();
   return state.assignments
-    .filter(a => !submissionFor(a.id) && a.due_at && Number(a.reminder_hours_before || 0) > 0)
+    .filter(a => studentNeedsToSubmit(a) && a.due_at && Number(a.reminder_hours_before || 0) > 0)
     .filter(a => {
       const due = new Date(a.due_at).getTime();
       const reminderMs = Number(a.reminder_hours_before || 0) * 60 * 60 * 1000;
@@ -3457,8 +3478,7 @@ function formatStudentDate(value) {
 }
 
 function studentAssignmentState(assignment) {
-  const submission = submissionFor(assignment.id);
-  if (submission) return 'submitted';
+  if (studentHasRecordedSubmission(assignment.id)) return 'submitted';
   if (assignment?.status === 'archived') return 'archived';
   const due = assignment?.due_at ? new Date(assignment.due_at) : null;
   if (due && Number.isFinite(due.getTime()) && due.getTime() < Date.now()) return 'missed';
@@ -3491,7 +3511,7 @@ function studentScorePercent() {
 function renderStudentDashboard() {
   const activeTasks = state.assignments.filter(a => a.status === 'published' && !a.archived_at);
   const assigned = activeTasks.length;
-  const completed = activeTasks.filter(a => Boolean(submissionFor(a.id))).length;
+  const completed = activeTasks.filter(a => studentHasRecordedSubmission(a.id)).length;
   const todo = Math.max(0, assigned - completed);
   const completion = assigned ? Math.round((completed / assigned) * 100) : 0;
   const average = studentScorePercent();
@@ -3534,7 +3554,7 @@ function renderStudentDashboard() {
 function renderStudentNextUp() {
   const holder = $('#studentNextUp');
   const pending = state.assignments
-    .filter(a => a.status === 'published' && !a.archived_at && !submissionFor(a.id))
+    .filter(a => studentNeedsToSubmit(a))
     .sort((a, b) => {
       const ad = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
       const bd = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;

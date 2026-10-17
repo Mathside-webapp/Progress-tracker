@@ -1703,6 +1703,7 @@
   // ---------------------------------------------------------------
   function performanceStatus(a) {
     const sub = submissionFor(a.id);
+    if (!sub && studentHasRecordedSubmission(a.id)) return { label:'Submitted · Record saved', cls:'submitted' };
     if (sub) {
       const late = isLateSubmission(sub, a);
       if (late) return { label: sub.status === 'graded' ? 'Graded · Late' : 'Submitted Late', cls:'late' };
@@ -1726,6 +1727,7 @@
       const canNewAttempt = !sub || Boolean(sub.resubmit_allowed);
       const primary = archived ? '<span class="v8-history-tag">Saved record</span>'
         : sub ? `<button type="button" class="v8-view-button" data-preview-response="${esc(sub.id)}">View</button>`
+        : studentHasRecordedSubmission(a.id) ? '<span class="v8-history-tag">Record saved</span>'
         : `<button type="button" class="v8-view-button" data-submit-performance="${esc(a.id)}">Open</button>`;
       const retry = sub && canNewAttempt && a.status !== 'archived' ? `<button type="button" class="v8-resubmit" data-submit-performance="${esc(a.id)}">Submit new attempt</button>` : '';
       return `<article class="v8-activity-row performance-student-row ${a.status==='archived'?'is-archived':''}"><span class="v8-task-icon orange">▣</span><div class="v8-task-title"><b>${esc(a.title)}</b><small>${esc(sectionLabel(sectionById(a.section_id)))} · ${Number(a.max_points||0)} pts</small></div><span class="v8-due"><span>${esc(due)}</span></span><span class="v8-status ${st.cls}">${st.label}</span>${primary}${retry}</article>`;

@@ -53,8 +53,8 @@
   const NOTIFICATION_POLL_MS = 180000;
   const currentUserId = () => state.user?.id || null;
   const connected = () => Boolean(db && currentUserId());
-  const studentAssignments = () => state.assignments.filter(a => a.status === 'published');
-  const todoAssignments = () => studentAssignments().filter(a => !submissionFor(a.id));
+  const studentAssignments = () => state.assignments.filter(a => a.status === 'published' && !a.archived_at);
+  const todoAssignments = () => studentAssignments().filter(a => studentNeedsToSubmit(a));
 
   function setBadge(id, count) {
     const node = document.getElementById(id);
@@ -158,12 +158,13 @@
     }
     agenda.innerHTML = selectedTasks.map(a => {
       const submitted = submissionFor(a.id);
-      const missed = !submitted && safeDate(a.due_at)?.getTime() < Date.now();
-      const status = submitted ? 'Submitted' : missed ? 'Missed' : 'To do';
-      const statusKey = submitted ? 'done' : missed ? 'missed' : 'todo';
+      const finished = studentHasRecordedSubmission(a.id);
+      const missed = !finished && safeDate(a.due_at)?.getTime() < Date.now();
+      const status = finished ? 'Submitted' : missed ? 'Missed' : 'To do';
+      const statusKey = finished ? 'done' : missed ? 'missed' : 'todo';
       const type = isPerformanceTask(a) ? 'Performance Task' : 'Activity';
-      const action = submitted ? `data-preview-response="${esc(submitted.id)}"` : isPerformanceTask(a) ? `data-submit-performance="${esc(a.id)}"` : `data-answer-assignment="${esc(a.id)}"`;
-      return `<article class="v10-agenda-row"><time>${esc(formatDateTime(a.due_at))}</time><div><span>${esc(type)}</span><b>${esc(a.title)}</b></div><span class="v10-agenda-status ${statusKey}">${status}</span><button type="button" class="v8-view-button" ${action}>${submitted ? 'View' : 'Open'}</button></article>`;
+      const action = submitted ? `data-preview-response="${esc(submitted.id)}"` : finished ? '' : isPerformanceTask(a) ? `data-submit-performance="${esc(a.id)}"` : `data-answer-assignment="${esc(a.id)}"`;
+      return `<article class="v10-agenda-row"><time>${esc(formatDateTime(a.due_at))}</time><div><span>${esc(type)}</span><b>${esc(a.title)}</b></div><span class="v10-agenda-status ${statusKey}">${status}</span><button type="button" class="v8-view-button" ${action} ${finished && !submitted ? 'disabled title="Submission already recorded"' : ''}>${submitted ? 'View' : finished ? 'Recorded' : 'Open'}</button></article>`;
     }).join('');
   }
 
@@ -415,19 +416,27 @@
       }
       // Archived tasks are no longer actionable. Old reminder rows can survive
       // archive cleanup because notifications are stored independently.
-      const archivedTasks = (state.assignments || []).filter(a => a.status === 'archived' || a.archived_at);
-      const archivedIds = new Set(archivedTasks.map(a => String(a.id).toLowerCase()));
-      const reminderType = n => /remind|missing|pending|overdue|due|assignment|activity|performance|task/i.test(String(n.type || ''));
-      const refersToArchivedTask = n => {
-        if (!reminderType(n)) return false;
-        const candidates = [n.assignment_id, n.reference_id, n.entity_id, n.related_id, n.metadata?.assignment_id, n.data?.assignment_id];
-        if (candidates.some(id => id && archivedIds.has(String(id).toLowerCase()))) return true;
-        // Only match titles for explicit unfinished-work reminders, not general announcements.
-        if (!/remind|missing|pending|overdue|not submitted|incomplete/i.test(`${n.type || ''} ${n.title || ''} ${n.body || ''}`)) return false;
-        const message = `${n.title || ''} ${n.body || ''}`.toLowerCase();
-        return archivedTasks.some(a => a.title && a.title.length >= 5 && message.includes(String(a.title).toLowerCase()));
+      // The SQL notification table uses related_assignment_id (not just
+      // assignment_id). Hide obsolete *deadline* reminders for archived or
+      // already-completed work without hiding regular class announcements or
+      // teacher feedback. This also cleans up old messages already in the bell.
+      const resolvedIds = new Set((state.assignments || [])
+        .filter(a => a.status === 'archived' || a.archived_at || studentHasRecordedSubmission(a.id))
+        .map(a => String(a.id).toLowerCase()));
+      const resolvedTasks = (state.assignments || []).filter(a => resolvedIds.has(String(a.id).toLowerCase()));
+      const staleDeadlineReminder = n => {
+        const signal = `${n.type || ''} ${n.title || ''} ${n.body || ''}`;
+        if (!/remind|missing|pending|overdue|not submitted|incomplete|deadline|due/i.test(signal)) return false;
+        const candidates = [n.related_assignment_id, n.assignment_id, n.reference_id,
+          n.entity_id, n.related_id, n.metadata?.assignment_id, n.data?.assignment_id];
+        if (candidates.some(id => id && resolvedIds.has(String(id).toLowerCase()))) return true;
+        // Use titles only as a legacy fallback for explicit reminders.
+        const body = `${n.title || ''} ${n.body || ''}`.toLowerCase();
+        return resolvedTasks.some(a => a.title && String(a.title).length >= 5 &&
+          body.includes(String(a.title).toLowerCase()));
       };
-      feature.notifications = (data || []).filter(n => state.profile?.role !== 'student' || !refersToArchivedTask(n));
+      feature.notifications = (data || []).filter(n =>
+        state.profile?.role !== 'student' || !staleDeadlineReminder(n));
       feature.notificationFetchedAt = Date.now();
       renderNotifications();
     })();

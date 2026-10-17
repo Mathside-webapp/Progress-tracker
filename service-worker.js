@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-23-student-history';
+const CACHE_NAME = 'mathside-pwa-v24-24-overdue-history-fix';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -35,9 +35,9 @@ const APP_SHELL = [
   './css/design-v9.css?v=9.1',
   './css/v10-features.css?v=11.5',
   './js/config.js',
-  './js/app.js?v=16.8-student-history',
-  './js/student-v8.js?v=15.2-student-history',
-  './js/v10-features.js?v=24.12',
+  './js/app.js?v=16.9-overdue-history-fix',
+  './js/student-v8.js?v=15.3-overdue-history-fix',
+  './js/v10-features.js?v=24.13-overdue-history-fix',
   './js/design-v9.js?v=9',
   './js/pwa.js?v=6.9.15',
   './js/push-notifications.js?v=6.12',
@@ -45,7 +45,7 @@ const APP_SHELL = [
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.11',
   './js/v12-archive-features.js?v=24.13-progress-history',
-  './js/v15-performance-tasks.js?v=15.20-student-history'
+  './js/v15-performance-tasks.js?v=15.21-overdue-history-fix'
 ];
 
 self.addEventListener('install', (event) => {
