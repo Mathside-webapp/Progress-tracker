@@ -26,7 +26,10 @@ const state = {
   questions: [],
   keys: [],
   submissions: [],
-  submissionAnswers: []
+  submissionAnswers: [],
+  archivedScores: [],
+  submissionHistory: [],
+  archiveHistoryAvailable: false
 };
 
 let authMode = 'signin';
@@ -457,6 +460,9 @@ function resetState() {
   state.keys = [];
   state.submissions = [];
   state.submissionAnswers = [];
+  state.archivedScores = [];
+  state.submissionHistory = [];
+  state.archiveHistoryAvailable = false;
   lastGeneratedAccounts = [];
   lastGeneratedSection = null;
   pendingStudentAction = null;
@@ -874,6 +880,73 @@ function returnPublic() {
 $('#teacherSignout').addEventListener('click', () => signOut('Saving your Mathside workspace.'));
 $('#studentSignout').addEventListener('click', () => signOut('See you next time.'));
 
+// ----- Durable class progress (including archived work) -----
+// Archived responses and files are intentionally deleted. Never derive the
+// class roster's lifetime counts solely from mathside_submissions.
+function teacherAssignmentProgress(studentId, assignment) {
+  const studentKey = String(studentId);
+  const live = state.submissions.find(sub =>
+    String(sub.student_id) === studentKey && String(sub.assignment_id) === String(assignment.id));
+  const saved = state.archivedScores.find(row =>
+    String(row.student_id) === studentKey && String(row.assignment_id) === String(assignment.id));
+  const history = state.submissionHistory.find(row =>
+    String(row.student_id) === studentKey && String(row.assignment_id) === String(assignment.id));
+  return {
+    live,
+    history,
+    saved,
+    submitted: Boolean(live || history || saved),
+    graded: Boolean(live?.status === 'graded' || history?.status === 'graded' || saved),
+    // A current, re-submitted response takes precedence. Saved archived grades
+    // remain evidence of earlier checked work even if the task was unarchived.
+    score: live?.status === 'graded' && live.teacher_score != null ? Number(live.teacher_score)
+      : saved ? Number(saved.score)
+      : live ? Number(live.auto_score ?? 0) : null
+  };
+}
+
+function teacherSectionAssignments(sectionId) {
+  return state.assignments.filter(a => String(a.section_id) === String(sectionId) &&
+    (a.status === 'published' || a.status === 'archived'));
+}
+
+async function loadTeacherArchiveHistory(assignmentIds) {
+  state.archivedScores = [];
+  state.submissionHistory = [];
+  state.archiveHistoryAvailable = false;
+  if (!assignmentIds.length) return;
+
+  // Supabase's default response cap is often 1,000 rows. Page through every
+  // segment instead of silently losing older learners' records.
+  async function readAll(table, fields) {
+    const rows = [];
+    for (let i = 0; i < assignmentIds.length; i += 60) {
+      const ids = assignmentIds.slice(i, i + 60);
+      for (let start = 0;; start += 500) {
+        const { data, error } = await db.from(table).select(fields)
+          .in('assignment_id', ids).range(start, start + 499);
+        if (error) {
+          if (['42P01', 'PGRST205', 'PGRST116'].includes(String(error.code))) return null;
+          throw error;
+        }
+        const batch = data || [];
+        rows.push(...batch);
+        if (batch.length < 500) break;
+      }
+    }
+    return rows;
+  }
+
+  // Existing graded scores are already kept by the V24.12 archive migration.
+  // Thus old checked work becomes visible immediately after this frontend fix.
+  const savedScores = await readAll('mathside_archived_scores', 'assignment_id,student_id,score,archived_at');
+  state.archivedScores = savedScores || [];
+  const history = await readAll('mathside_submission_history',
+    'assignment_id,student_id,status,submitted_at,archived_at');
+  state.archiveHistoryAvailable = history !== null;
+  state.submissionHistory = history || [];
+}
+
 // ---------- DATA LOADING ----------
 async function loadTeacherData() {
   const teacherId = state.user.id;
@@ -893,6 +966,9 @@ async function loadTeacherData() {
   state.questions = [];
   state.keys = [];
   state.submissions = [];
+  state.archivedScores = [];
+  state.submissionHistory = [];
+  state.archiveHistoryAvailable = false;
   submissionAnswerCache.clear();
   if (assignmentIds.length) {
     const [questionsRes, submissionsRes] = await Promise.all([
@@ -910,6 +986,8 @@ async function loadTeacherData() {
       state.keys = keysRes.data || [];
     }
   }
+
+  await loadTeacherArchiveHistory(assignmentIds);
 
   await Promise.all(state.assignments.map(async assignment => {
     assignment.image_url = assignment.image_path
@@ -1114,10 +1192,11 @@ function renderClassStudentsModal() {
     updateRosterBulkUI();
     return;
   }
+  const assignments = teacherSectionAssignments(section.id);
   list.innerHTML = students.map(student => {
-    const assignmentCount = state.assignments.filter(a => a.section_id === section.id).length;
-    const submissions = state.submissions.filter(sub => sub.student_id === student.id && assignmentById(sub.assignment_id)?.section_id === section.id);
-    const graded = submissions.filter(sub => sub.status === 'graded').length;
+    const records = assignments.map(a => teacherAssignmentProgress(student.id, a));
+    const submissionCount = records.filter(entry => entry.submitted).length;
+    const graded = records.filter(entry => entry.graded).length;
     const genderClass = student.gender === 'Male' ? 'gender-male' : student.gender === 'Female' ? 'gender-female' : 'gender-other';
     return `<article class="roster-student-card ${genderClass} ${selectedStudentIds.has(student.id) ? 'is-selected' : ''}">
       <label class="roster-check"><input class="row-check" type="checkbox" data-select-student="${student.id}" ${selectedStudentIds.has(student.id) ? 'checked' : ''}><span class="sr-only">Select ${esc(student.display_name)}</span></label>
@@ -1125,7 +1204,7 @@ function renderClassStudentsModal() {
         <span class="roster-avatar">${esc((student.display_name || 'S').trim().charAt(0).toUpperCase())}</span>
         <span class="roster-student-copy"><b>${esc(student.display_name)}</b><small>${esc(student.username || 'No username')} · ${esc(student.gender || 'Not specified')}</small></span>
       </button>
-      <div class="roster-progress"><span>${submissions.length}/${assignmentCount} submitted</span><span>${graded} graded</span></div>
+      <div class="roster-progress"><span>${submissionCount}/${assignments.length} submitted</span><span>${graded} graded</span></div>
       <div class="roster-student-actions"><button class="btn btn-light btn-small" type="button" data-track-student="${student.id}">Track</button><button class="table-delete" type="button" data-delete-student="${student.id}">Delete</button></div>
     </article>`;
   }).join('');
@@ -1321,24 +1400,37 @@ function renderStudentTracking(sectionId, studentId) {
   const section = sectionById(sectionId);
   const student = studentById(studentId);
   if (!section || !student) return;
-  const assignments = state.assignments.filter(a => a.section_id === sectionId && a.status === 'published').sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-  const submissions = state.submissions.filter(sub => sub.student_id === studentId && assignments.some(a => a.id === sub.assignment_id));
-  const graded = submissions.filter(sub => sub.status === 'graded').length;
+  const assignments = teacherSectionAssignments(sectionId)
+    .sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+  const records = assignments.map(a => ({ assignment: a, ...teacherAssignmentProgress(studentId, a) }));
+  const submittedCount = records.filter(record => record.submitted).length;
+  const gradedCount = records.filter(record => record.graded).length;
+  // Only currently published work can still be outstanding. Archiving a task
+  // should never create a missing submission or erase recorded progress.
+  const toDoCount = records.filter(record => record.assignment.status === 'published' && !record.live).length;
   $('#studentTrackingName').textContent = student.display_name || 'Student';
   $('#studentTrackingMeta').textContent = `${sectionLabel(section)} · ${student.gender || 'Not specified'} · ${student.username || 'No username'}`;
-  $('#studentTrackingStats').innerHTML = `<article><b>${assignments.length}</b><span>Assigned</span></article><article><b>${submissions.length}</b><span>Submitted</span></article><article><b>${graded}</b><span>Graded</span></article><article><b>${Math.max(0, assignments.length - submissions.length)}</b><span>To do</span></article>`;
+  $('#studentTrackingStats').innerHTML = `<article><b>${assignments.length}</b><span>Assigned (all time)</span></article><article><b>${submittedCount}</b><span>Submitted (all time)</span></article><article><b>${gradedCount}</b><span>Graded (all time)</span></article><article><b>${toDoCount}</b><span>Current to do</span></article>`;
   const list = $('#studentTrackingList');
   if (!assignments.length) {
-    list.innerHTML = '<div class="assignment-empty">No assignments have been posted to this section yet.</div>';
+    list.innerHTML = '<div class="assignment-empty">No activities have been posted to this section yet.</div>';
     return;
   }
-  list.innerHTML = assignments.map(assignment => {
-    const submission = submissions.find(sub => sub.assignment_id === assignment.id);
+  list.innerHTML = records.map(({ assignment, live, history, saved, submitted, graded, score }) => {
+    const archived = assignment.status === 'archived';
     const total = totalPoints(assignment.id);
-    const score = submission ? Number(submission.status === 'graded' ? (submission.teacher_score ?? submission.auto_score ?? 0) : (submission.auto_score || 0)) : 0;
-    const status = submission ? (submission.status === 'graded' ? 'Graded' : 'Submitted') : 'Not submitted';
-    return `<article class="tracking-assignment-card ${submission ? 'has-submission' : 'missing-submission'}"><div><span class="student-status ${submission?.status === 'graded' ? 'status-graded' : submission ? 'status-submitted' : ''}">${status}</span><h4>${esc(assignment.title)}</h4><p>${assignment.due_at ? `Deadline ${esc(formatDeadlineDate(assignment.due_at))}` : 'No deadline'}</p></div><div class="tracking-assignment-meta">${submission ? `<b>${score}/${total}</b><small>Submitted ${esc(formatStudentDate(submission.submitted_at) || '')}</small>` : '<b>—</b><small>No response yet</small>'}</div>${submission ? `<button class="btn btn-light btn-small" type="button" data-track-review-submission="${submission.id}">Preview submission</button>` : '<span></span>'}</article>`;
+    const status = archived
+      ? (graded ? 'Graded · Archived' : submitted ? 'Submitted · Archived' : 'Archived · No saved record')
+      : (live?.status === 'graded' ? 'Graded' : live ? 'Submitted' : graded ? 'Previously graded' : submitted ? 'Previously submitted' : 'Not submitted');
+    const when = live?.submitted_at || history?.submitted_at;
+    const detail = live ? `Submitted ${esc(formatStudentDate(when) || '')}`
+      : history || saved ? 'Archived work · original response removed' : archived ? 'No retained submission evidence' : 'No response yet';
+    const displayScore = score === null ? '—' : `${Number(score)}/${total}`;
+    return `<article class="tracking-assignment-card ${submitted ? 'has-submission' : 'missing-submission'}"><div><span class="student-status ${graded ? 'status-graded' : submitted ? 'status-submitted' : ''}">${status}</span><h4>${esc(assignment.title)}</h4><p>${assignment.due_at ? `Deadline ${esc(formatDeadlineDate(assignment.due_at))}` : 'No deadline'}</p></div><div class="tracking-assignment-meta"><b>${displayScore}</b><small>${detail}</small></div>${live ? `<button class="btn btn-light btn-small" type="button" data-track-review-submission="${live.id}">Preview submission</button>` : '<span></span>'}</article>`;
   }).join('');
+  if (!state.archiveHistoryAvailable) {
+    list.insertAdjacentHTML('afterbegin', '<div class="assignment-empty" role="note">Historical graded scores are included when saved. To also retain submitted-but-not-yet-graded work during future archives, run <b>sql/Mathside-Archive-Progress-History.sql</b> in Supabase.</div>');
+  }
 }
 
 function openStudentTrackingModal(sectionId, studentId) {

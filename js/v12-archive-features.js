@@ -519,6 +519,9 @@
   $('#confirmArchiveAssignmentBtn')?.addEventListener('click', async () => {
     const ids = archiveState.assignmentIds.filter(id => assignmentById(id)?.status !== 'archived');
     if (!ids.length) return closeDialog('archiveAssignmentModal');
+    if (!state.archiveHistoryAvailable) {
+      return toast('Archive paused to protect students’ submission counts. Run sql/Mathside-Archive-Progress-History.sql in Supabase, then reload Mathside before archiving.', 'orange', 'Install progress history first');
+    }
     if (!archiveAck?.checked) return toast('Please acknowledge that submitted work and files will be permanently deleted.', 'orange', 'Confirmation required');
     const assignments = ids.map(id => assignmentById(id)).filter(Boolean);
     const allPerformance = assignments.length > 0 && assignments.every(isPerformanceTask);
