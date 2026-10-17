@@ -44,10 +44,9 @@
     return `<span class="v8-due ${urgent?'is-urgent':''}">${icon('calendar')}<span>${d?`Due <time datetime="${esc(a.due_at)}">${esc(formatDate(a.due_at))}</time>`:'No due date'}</span></span>`;
   }
   function scores() {
-    return state.submissions.filter(s=>s.student_id===state.user?.id && s.status==='graded').map(s=>{
-      const total=totalPoints(s.assignment_id),raw=Number(s.teacher_score ?? s.auto_score);
-      return {s,total,percent:total>0 && Number.isFinite(raw)?Math.max(0,Math.min(100,raw/total*100)):null};
-    }).filter(x=>x.percent!==null).sort((a,b)=>(date(b.s.graded_at || b.s.updated_at || b.s.submitted_at)?.getTime()||0)-(date(a.s.graded_at || a.s.updated_at || a.s.submitted_at)?.getTime()||0));
+    return studentActivityProgress().filter(p => p.graded && p.percent !== null)
+      .map(p => ({s:p.live, total:p.maximum, percent:p.percent, when:p.when, progress:p}))
+      .sort((a,b)=>(date(b.when)?.getTime()||0)-(date(a.when)?.getTime()||0));
   }
   const mean = a => a.reduce((sum,x)=>sum+x.percent,0)/a.length;
   function removeLegacyRankingCards() {
@@ -63,8 +62,13 @@
   function renderMetrics() {
     removeLegacyRankingCards();
     const marked=scores(),average=marked.length?Math.round(mean(marked)):null,highest=marked.length?Math.round(Math.max(...marked.map(x=>x.percent))):null;
+    // Published tasks remain assigned; archived tasks count only where the
+    // student really submitted/completed them. Do not inflate To-Do totals.
     const active=state.assignments.filter(a=>a.status==='published'&&!a.archived_at);
-    const total=active.length,completed=active.filter(a=>submissionFor(a.id)).length;
+    const historical=studentActivityProgress().filter(p=>p.submitted);
+    const totalIds=new Set([...active.map(a=>String(a.id)),...historical.map(p=>p.assignmentId)]);
+    const completedIds=new Set(historical.map(p=>p.assignmentId));
+    const total=totalIds.size,completed=completedIds.size;
     const change=marked.length>=6?Math.round(mean(marked.slice(0,3))-mean(marked.slice(3,6))):null;
     const values={average:average===null?'—':`${average}%`,total:String(total),highest:highest===null?'—':`${highest}%`};
     const notes={average:change===null?(marked.length?'Reviewed work':'Awaiting grades'):`${change>=0?'↑':'↓'} ${Math.abs(change)}%`,total:`${completed} completed`,highest:highest===null?'Awaiting grades':highest===100?'Excellent!':'Keep it up!'};
@@ -104,7 +108,9 @@
   function renderActivities() {
     const needle=studentTaskSearch.trim().toLowerCase();
     const writtenAssignments=state.assignments.filter(a=>a.status==='published'&&!a.archived_at&&!isPerformanceTask(a));
-    const list=writtenAssignments.filter(a=>(studentTaskFilter==='all' || studentAssignmentState(a)===studentTaskFilter) && (!needle || `${a.title || ''} ${a.instructions || ''} ${sectionLabel(sectionById(a.section_id))}`.toLowerCase().includes(needle)));
+    const oldCompleted=state.assignments.filter(a=>a.status==='archived' && !isPerformanceTask(a) && studentProgressFor(a.id)?.submitted);
+    const available=studentTaskFilter==='submitted' ? [...writtenAssignments,...oldCompleted] : writtenAssignments;
+    const list=available.filter(a=>(studentTaskFilter==='all' || (a.status==='archived' ? studentTaskFilter==='submitted' : studentAssignmentState(a)===studentTaskFilter)) && (!needle || `${a.title || ''} ${a.instructions || ''} ${sectionLabel(sectionById(a.section_id))}`.toLowerCase().includes(needle)));
     list.sort((a,b)=>{const av=studentTaskSortValue(a,studentTaskSort),bv=studentTaskSortValue(b,studentTaskSort);return typeof av==='string'?av.localeCompare(String(bv)):av-bv;});
     $('#studentTaskSummary').textContent=`${list.length} activit${list.length===1?'y':'ies'} shown${needle?` for “${studentTaskSearch}”`:''}.`;
     const searchInput=$('#studentTaskSearch'), sortSelect=$('#studentTaskSort');
@@ -112,25 +118,39 @@
     if(sortSelect) sortSelect.value=studentTaskSort;
     const counts={ongoing:0,submitted:0,missed:0};
     writtenAssignments.forEach(a=>{const key=studentAssignmentState(a);if(key in counts)counts[key]+=1;});
+    counts.submitted+=oldCompleted.length;
     shell.querySelectorAll('[data-student-filter-count]').forEach(n=>{n.textContent=String(counts[n.dataset.studentFilterCount]||0);});
     shell.querySelectorAll('.student-filter').forEach(n=>{const active=n.dataset.studentFilter===studentTaskFilter;n.classList.toggle('active',active);n.setAttribute('aria-pressed',String(active));});
     $('#studentAssignmentList').innerHTML=list.length?list.map(a=>{
-      const k=kind(a),sub=submissionFor(a.id),s=status(a);
+      const k=kind(a),sub=submissionFor(a.id),progress=studentProgressFor(a.id),s=a.status==='archived'
+        ? {key:'submitted',label:progress?.graded?'Graded · Archived':'Submitted · Archived'} : status(a);
       const archived=a.status==='archived';
       const action=archived&&!sub?'data-v8-action="archived"':s.key==='upcoming'?'data-v8-action="upcoming"':sub?`data-preview-response="${esc(sub.id)}"`:`data-answer-assignment="${esc(a.id)}"`;
-      return `<article class="v8-activity-row ${archived?'is-archived':''}"><span class="v8-task-icon ${k.color}">${icon('task')}</span><div class="v8-task-title"><b>${esc(a.title)}</b><small>${esc(k.label)}</small></div>${due(a)}${statusMarkup(a)}<button type="button" class="v8-view-button" ${action} aria-label="View ${esc(a.title)}">View</button>${sub && !archived && sub.resubmit_allowed?`<button class="v8-resubmit" data-answer-assignment="${esc(a.id)}">Submit new attempt</button>`:''}</article>`;
+      const grade=archived&&progress?.graded&&progress.score!==null
+        ? `<small>Saved grade: ${esc(String(progress.score))}${progress.maximum>0?` / ${progress.maximum}`:''} points</small>` : '';
+      return `<article class="v8-activity-row ${archived?'is-archived':''}"><span class="v8-task-icon ${k.color}">${icon('task')}</span><div class="v8-task-title"><b>${esc(a.title)}</b><small>${esc(k.label)}</small>${grade}</div>${due(a)}<span class="v8-status ${s.key}">${esc(s.label)}</span>${archived?'<span class="v8-history-tag">Record saved</span>':`<button type="button" class="v8-view-button" ${action} aria-label="View ${esc(a.title)}">View</button>`}${sub && !archived && sub.resubmit_allowed?`<button class="v8-resubmit" data-answer-assignment="${esc(a.id)}">Submit new attempt</button>`:''}</article>`;
     }).join(''):empty(writtenAssignments.length?'No matching activities.':'No activities yet.',writtenAssignments.length?'Try another search term or filter.':'Your teacher’s activities will appear here.');
   }
   function renderGrades() {
     renderMetrics();
-    const marked=state.submissions.filter(s=>s.student_id===state.user?.id && s.status==='graded').sort((a,b)=>(date(b.graded_at || b.updated_at || b.submitted_at)?.getTime()||0)-(date(a.graded_at || a.updated_at || a.submitted_at)?.getTime()||0));
-    $('#studentGradedCount').textContent=`${marked.length} graded`;
-    $('#studentGradeList').innerHTML=marked.length?(expandedFeedback?marked:marked.slice(0,3)).map(s=>{
-      const a=assignmentById(s.assignment_id),k=kind(a||{}),total=a?totalPoints(a.id):0;
-      const raw=Number(s.teacher_score ?? s.auto_score ?? 0),pct=total>0?`${Math.round(raw/total*100)}%`:'—';
-      const when=s.graded_at || s.updated_at || s.submitted_at;
-      return `<article class="v8-feedback-row"><span class="v8-task-icon ${k.color}">${icon('task')}</span><div class="v8-feedback-title"><button type="button" data-preview-response="${esc(s.id)}" title="View your response">${esc(a?.title || 'Reviewed activity')}</button><time>${esc(formatDate(when) || 'Date unavailable')}</time></div><div class="v8-feedback-score"><span>Score</span><strong title="${raw} of ${total} points">${pct}</strong></div><div class="v8-feedback-message">${icon('check')}<p>${esc(s.feedback || 'Your teacher has reviewed this activity.')}</p></div></article>`;
-    }).join('')+(marked.length>3?`<button type="button" class="v8-more-feedback" data-v8-action="all-feedback">${expandedFeedback?'Show recent feedback':`View all feedback (${marked.length})`}</button>`:''):empty('Your feedback will appear here.','Complete an activity. Once your teacher reviews it, you’ll see your score and comments here.');
+    const graded=studentActivityProgress().filter(p => p.graded)
+      .sort((a,b)=>(date(b.when)?.getTime()||0)-(date(a.when)?.getTime()||0));
+    $('#studentGradedCount').textContent=`${graded.length} graded`;
+    $('#studentGradeList').innerHTML=graded.length?(expandedFeedback?graded:graded.slice(0,3)).map(p=>{
+      const a=p.assignment,k=kind(a||{}),when=p.when;
+      const archived=p.archived;
+      const pct=p.percent===null?'—':`${Math.round(p.percent)}%`;
+      const label=a?.title || 'Archived activity';
+      const titleMarkup=p.live && !archived
+        ? `<button type="button" data-preview-response="${esc(p.live.id)}" title="View your response">${esc(label)}</button>`
+        : `<b>${esc(label)}</b>`;
+      const feedback=p.live?.feedback || (archived
+        ? 'Archived result saved. Original answers and attachments are no longer available.'
+        : 'Your teacher has reviewed this activity.');
+      const extra=archived?'<span class="v8-history-tag">Archived result</span>':'';
+      const scoreTitle=p.score===null?'Saved grade':`${p.score} of ${p.maximum || 'unknown'} points`;
+      return `<article class="v8-feedback-row ${archived?'v8-archived-result':''}"><span class="v8-task-icon ${k.color}">${icon('task')}</span><div class="v8-feedback-title">${titleMarkup}<time>${esc(formatDate(when) || 'Date unavailable')}</time>${extra}</div><div class="v8-feedback-score"><span>Score</span><strong title="${esc(scoreTitle)}">${pct}</strong>${p.percent===null&&p.score!==null?`<small>${esc(String(p.score))} pts</small>`:''}</div><div class="v8-feedback-message">${icon('check')}<p>${esc(feedback)}</p></div></article>`;
+    }).join('')+(graded.length>3?`<button type="button" class="v8-more-feedback" data-v8-action="all-feedback">${expandedFeedback?'Show recent feedback':`View all feedback (${graded.length})`}</button>`:''):empty('Your feedback will appear here.','Complete an activity. Once your teacher reviews it, you’ll see your score and comments here.');
   }
   function syncPanel() {
     removeLegacyRankingCards();

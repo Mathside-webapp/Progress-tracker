@@ -149,3 +149,11 @@ body.v8-student-active::after{content:''!important;position:fixed;pointer-events
     transform:none!important;
   }
 }
+
+/* Archival progress is read-only: responses were intentionally cleaned. */
+.v8-history-tag{display:inline-flex;align-items:center;justify-content:center;width:fit-content;
+  padding:4px 9px;border:1px solid #ffd5b7;border-radius:999px;background:#fff2e6;
+  color:#a94300;font-size:11px;font-weight:700;white-space:nowrap;}
+.v8-feedback-title>.v8-history-tag{margin-top:5px;}
+.v8-feedback-title>b{font-size:inherit;line-height:inherit;}
+.v8-feedback-score>small{font-size:11px;color:#a94300;display:block;}

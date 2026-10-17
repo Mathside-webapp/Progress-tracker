@@ -510,6 +510,47 @@ function assignmentById(id) { return state.assignments.find(a => a.id === id); }
 function questionsFor(assignmentId) { return state.questions.filter(q => q.assignment_id === assignmentId).sort((a,b) => a.position-b.position); }
 function keyFor(questionId) { return state.keys.find(k => k.question_id === questionId); }
 function submissionFor(assignmentId, studentId = state.user?.id) { return state.submissions.find(s => s.assignment_id === assignmentId && s.student_id === studentId); }
+
+// One durable record per learner and activity. Archiving removes answer files,
+// NOT the submitted/graded credit shown on student dashboards.
+function studentActivityProgress() {
+  const id = String(state.user?.id || '');
+  const progress = new Map();
+  function record(assignmentId) {
+    const key = String(assignmentId || '');
+    if (!progress.has(key)) progress.set(key, { assignmentId:key, live:null, history:null, saved:null });
+    return progress.get(key);
+  }
+  for (const item of (state.submissionHistory || [])) {
+    if (String(item.student_id) === id) record(item.assignment_id).history = item;
+  }
+  for (const item of (state.archivedScores || [])) {
+    if (String(item.student_id) === id) record(item.assignment_id).saved = item;
+  }
+  for (const item of state.submissions) {
+    if (String(item.student_id) === id) record(item.assignment_id).live = item;
+  }
+  return [...progress.values()].map(item => {
+    const a = assignmentById(item.assignmentId);
+    const liveGraded = item.live?.status === 'graded';
+    const graded = liveGraded || item.history?.status === 'graded' || Boolean(item.saved);
+    const submitted = Boolean(item.live || item.history || item.saved);
+    const score = liveGraded && item.live.teacher_score != null ? Number(item.live.teacher_score)
+      : item.saved ? Number(item.saved.score)
+      : liveGraded && item.live.auto_score != null ? Number(item.live.auto_score) : null;
+    const maximum = a ? totalPoints(item.assignmentId) : 0;
+    const percent = graded && score !== null && Number.isFinite(score) && maximum > 0
+      ? Math.max(0, Math.min(100, score / maximum * 100)) : null;
+    const when = item.live?.graded_at || item.live?.submitted_at ||
+      item.history?.submitted_at || item.history?.archived_at || item.saved?.archived_at || null;
+    return { ...item, assignment:a, submitted, graded, score, maximum, percent,
+      archived:a?.status === 'archived' || (!item.live && Boolean(item.history || item.saved)), when };
+  });
+}
+function studentProgressFor(assignmentId) {
+  return studentActivityProgress().find(x => x.assignmentId === String(assignmentId)) || null;
+}
+
 function sectionStudentIds(sectionId) { return state.members.filter(m => m.section_id === sectionId).map(m => m.student_id); }
 function studentsForSection(sectionId) {
   const ids = new Set(sectionStudentIds(sectionId));
@@ -631,36 +672,45 @@ function latestWorkspaceItem(items = []) {
 }
 
 function studentWorkspaceSignatureFromState() {
-  const assignment = latestWorkspaceItem(state.assignments.filter(a => a.status === 'published'));
+  const assignment = latestWorkspaceItem(state.assignments.filter(a => a.status === 'published' || a.status === 'archived'));
   const submission = latestWorkspaceItem(state.submissions);
+  const history = [...(state.submissionHistory || [])].sort((a,b) =>
+    new Date(b.archived_at || 0) - new Date(a.archived_at || 0))[0];
   return [
     assignment ? `${assignment.id}:${assignment.updated_at || assignment.created_at || ''}` : 'no-assignment',
-    submission ? `${submission.id}:${submission.updated_at || submission.submitted_at || ''}` : 'no-submission'
+    submission ? `${submission.id}:${submission.updated_at || submission.submitted_at || ''}` : 'no-submission',
+    history ? `${history.assignment_id}:${history.archived_at}` : 'no-history'
   ].join('|');
 }
 
 async function fetchStudentWorkspaceSignature() {
   if (!db || !state.user?.id) return studentWorkspaceSignature;
   const studentId = state.user.id;
-  const [assignmentRes, submissionRes] = await Promise.all([
+  const [assignmentRes, submissionRes, historyRes] = await Promise.all([
     db.from('mathside_assignments')
       .select('id,updated_at,created_at,status')
-      .eq('status', 'published')
+      .in('status', ['published', 'archived'])
       .order('updated_at', { ascending: false })
       .limit(1),
     db.from('mathside_submissions')
       .select('id,updated_at,submitted_at,status,graded_at')
       .eq('student_id', studentId)
       .order('updated_at', { ascending: false })
-      .limit(1)
+      .limit(1),
+    db.from('mathside_submission_history').select('assignment_id,archived_at')
+      .eq('student_id',studentId).order('archived_at', { ascending: false }).limit(1)
   ]);
   if (assignmentRes.error) throw assignmentRes.error;
   if (submissionRes.error) throw submissionRes.error;
   const assignment = assignmentRes.data?.[0] || null;
+  // Old databases can still sign in; historical totals require the new RLS migration.
+  if (historyRes.error && !['42P01','PGRST205','42501'].includes(String(historyRes.error.code))) throw historyRes.error;
+  const history = historyRes.data?.[0] || null;
   const submission = submissionRes.data?.[0] || null;
   return [
     assignment ? `${assignment.id}:${assignment.updated_at || assignment.created_at || ''}` : 'no-assignment',
-    submission ? `${submission.id}:${submission.updated_at || submission.submitted_at || ''}` : 'no-submission'
+    submission ? `${submission.id}:${submission.updated_at || submission.submitted_at || ''}` : 'no-submission',
+    history ? `${history.assignment_id}:${history.archived_at}` : 'no-history'
   ].join('|');
 }
 
@@ -1008,6 +1058,8 @@ async function loadStudentData() {
   state.sections = sectionsRes.data || [];
   state.assignments = assignmentsRes.data || [];
   state.submissions = submissionsRes.data || [];
+  state.archivedScores = [];
+  state.submissionHistory = [];
   state.students = [state.profile];
   state.members = membersRes.data || [];
   state.keys = [];
@@ -1027,6 +1079,29 @@ async function loadStudentData() {
     if (answersRes.error) throw answersRes.error;
     state.submissionAnswers = answersRes.data || [];
   }
+
+  // Student accounts may read only their own archived grade/history rows.
+  // The optional tables are guarded for installations not yet migrated.
+  async function readOwnArchive(table, columns) {
+    const rows = [];
+    for (let offset = 0;; offset += 500) {
+      const {data, error} = await db.from(table).select(columns)
+        .eq('student_id',studentId).range(offset, offset + 499);
+      if (error) {
+        if (['42P01','PGRST205'].includes(String(error.code))) return [];
+        throw error;
+      }
+      rows.push(...(data || []));
+      if ((data || []).length < 500) break;
+    }
+    return rows;
+  }
+  const [studentScores, studentHistory] = await Promise.all([
+    readOwnArchive('mathside_archived_scores','assignment_id,student_id,score,archived_at'),
+    readOwnArchive('mathside_submission_history','assignment_id,student_id,status,submitted_at,archived_at')
+  ]);
+  state.archivedScores = studentScores;
+  state.submissionHistory = studentHistory;
 
   await Promise.all(state.assignments.map(async assignment => {
     assignment.image_url = assignment.image_path
@@ -3409,18 +3484,8 @@ function studentClassForDashboard() {
 }
 
 function studentScorePercent() {
-  const scores = state.submissions.map(submission => {
-    const assignment = assignmentById(submission.assignment_id);
-    if (!assignment) return null;
-    const total = totalPoints(assignment.id);
-    if (!total) return null;
-    const score = submission.status === 'graded' && submission.teacher_score != null
-      ? Number(submission.teacher_score)
-      : Number(submission.auto_score || 0);
-    return Math.max(0, Math.min(100, (score / total) * 100));
-  }).filter(value => value != null && Number.isFinite(value));
-  if (!scores.length) return null;
-  return Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length);
+  const graded = studentActivityProgress().filter(x => x.graded && x.percent !== null);
+  return graded.length ? Math.round(graded.reduce((sum,x) => sum + x.percent,0) / graded.length) : null;
 }
 
 function renderStudentDashboard() {

@@ -1718,9 +1718,15 @@
     const tasks = performanceTasks().filter(a => a.status === 'published' || a.status === 'archived').sort((a,b)=>(a.due_at?new Date(a.due_at).getTime():Infinity)-(b.due_at?new Date(b.due_at).getTime():Infinity));
     if (!tasks.length) { list.innerHTML = '<div class="v8-empty"><b>No performance tasks yet.</b>Your teacher’s performance tasks will appear here once posted.</div>'; return; }
     list.innerHTML = tasks.map(a => {
-      const sub = submissionFor(a.id), st = performanceStatus(a), due = a.due_at ? `Due ${formatDeadlineDate(a.due_at)}` : 'No due date';
+      const sub = submissionFor(a.id), history=studentProgressFor(a.id), due = a.due_at ? `Due ${formatDeadlineDate(a.due_at)}` : 'No due date';
+      const archived=a.status==='archived';
+      const st=archived && history?.graded ? {label:'Graded · Archived',cls:'archived'}
+        : archived && history?.submitted ? {label:'Submitted · Archived',cls:'archived'}
+        : performanceStatus(a);
       const canNewAttempt = !sub || Boolean(sub.resubmit_allowed);
-      const primary = sub ? `<button type="button" class="v8-view-button" data-preview-response="${esc(sub.id)}">View</button>` : `<button type="button" class="v8-view-button" data-submit-performance="${esc(a.id)}">Open</button>`;
+      const primary = archived ? '<span class="v8-history-tag">Saved record</span>'
+        : sub ? `<button type="button" class="v8-view-button" data-preview-response="${esc(sub.id)}">View</button>`
+        : `<button type="button" class="v8-view-button" data-submit-performance="${esc(a.id)}">Open</button>`;
       const retry = sub && canNewAttempt && a.status !== 'archived' ? `<button type="button" class="v8-resubmit" data-submit-performance="${esc(a.id)}">Submit new attempt</button>` : '';
       return `<article class="v8-activity-row performance-student-row ${a.status==='archived'?'is-archived':''}"><span class="v8-task-icon orange">▣</span><div class="v8-task-title"><b>${esc(a.title)}</b><small>${esc(sectionLabel(sectionById(a.section_id)))} · ${Number(a.max_points||0)} pts</small></div><span class="v8-due"><span>${esc(due)}</span></span><span class="v8-status ${st.cls}">${st.label}</span>${primary}${retry}</article>`;
     }).join('');

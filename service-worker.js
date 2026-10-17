@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-22-progress-history';
+const CACHE_NAME = 'mathside-pwa-v24-23-student-history';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -31,12 +31,12 @@ const APP_SHELL = [
   './assets/mathside-maintenance.png',
   './css/styles.css?v=12.8',
   './css/art-theme.css?v=7.0',
-  './css/student-v8.css?v=10.6',
+  './css/student-v8.css?v=10.7-student-history',
   './css/design-v9.css?v=9.1',
   './css/v10-features.css?v=11.5',
   './js/config.js',
-  './js/app.js?v=16.7-progress-history',
-  './js/student-v8.js?v=15.1',
+  './js/app.js?v=16.8-student-history',
+  './js/student-v8.js?v=15.2-student-history',
   './js/v10-features.js?v=24.12',
   './js/design-v9.js?v=9',
   './js/pwa.js?v=6.9.15',
@@ -45,7 +45,7 @@ const APP_SHELL = [
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.11',
   './js/v12-archive-features.js?v=24.13-progress-history',
-  './js/v15-performance-tasks.js?v=15.19'
+  './js/v15-performance-tasks.js?v=15.20-student-history'
 ];
 
 self.addEventListener('install', (event) => {
