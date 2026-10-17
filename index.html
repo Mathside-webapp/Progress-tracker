@@ -13,8 +13,10 @@
 <meta content="An energetic Mathematics classroom for teachers and students." name="description"/>
 <link href="assets/mathside-icon.svg?v=12.3" rel="icon" type="image/svg+xml"/>
 <link href="manifest.webmanifest" rel="manifest"/>
+<script>if (location.protocol === 'file:') document.querySelector('link[rel=manifest]')?.remove();</script>
 <link href="icons/apple-touch-icon.png" rel="apple-touch-icon" sizes="180x180"/>
-<link href="css/styles.css?v=12.8" rel="stylesheet"/>
+<link href="css/styles.css?v=22-github-update" rel="stylesheet"/>
+<link rel="stylesheet" href="css/competency-tracker.css?v=16.0-add-competency"/>
 <link href="css/art-theme.css?v=7.0" rel="stylesheet"/>
 <link href="css/student-v8.css?v=10.7-student-history" rel="stylesheet"/>
 <link href="css/design-v9.css?v=9.1" rel="stylesheet"/>
@@ -23,17 +25,19 @@
 <link href="css/v14-layout-fixes.css?v=14.0" rel="stylesheet">
 <link href="css/v15-performance-calendar.css?v=15.11" rel="stylesheet"/>
 <link href="css/friendly-editors.css?v=2" rel="stylesheet"/>
-<link href="css/orange-create-panels.css?v=3" rel="stylesheet"/>
-</link></link><link href="css/panel-identities.css?v=1.1" rel="stylesheet"/></head>
+<link href="css/orange-create-panels.css?v=22-github-update" rel="stylesheet"/>
+</link></link><link href="css/panel-identities.css?v=22-github-update" rel="stylesheet"/><link href="css/competency-dashboard-polish.css?v=16" rel="stylesheet"/><link rel="stylesheet" href="css/mobile-header-safety.css?v=19.0"/><link rel="stylesheet" href="css/student-v20-refresh.css?v=20.0"/>
+<link rel="stylesheet" href="css/student-v22-dashboard.css?v=22.2"/>
+</head>
 <body>
-<div class="app-loading" hidden="" id="appLoading">
+<dialog class="app-loading" hidden="" id="appLoading" aria-labelledby="loadingTitle" aria-describedby="loadingMessage">
 <div class="loading-card">
 <div aria-hidden="true" class="loading-logo"><img alt="" src="assets/mathside-icon.svg?v=12.3"/></div>
 <div class="loading-orbit"><span></span><span></span><span></span></div>
 <h2 id="loadingTitle">Signing you in…</h2>
 <p id="loadingMessage">Preparing your Mathside classroom.</p>
 </div>
-</div>
+</dialog>
 <div aria-live="polite" class="toast-area" id="toastArea"></div>
 <!-- PUBLIC LANDING -->
 <section id="publicSite">
@@ -149,7 +153,7 @@
 <button class="side-link" data-view="assignments"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 11h6M9 15h6"></path></svg><span>Activities</span></button>
 <button class="side-link" data-view="performance"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5M7 3v4M17 3v4"></path></svg><span>Performance Tasks</span></button>
 <button class="side-link" data-view="submissions"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M5 12.5 10 17l9-10M4 4h10M4 8h7"></path></svg><span>Submissions</span></button>
-<button class="side-link" data-view="archive"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"></path></svg><span>Archived</span></button>
+<button class="side-link ct-nav-button" data-view="competencies" id="ctTeacherOpen" type="button"><svg aria-hidden="true" class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg><span>Competencies</span></button><button class="side-link" data-view="archive"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"></path></svg><span>Archived</span></button>
 </nav>
 <button class="side-link signout" id="teacherSignout"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"></path></svg><span>Sign out</span></button>
 </aside>
@@ -162,9 +166,16 @@
 </header>
 <main class="workspace-content">
 <section class="app-view active" id="view-dashboard">
-<div class="welcome-panel energetic-panel ms-dashboard-hero">
-<div><p class="eyebrow">GOOD DAY, TEACHER!</p><h2>Ready for class?</h2><p>Create the classes you teach, choose each grade level, and keep students and Mathematics tasks together.</p></div>
-<div aria-hidden="true" class="welcome-mark"><svg viewbox="0 0 24 24"><path d="M4 5h16v14H4zM8 5V3h8v2M8 10h8M8 14h5"></path></svg><div aria-hidden="true" class="ms-orbit-number">x²</div></div>
+<div class="ms-panel-hero ms-hero-dashboard" aria-label="Dashboard introduction">
+<div class="ms-hero-copy">
+<span class="ms-hero-kicker">00 / THE HOME BASE</span>
+<h2>All your teaching,<br/><em>beautifully organized.</em></h2>
+<p>One welcoming space to guide your classes, plan meaningful activities, and celebrate every step of learning.</p>
+<div class="ms-hero-tags"><span>Your daily overview</span><span>Everything in one place</span></div>
+</div>
+<div aria-hidden="true" class="ms-hero-art"><img alt="" src="assets/panel-identity/dashboard-workspace.svg"/></div>
+<span aria-hidden="true" class="ms-hero-corner ms-hero-corner-one"></span>
+<span aria-hidden="true" class="ms-hero-corner ms-hero-corner-two"></span>
 </div>
 <div class="stats-grid">
 <article><span class="stat-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M16 20v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM17 8h4M19 6v4"></path></svg></span><b id="studentTotal">0</b><small>Students</small></article>
@@ -182,7 +193,7 @@
 <p>Keep every section organized, every learner connected, and each classroom ready for what comes next.</p>
 <div class="ms-hero-tags"><span>Section rosters</span><span>Classroom community</span></div>
 </div>
-<div aria-hidden="true" class="ms-hero-art"><img alt="" src="assets/panel-identity/classes.svg"/></div>
+<div aria-hidden="true" class="ms-hero-art"><img alt="" src="assets/panel-identity/classes-study.svg"/></div>
 <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-one"></span>
 <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-two"></span>
 </div>
@@ -221,7 +232,7 @@
 <p>Give students space to create, collaborate, and show what they know through meaningful performance tasks.</p>
 <div class="ms-hero-tags"><span>Creative projects</span><span>Rubrics &amp; teamwork</span></div>
 </div>
-<div aria-hidden="true" class="ms-hero-art"><img alt="" src="assets/panel-identity/performance.svg"/></div>
+<div aria-hidden="true" class="ms-hero-art"><img alt="" src="assets/panel-identity/performance-project.svg"/></div>
 <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-one"></span>
 <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-two"></span>
 </div>
@@ -242,12 +253,12 @@
 </section>
 <section class="app-view" id="view-archive"><div aria-label="Archive introduction" class="ms-panel-hero ms-hero-archive">
 <div class="ms-hero-copy">
-<span class="ms-hero-kicker">05 / THE MEMORY SHELF</span>
+<span class="ms-hero-kicker">06 / THE MEMORY SHELF</span>
 <h2>Past lessons,<br/><em>kept in order.</em></h2>
 <p>Find previously archived classroom work in one calm, organized place whenever you need to revisit it.</p>
 <div class="ms-hero-tags"><span>Archived records</span><span>Class history</span></div>
 </div>
-<div aria-hidden="true" class="ms-hero-art"><img alt="" src="assets/panel-identity/archive.svg"/></div>
+<div aria-hidden="true" class="ms-hero-art"><img alt="" src="assets/panel-identity/archive-records.svg"/></div>
 <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-one"></span>
 <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-two"></span>
 </div>
@@ -325,6 +336,40 @@
 <div class="submission-section-summary" id="submissionSectionSummary"></div>
 <div class="assignment-list" id="submissionList"></div>
 </section>
+<section id="view-competencies" class="app-view ct-page"><div class="ms-panel-hero ms-hero-competencies ct-page-hero" aria-label="Competency Tracker introduction">
+  <div class="ms-hero-copy">
+    <span class="ms-hero-kicker">05 / THE MASTERY STUDIO</span>
+    <h2>Every skill,<br><em>one step forward.</em></h2>
+    <p>Explore your learners' progress, see where support is needed, and keep every competency within reach.</p>
+    <div class="ct-hero-stats" aria-label="My competency overview">
+      <span class="ct-hero-stat"><strong id="ctHeroCompetencyCount" aria-live="polite">—</strong><small>My competencies</small></span>
+      <span class="ct-hero-stat"><strong id="ctHeroTaggedCount" aria-live="polite">—</strong><small>Tagged activities</small></span>
+    </div>
+  </div>
+  <div class="ms-hero-art ct-hero-art" aria-hidden="true"><img src="assets/panel-identity/competencies.svg" alt=""></div>
+  <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-one"></span>
+  <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-two"></span>
+</div><div class="ct-page-card"><div class="ct-manager"><div class="ct-head ct-dashboard-head"><div><h2>Student Competency Dashboard</h2><p class="muted">Choose a grade and section to review individual and combined competency progress.</p></div><button id="ctDashboardAddCompetency" class="ct-add-competency" type="button" aria-haspopup="dialog" aria-controls="ctCreateOverlay"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>Add Competency</span></button></div><div class="ct-filters"><label>Grade level<select id="ctDashboardGrade"><option value="">All grades</option></select></label><label>Section<select id="ctDashboardSection"><option value="">All sections</option></select></label><div class="ct-student-search-group" id="ctStudentSearchGroup">
+  <label for="ctDashboardStudentSearch">Search student</label>
+  <div class="ct-student-search-box">
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>
+    <input type="search" id="ctDashboardStudentSearch" autocomplete="off" placeholder="Type a student's name" aria-controls="ctDashboardStudentMatches" aria-expanded="false" aria-describedby="ctDashboardStudentHelp">
+    <button type="button" id="ctDashboardStudentClear" class="ct-student-search-clear" aria-label="Clear selected student" title="Clear selected student" hidden>×</button>
+  </div>
+  <select id="ctDashboardStudent" hidden aria-hidden="true" tabindex="-1"><option value="">No student selected</option></select>
+  <div id="ctDashboardStudentMatches" class="ct-student-search-results" aria-label="Matching students" hidden></div>
+  <small id="ctDashboardStudentHelp" class="ct-student-search-help">Choose one student to view their competencies.</small>
+</div></div><div id="ctDashboardStatus" class="ct-dashboard-status" aria-live="polite"></div><div id="ctDashboardContent"></div>
+<details class="ct-library-details" id="ctLibraryDetails">
+  <summary><span>My Competency Library</span> <small id="ctLibraryCount">0 competencies</small></summary>
+  <div class="ct-library-inner">
+    <div class="ct-library-toolbar">
+      <p class="muted">Manage your private competency library. Removing a competency unlinks it from active and archived activities, while preserving student scores, submissions, and class records.</p>
+      <button id="ctLibraryAddCompetency" class="ct-add-competency ct-add-competency-secondary" type="button" aria-haspopup="dialog" aria-controls="ctCreateOverlay"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg><span>New Competency</span></button>
+    </div>
+    <div id="ctLibraryList" class="ct-library-list" aria-live="polite"></div>
+  </div>
+</details><details class="ct-manage-details"><summary>Manage activity competency assignments (including archived activities)</summary><div class="ct-head"><div><p class="eyebrow">MATHSIDE · TEACHER DESK</p><h2>Competency Manager</h2><p class="muted">Tag current or archived activities without changing grades.</p></div><button type="button" class="btn btn-light" id="ctClose" aria-label="Close competency assignment manager">Close manager</button></div><div class="ct-page-note">Create a competency using <strong>Add Competency</strong> above, or choose <strong>+ New</strong> while creating an Activity or Performance Task. New names are saved in your private library.</div><div class="ct-filters"><label>Grade level<select id="ctGradeFilter"><option value="">All grades</option></select></label><label>Section<select id="ctSectionFilter"><option value="">All sections</option></select></label><label>Student<select id="ctStudentFilter"><option value="">All students</option></select></label></div><div class="ct-bulk"><label><input id="ctShowArchived" type="checkbox" checked> Include archived activities</label><input id="ctFilter" placeholder="Search activities" aria-label="Search activities"><select id="ctBulkSelect"><option value="">Select competency for checked activities</option></select><button type="button" class="btn btn-orange" id="ctBulkApply">Apply to selected</button></div><div id="ctTeacherList" class="ct-teacher-list"></div></details></div></div></section>
 </main>
 </div>
 </section>
@@ -342,38 +387,42 @@
 <header class="v8-topbar"><div aria-hidden="true" class="v8-ribbon"></div><button aria-controls="studentMobileDrawer" aria-expanded="false" aria-label="Open student menu" class="v8-student-menu-toggle" id="studentMenuToggle" type="button"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></button><button aria-label="Open notifications" class="v10-notification-button v10-student-notification" id="studentNotificationBtn" title="Notifications" type="button"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg><span class="v8-mobile-notification-label">Notifications</span><span hidden="" id="studentNotificationBadge">0</span></button><button aria-label="Open my account" class="v8-user-menu" data-student-panel="account" type="button"><span aria-hidden="true" class="v8-avatar v8-header-avatar" data-v8-avatar="">ST</span><span><b id="studentWelcome">Student</b><small id="v8HeaderGrade">My classroom</small></span><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="m6 9 6 6 6-6"></path></svg></button></header>
 <main class="v8-main" id="studentMain" tabindex="-1">
 <section aria-label="Overview" class="student-panel-view active v8-overview" data-student-panel-view="overview">
-<div class="v8-hero"><div class="v8-hero-copy"><h1><span id="v8Greeting">Good morning,</span><br/><span class="v8-greeting-name" id="v8GreetingName">Student!</span> <span aria-hidden="true" class="v8-wave">👋</span></h1><p>Keep going! Every problem you solve<br/>brings you closer to your goals.</p></div><div aria-hidden="true" class="v8-character"><img alt="" hidden="" id="v8HeroCharacter"/><div class="v8-neutral-hero"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="m1 8 11-5 11 5-11 5zM5 11v7l7 4 7-4v-7M22 9v8"></path></svg><span>Let’s learn<br/>something new!</span></div></div><div aria-hidden="true" class="v8-encouragement">Small<br/>Progress<br/>Big Results!<span></span></div><span aria-hidden="true" class="v8-hero-sparks">✦</span></div>
+<div class="v8-hero"><div class="v8-hero-copy"><span class="v20-student-eyebrow"><b>00</b> / YOUR LEARNING HOME</span><h1><span id="v8Greeting">Good morning,</span><br/><span class="v8-greeting-name" id="v8GreetingName">Student!</span> <span aria-hidden="true" class="v8-wave">👋</span></h1><p>Keep going! Every problem you solve<br/>brings you closer to your goals.</p></div><div aria-hidden="true" class="v8-character"><img alt="" hidden="" id="v8HeroCharacter"/><div class="v8-neutral-hero"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="m1 8 11-5 11 5-11 5zM5 11v7l7 4 7-4v-7M22 9v8"></path></svg><span>Let’s learn<br/>something new!</span></div></div><div aria-hidden="true" class="v8-encouragement">Small<br/>Progress<br/>Big Results!<span></span></div><span aria-hidden="true" class="v8-hero-sparks">✦</span></div>
 <section aria-label="Learning summary" class="v8-metrics"><article class="v8-metric"><span class="v8-metric-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="m12 2 3.1 6.3 7 .9-5 4.9 1.2 7L12 18l-6.3 3.1 1.2-7-5-4.9 7-.9z"></path></svg></span><div><h3>Average Grade</h3><strong data-v8-metric="average">—</strong><small data-v8-note="average"></small><span class="v8-micro" data-v8-detail="average"></span></div></article><article class="v8-metric"><span class="v8-metric-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"></path></svg></span><div><h3>Total Activities</h3><strong data-v8-metric="total">—</strong><small data-v8-note="total"></small><span class="v8-micro" data-v8-detail="total"></span></div></article><article class="v8-metric"><span class="v8-metric-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M7 3h10v6a5 5 0 0 1-10 0zM7 5H3v3a5 5 0 0 0 5 5M17 5h4v3a5 5 0 0 1-5 5M12 14v6M7 22h10"></path></svg></span><div><h3>Highest Score</h3><strong data-v8-metric="highest">—</strong><small data-v8-note="highest"></small><span class="v8-micro" data-v8-detail="highest"></span></div></article></section>
+<section class="v22-dashboard-competencies v8-paper" aria-labelledby="v22CompetencyHeading">
+<header class="v8-section-heading v22-competency-heading"><div><span class="v22-section-kicker">YOUR LEARNING MILESTONES</span><h2 id="v22CompetencyHeading"><svg aria-hidden="true" class="v8-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>Competencies</h2><p>Follow your skills, scores, and progress in one place.</p></div></header>
+<div id="ctStudentContent" class="ct-student-content" aria-live="polite"><div class="v20-ct-state">Preparing your competency progress…</div></div>
+</section>
 <section class="v8-upcoming v8-paper"><header class="v8-section-heading"><h2><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><rect height="17" rx="2" width="18" x="3" y="5"></rect><path d="M7 2v6M17 2v6M3 11h18M8 16l3 3 5-5"></path></svg>Upcoming Tasks</h2><button data-v8-action="view-tasks" type="button">View All</button></header><div id="v8UpcomingList"></div></section>
 </section>
 <section class="student-panel-view" data-student-panel-view="activities" hidden="">
-<header class="v8-page-heading"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"></path></svg></span><div><h1>Activities</h1><p>Complete your activities and try your best!</p></div></header>
+<header class="v8-page-heading v20-student-heading"><div class="v22-mobile-illustration" aria-hidden="true"></div><div class="v22-header-label"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"></path></svg></span><div><span class="v20-student-eyebrow"><b>01</b> / THE PRACTICE STUDIO</span><h1>Activities</h1><p>Complete your activities and try your best!</p></div></div></header>
 <div aria-label="Filter activities by status" class="student-activity-tabs" role="group"><button class="student-filter active" data-student-filter="ongoing" type="button"><span>To do</span><strong data-student-filter-count="ongoing">0</strong></button><button class="student-filter" data-student-filter="submitted" type="button"><span>Submitted</span><strong data-student-filter-count="submitted">0</strong></button><button class="student-filter" data-student-filter="missed" type="button"><span>Missed</span><strong data-student-filter-count="missed">0</strong></button></div>
 <p aria-live="polite" class="v8-sr" id="studentTaskSummary"></p><div class="v8-activity-list" id="studentAssignmentList"></div>
 </section>
 <section class="student-panel-view" data-student-panel-view="performance" hidden="">
-<header class="v8-page-heading"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5M7 3v4M17 3v4"></path></svg></span><div><h1>Performance Tasks</h1><p>View instructions, reference pictures and rubrics, then upload pictures of your output.</p></div></header>
+<header class="v8-page-heading v20-student-heading"><div class="v22-mobile-illustration" aria-hidden="true"></div><div class="v22-header-label"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5M7 3v4M17 3v4"></path></svg></span><div><span class="v20-student-eyebrow"><b>02</b> / THE PROJECT LAB</span><h1>Performance Tasks</h1><p>View instructions, reference pictures and rubrics, then upload pictures of your output.</p></div></div></header>
 <div class="v8-activity-list" id="studentPerformanceList"></div>
 </section>
 <section class="student-panel-view" data-student-panel-view="grades" hidden="">
-<header class="v8-page-heading"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z"></path></svg></span><div><h1>Grades &amp; Feedback</h1><p>See how you’re doing and read feedback from your teacher.</p></div></header>
+<header class="v8-page-heading v20-student-heading"><div class="v22-mobile-illustration" aria-hidden="true"></div><div class="v22-header-label"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M3 13h4v8H3zM10 8h4v13h-4zM17 3h4v18h-4z"></path></svg></span><div><span class="v20-student-eyebrow"><b>03</b> / THE REVIEW DESK</span><h1>Grades &amp; Feedback</h1><p>See how you’re doing and read feedback from your teacher.</p></div></div></header>
 <section aria-label="Learning summary" class="v8-metrics"><article class="v8-metric"><span class="v8-metric-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="m12 2 3.1 6.3 7 .9-5 4.9 1.2 7L12 18l-6.3 3.1 1.2-7-5-4.9 7-.9z"></path></svg></span><div><h3>Average Grade</h3><strong data-v8-metric="average">—</strong><small data-v8-note="average"></small><span class="v8-micro" data-v8-detail="average"></span></div></article><article class="v8-metric"><span class="v8-metric-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M7 3h10v6a5 5 0 0 1-10 0zM7 5H3v3a5 5 0 0 0 5 5M17 5h4v3a5 5 0 0 1-5 5M12 14v6M7 22h10"></path></svg></span><div><h3>Highest Score</h3><strong data-v8-metric="highest">—</strong><small data-v8-note="highest"></small><span class="v8-micro" data-v8-detail="highest"></span></div></article><article class="v8-metric"><span class="v8-metric-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"></path></svg></span><div><h3>Total Activities</h3><strong data-v8-metric="total">—</strong><small data-v8-note="total"></small><span class="v8-micro" data-v8-detail="total"></span></div></article></section>
 <section class="v8-feedback v8-paper"><header class="v8-section-heading"><h2><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M3 4h18v14H9l-5 4v-4H3zM7 8h10M7 12h7"></path></svg>Recent Feedback</h2><span class="v8-sr" id="studentGradedCount">0 graded</span></header><div class="v8-feedback-list" id="studentGradeList"></div></section>
 </section>
 <section class="student-panel-view v10-student-feature" data-student-panel-view="todo" hidden="">
-<header class="v8-page-heading"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M5 12.5 10 17l9-10M4 4h10M4 8h7"></path></svg></span><div><h1>To-Do List</h1><p>Your unfinished work, arranged by what needs attention first.</p></div></header>
+<header class="v8-page-heading v20-student-heading"><div class="v22-mobile-illustration" aria-hidden="true"></div><div class="v22-header-label"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M5 12.5 10 17l9-10M4 4h10M4 8h7"></path></svg></span><div><span class="v20-student-eyebrow"><b>04</b> / YOUR DAILY PLAN</span><h1>To-Do List</h1><p>Your unfinished work, arranged by what needs attention first.</p></div></div></header>
 <div class="v10-todo-summary" id="studentTodoSummary"></div><div class="v10-todo-list" id="studentTodoList"></div>
 </section>
 <section class="student-panel-view v10-student-feature" data-student-panel-view="calendar" hidden="">
-<header class="v8-page-heading"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><rect height="16" rx="2" width="18" x="3" y="5"></rect><path d="M7 2v6M17 2v6M3 11h18"></path></svg></span><div><h1>Student Calendar</h1><p>Highlighted days have deadlines. Tap a day to see the details below.</p></div></header>
+<header class="v8-page-heading v20-student-heading"><div class="v22-mobile-illustration" aria-hidden="true"></div><div class="v22-header-label"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><rect height="16" rx="2" width="18" x="3" y="5"></rect><path d="M7 2v6M17 2v6M3 11h18"></path></svg></span><div><span class="v20-student-eyebrow"><b>05</b> / THE STUDY CALENDAR</span><h1>Student Calendar</h1><p>Highlighted days have deadlines. Tap a day to see the details below.</p></div></div></header>
 <section class="v10-calendar-card v8-paper"><div class="v10-calendar-head"><button aria-label="Previous month" class="v10-calendar-nav" id="calendarPrevBtn" type="button">‹</button><h2 id="calendarMonthLabel">Month</h2><button aria-label="Next month" class="v10-calendar-nav" id="calendarNextBtn" type="button">›</button></div><div class="v10-calendar-weekdays"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div><div class="v10-calendar-grid" id="studentCalendarGrid"></div></section><section class="v10-calendar-agenda v8-paper"><header class="v8-section-heading"><h2 id="studentCalendarAgendaTitle">Deadlines this month</h2><small>Tap a highlighted day to show only that day.</small></header><div id="studentCalendarAgenda"></div></section>
 </section>
 <section class="student-panel-view v10-student-feature" data-student-panel-view="feedback" hidden="">
-<header class="v8-page-heading"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M3 4h18v14H9l-5 4v-4H3zM7 8h10M7 12h7"></path></svg></span><div><h1>Teacher Feedback Inbox</h1><p>All reviewed work and teacher comments in one place.</p></div></header>
+<header class="v8-page-heading v20-student-heading"><div class="v22-mobile-illustration" aria-hidden="true"></div><div class="v22-header-label"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M3 4h18v14H9l-5 4v-4H3zM7 8h10M7 12h7"></path></svg></span><div><span class="v20-student-eyebrow"><b>06</b> / TEACHER FEEDBACK</span><h1>Teacher Feedback Inbox</h1><p>All reviewed work and teacher comments in one place.</p></div></div></header>
 <div class="v10-feedback-inbox" id="studentFeedbackInbox"></div>
 </section>
 <section class="student-panel-view" data-student-panel-view="account" hidden="">
-<header class="v8-page-heading"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><circle cx="12" cy="7" r="4"></circle><path d="M4 22v-3a8 8 0 0 1 16 0v3z"></path></svg></span><div><h1>Account</h1><p>Your student information.</p></div></header>
+<header class="v8-page-heading v20-student-heading"><div class="v22-mobile-illustration" aria-hidden="true"></div><div class="v22-header-label"><span class="v8-page-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><circle cx="12" cy="7" r="4"></circle><path d="M4 22v-3a8 8 0 0 1 16 0v3z"></path></svg></span><div><span class="v20-student-eyebrow"><b>07</b> / YOUR SPACE</span><h1>Account</h1><p>Your student information.</p></div></div></header>
 <div class="v8-account-layout"><article class="v8-profile v8-paper"><div class="v8-profile-picture"><div aria-hidden="true" class="v8-avatar" data-v8-avatar="">ST</div></div><h2 id="studentAccountName">Student</h2><p>Student account</p><span class="v8-student-badge">STUDENT</span></article>
 <div class="v8-account-details v8-paper"><article><span class="v8-detail-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><circle cx="12" cy="7" r="4"></circle><path d="M4 22v-3a8 8 0 0 1 16 0v3z"></path></svg></span><div><span>Username</span><b id="studentAccountUsername">—</b></div><button aria-label="Copy username" class="v8-copy" data-v8-action="copy-username" type="button"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M9 7H5v15h11v-4M9 2h8l4 4v12H9zM17 2v5h4"></path></svg></button></article><article><span class="v8-detail-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="m1 8 11-5 11 5-11 5zM5 11v7l7 4 7-4v-7M22 9v8"></path></svg></span><div><span>Class</span><b id="studentAccountClass">—</b></div></article><article><span class="v8-detail-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M2 4c4-2 7-2 10 0 3-2 6-2 10 0v17c-4-2-7-2-10 0-3-2-6-2-10 0zM12 4v17"></path></svg></span><div><span>Grade Level</span><b id="studentAccountGrade">—</b></div></article><article><span class="v8-detail-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><circle cx="12" cy="7" r="4"></circle><path d="M4 22v-3a8 8 0 0 1 16 0v3z"></path></svg></span><div><span>Gender</span><b id="studentAccountGender">Not specified</b></div></article></div>
 </div><div class="v8-account-footer"><p aria-live="polite" id="v8AccountStatus"></p><button class="v8-signout" id="studentSignout" type="button"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M10 4H4v16h6M13 8l4 4-4 4M8 12h13"></path></svg>Sign out</button></div>
@@ -586,7 +635,7 @@
 <p class="section-edit-note" hidden="" id="assignmentSectionEditNote">Change the selected classes, then save. New classes receive their own activity copy. Unchecked classes stop receiving it; their existing submissions and scores stay saved, and their copy moves to Archived.</p>
 </div>
 </div>
-</section><section class="assignment-form-section question-editor-section">
+<div class="ct-create-field"><label class="ct-label" for="ctAssignmentCompetency">Learning competency (optional)</label><div class="ct-choice"><select id="ctAssignmentCompetency"><option value="">No competency selected</option></select><button type="button" class="btn btn-light" id="ctNewCompetency">+ New</button></div><small>Choose an existing competency or add a name. You can also tag older and archived activities in Competency Manager.</small></div></section><section class="assignment-form-section question-editor-section">
 <div class="question-builder-head"><div><h3><span class="orange-step">3</span> Add questions</h3><p class="muted">Correct answers may be added now or later. Questions without an answer will not be auto-checked.</p></div><button class="btn btn-light" id="addQuestionBtn" type="button"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add question</button></div>
 <div id="questionBuilder"></div>
 </section>
@@ -707,7 +756,7 @@
 <form class="form-stack assignment-editor-form" id="performanceTaskForm">
 <section class="assignment-form-section"><div class="assignment-form-section-head"><div><h3><span class="orange-step">1</span> Task details</h3></div></div><div class="assignment-heading-grid"><div class="assignment-main-fields"><label>Title<small class="editor-required">Required</small><input name="title" placeholder="Performance task title" required=""/></label><label>Instructions<small class="editor-required">Required</small><textarea name="instructions" placeholder="What should students create and submit? Add any materials or steps they need." required="" rows="3"></textarea></label><label>Total points<small class="editor-required">Required</small><input min="1" name="max_points" required="" step="1" type="number" value="100"/></label></div></div></section><section class="assignment-form-section orange-performance-classes"><div class="class-checklist-field"><span class="field-label"><span class="orange-step">2</span> Select classes <small id="performanceClassHint">Select one or more</small></span><label aria-label="Search classes" class="orange-search-box"><svg aria-hidden="true" viewbox="0 0 24 24"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 5 5"></path></svg><input autocomplete="off" id="performanceClassSearch" placeholder="Search class name or grade level..." type="search"/></label>
 <div aria-label="Choose classes for performance task" class="class-checklist" id="performanceSectionChecklist" role="group"></div><p class="section-edit-note" hidden="" id="performanceSectionEditNote">Change the selected classes, then save. New classes receive a separate task and team setup. Unchecked classes no longer see it; their submitted work, scores, and groups remain saved in Archived.</p></div></section>
-<section class="assignment-form-section performance-team-section"><div class="assignment-form-section-head"><div><h3>How will students work?</h3></div></div>
+<section class="assignment-form-section"><div class="ct-create-field"><label class="ct-label" for="ctPerformanceCompetency">Learning competency (optional)</label><div class="ct-choice"><select id="ctPerformanceCompetency"><option value="">No competency selected</option></select><button type="button" class="btn btn-light" id="ctNewPerformanceCompetency">+ New</button></div><small>Select a saved competency or enter a new name. It will be available for future tasks.</small></div></section><section class="assignment-form-section performance-team-section"><div class="assignment-form-section-head"><div><h3>How will students work?</h3></div></div>
 <div aria-label="Performance task work setup" class="performance-work-mode" id="performanceWorkMode" role="group">
 <label class="performance-mode-option"><input checked="" name="performance_mode" type="radio" value="individual"><span><b>Individual</b><small>Each student submits their own output.</small></span></input></label>
 <label class="performance-mode-option"><input name="performance_mode" type="radio" value="pair"/><span><b>Pair</b><small>Students work in teams of two.</small></span></label>
@@ -946,6 +995,7 @@
 <div class="modal-actions"><button class="btn btn-orange" id="messageCloseBtn" type="button">Close</button></div>
 </div>
 </dialog>
+
 <script src="js/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -953,14 +1003,26 @@
 <!-- Converts iPhone/iPad HEIC photos to JPEG before Supabase upload. -->
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script defer="" id="mathliveScript" src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
-<script src="js/app.js?v=16.9-overdue-history-fix"></script>
+<script src="js/app.js?v=16.13-ct-v12-loading"></script>
+<dialog id="ctCreateOverlay" class="ct-create-overlay" aria-labelledby="ctCreateTitle"><section class="ct-create-modal"><button id="ctCreateClose" type="button" class="ct-create-x" aria-label="Close">&times;</button><div class="ct-create-icon">+</div><h2 id="ctCreateTitle">Create New Competency</h2><p>Enter the name of the learning competency.</p><form id="ctCreateForm"><label for="ctCreateName">Competency name</label><input id="ctCreateName" maxlength="180" autocomplete="off" placeholder="e.g., Simplifying Radical Expressions" required><div id="ctCreateError" class="ct-create-error" role="alert" hidden></div><div class="ct-create-actions"><button id="ctCreateCancel" type="button" class="ct-create-cancel">Cancel</button><button id="ctCreateSubmit" type="submit" class="ct-create-submit">Add Competency</button></div></form></section></dialog>
+<dialog id="ctDeleteDialog" class="ct-delete-dialog" aria-labelledby="ctDeleteTitle" aria-describedby="ctDeleteDescription">
+  <section class="ct-delete-card">
+    <div class="ct-delete-icon" aria-hidden="true">!</div>
+    <h2 id="ctDeleteTitle">Delete competency?</h2>
+    <p id="ctDeleteDescription">This competency will be removed from your library and unlinked from associated activities.</p>
+    <div class="ct-delete-preserve"><strong>Student records are safe.</strong> Existing activity scores, submitted work, archived scores, and class records will not be deleted.</div>
+    <p id="ctDeleteError" class="ct-delete-error" role="alert" hidden></p>
+    <div class="ct-delete-actions"><button type="button" class="btn btn-light" id="ctDeleteCancel">Cancel</button><button type="button" class="btn ct-delete-confirm" id="ctDeleteConfirm">Delete competency</button></div>
+  </section>
+</dialog>
+<script src="js/competency-tracker.js?v=21.0-student-repair"></script>
 <script src="js/student-v8.js?v=15.3-overdue-history-fix"></script>
 <script src="js/v10-features.js?v=24.13-overdue-history-fix"></script>
 <script src="js/design-v9.js?v=9"></script>
 <script src="js/pwa.js?v=6.9.15"></script>
 <script src="js/push-notifications.js?v=6.12"></script>
 <script src="js/v12-archive-features.js?v=24.13-progress-history"></script>
-<script src="js/v15-performance-tasks.js?v=15.21-overdue-history-fix"></script>
+<script src="js/v15-performance-tasks.js?v=15.22-ct-v11"></script>
 <script src="js/friendly-editors.js?v=1"></script>
 <script src="js/orange-exact-forms.js?v=3"></script>
 </body>

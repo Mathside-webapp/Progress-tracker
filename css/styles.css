@@ -1467,3 +1467,10 @@ body.math-keyboard-open{overflow:hidden!important;touch-action:none}
   opacity: 1;
   transform: none !important;
 }
+
+
+/* v12: the loading/saving overlay MUST be a browser top-layer dialog. */
+#appLoading.app-loading[open]{position:fixed!important;inset:0!important;box-sizing:border-box!important;width:100vw!important;height:100vh!important;height:100dvh!important;max-width:none!important;max-height:none!important;margin:0!important;padding:20px!important;border:0!important;border-radius:0!important;background:transparent!important;display:grid!important;place-items:center!important;overflow-y:auto!important;z-index:2147483647!important}
+#appLoading.app-loading::backdrop{background:rgba(45,36,31,.45);backdrop-filter:blur(4px)}
+#appLoading.app-loading .loading-card{margin:auto}
+#appLoading.app-loading.leaving{animation:popupBackdropOut .3s ease forwards}

@@ -51,7 +51,7 @@
 #sectionModal .modal-box{width:min(508px,calc(100vw - 25px))!important}
 #sectionModal .orange-class-head{
   height:225px!important;position:relative;overflow:hidden;border-radius:20px 20px 0 0;
-  background:#fff0df url('../assets/orange-exact/class-hero.png') center top / 100% 100% no-repeat!important;
+  background:#fff0df url('../assets/orange-exact/class-hero.png?v=22-header-art') center top / 100% 100% no-repeat!important;
   margin:0!important;
 }
 #sectionModal .orange-class-header-copy{

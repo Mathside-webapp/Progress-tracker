@@ -2,22 +2,22 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-24-overdue-history-fix';
+const CACHE_NAME = 'mathside-pwa-v22-github-student-dashboard';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
   './',
   './index.html',
   './css/friendly-editors.css?v=2',
-  './css/orange-create-panels.css?v=3',
-  './css/panel-identities.css?v=1.1',
+  './css/orange-create-panels.css?v=22-github-update',
+  './css/panel-identities.css?v=22-github-update',
   './assets/panel-identity/classes.svg',
   './assets/panel-identity/activities.svg',
   './assets/panel-identity/performance.svg',
   './assets/panel-identity/submissions.svg',
   './assets/panel-identity/archive.svg',
   './js/orange-exact-forms.js?v=3',
-  './assets/orange-exact/class-hero.png',
+  './assets/orange-exact/class-hero.png?v=22-header-art',
   './assets/orange-exact/assignment-hero.png',
   './assets/orange-exact/performance-hero.png',
   './js/friendly-editors.js?v=1',
@@ -29,13 +29,24 @@ const APP_SHELL = [
   './icons/maskable-512.png',
   './assets/mathside-icon.svg?v=12.3',
   './assets/mathside-maintenance.png',
-  './css/styles.css?v=12.8',
+  './css/styles.css?v=22-github-update',
   './css/art-theme.css?v=7.0',
   './css/student-v8.css?v=10.7-student-history',
   './css/design-v9.css?v=9.1',
   './css/v10-features.css?v=11.5',
+  './css/competency-tracker.css?v=16.0-add-competency',
+  './js/competency-tracker.js?v=21.0-student-repair',
+  './css/competency-dashboard-polish.css?v=16',
+  './css/mobile-header-safety.css?v=19.0',
+  './css/student-v20-refresh.css?v=20.0',
+  './css/student-v22-dashboard.css?v=22.2',
+  './assets/panel-identity/competencies.svg',
+  './assets/panel-identity/classes-study.svg',
+  './assets/panel-identity/dashboard-workspace.svg',
+  './assets/panel-identity/performance-project.svg',
+  './assets/panel-identity/archive-records.svg',
   './js/config.js',
-  './js/app.js?v=16.9-overdue-history-fix',
+  './js/app.js?v=16.13-ct-v12-loading',
   './js/student-v8.js?v=15.3-overdue-history-fix',
   './js/v10-features.js?v=24.13-overdue-history-fix',
   './js/design-v9.js?v=9',
@@ -45,7 +56,7 @@ const APP_SHELL = [
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.11',
   './js/v12-archive-features.js?v=24.13-progress-history',
-  './js/v15-performance-tasks.js?v=15.21-overdue-history-fix'
+  './js/v15-performance-tasks.js?v=15.22-ct-v11'
 ];
 
 self.addEventListener('install', (event) => {

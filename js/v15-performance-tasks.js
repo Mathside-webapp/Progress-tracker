@@ -787,6 +787,7 @@
       populatePastPerformanceGroupSources();
     }
     openDialog('performanceTaskModal');
+    window.MathsideCompetencies?.loadPerformance(editingPerformanceTaskIds || []);
   }
 
   $('#postPerformanceTaskBtn')?.addEventListener('click', () => openPerformanceTaskModal());
@@ -981,6 +982,10 @@
     try { schedule = readPerformanceSchedule(form); }
     catch (error) { return toast(friendlyErrorMessage(error, 'Could not check this performance task.'), 'orange', 'Check performance task'); }
 
+    const competencyPreflight = await window.MathsideCompetencies?.validateSelection?.('ctPerformanceCompetency');
+    if (competencyPreflight?.ok === false) {
+      return toast(competencyPreflight.message, 'orange', 'Competency tagging is unavailable');
+    }
     const submitBtn = $('#performanceTaskSubmitBtn');
     if (!window.MathsideActionButton?.start(submitBtn, editingPerformanceTaskId ? 'Updating…' : 'Posting…')) return;
 
@@ -992,6 +997,8 @@
       const oldIds = new Set(copies.map(task => task.section_id));
       const newlyAssigned = sectionIds.filter(id => !oldIds.has(id));
       const removedCount = copies.length - retained.length;
+      const newlyCreatedTaskIds = [];
+      let competencyTagResult = {ok:true};
       try {
         await withLoading(`Saving performance task for ${sectionIds.length} class${sectionIds.length === 1 ? '' : 'es'}…`, 'Keeping submitted work, scores, and existing group records in their original classes.', async () => {
           for (const task of retained) await savePerformanceCopy(task, form, schedule, taskImages, rubricFile, $('#removePerformanceImages')?.checked, $('#removePerformanceRubric')?.checked);
@@ -1002,20 +1009,28 @@
           if (newlyAssigned.length) {
             const fetched = await db.from('mathside_assignments').select('*').eq('id', source.id).single();
             if (fetched.error) throw fetched.error;
-            for (const sectionId of newlyAssigned) await createPerformanceForAddedClass(fetched.data, sectionId);
+            for (const sectionId of newlyAssigned) {
+              const taskCopy = await createPerformanceForAddedClass(fetched.data, sectionId);
+              newlyCreatedTaskIds.push(taskCopy.id);
+            }
           }
           await hideDeselectedClassCopies(copies, sectionIds);
           editingPerformanceTaskId = null; editingPerformanceTaskIds = [];
+          competencyTagResult = await window.MathsideCompetencies?.linkPerformance([...retained.map(t=>t.id), ...newlyCreatedTaskIds]) || {ok:true};
           await refreshTeacher(); showTeacherView('performance');
         });
         await window.MathsideActionButton.done(submitBtn, 'Done');
         closeDialog('performanceTaskModal');
-        toast(`Performance task saved for ${sectionIds.length} class${sectionIds.length === 1 ? '' : 'es'}.${newlyAssigned.length ? ` Added to ${newlyAssigned.length} new class${newlyAssigned.length === 1 ? '' : 'es'}.` : ''}${removedCount ? ` Removed from ${removedCount} class${removedCount === 1 ? '' : 'es'} (old submissions and scores kept).` : ''}`, 'success');
+        toast(competencyTagResult.ok === false
+          ? `Performance task saved, but its competency was not linked. ${competencyTagResult.message} Open Competencies > Manage activity assignments to retry.`
+          : `Performance task saved for ${sectionIds.length} class${sectionIds.length === 1 ? '' : 'es'}.${newlyAssigned.length ? ` Added to ${newlyAssigned.length} new class${newlyAssigned.length === 1 ? '' : 'es'}.` : ''}${removedCount ? ` Removed from ${removedCount} class${removedCount === 1 ? '' : 'es'} (old submissions and scores kept).` : ''}`,
+          competencyTagResult.ok === false ? 'orange' : 'success');
       } catch (error) { window.MathsideActionButton?.reset(submitBtn); console.error(error); toast(friendlyErrorMessage(error, 'Could not save the performance task.'), 'orange'); }
       return;
     }
 
     const created = [], uploaded = [];
+    let competencyTagResult = {ok:true};
     try {
       await withLoading(`Creating performance task for ${sectionIds.length} class${sectionIds.length===1?'':'es'}…`, 'Saving the performance task, pictures, rubric, deadline, team settings, and notifications.', async () => {
         for (const sectionId of sectionIds) {
@@ -1035,11 +1050,15 @@
           if (update.error) throw update.error;
           if (mode !== 'individual' && groupingCreator === 'teacher') await applyStoredPerformanceGrouping({ ...task, collaboration_mode:mode, grouping_creator:groupingCreator, group_count:groupCount });
         }
+        competencyTagResult = await window.MathsideCompetencies?.linkPerformance(created.map(t=>t.id)) || {ok:true};
         await refreshTeacher(); showTeacherView('performance');
       });
       await window.MathsideActionButton.done(submitBtn, 'Done');
       closeDialog('performanceTaskModal');
-      toast(schedule.status === 'draft' ? `Performance task scheduled for ${formatDeadlineDate(schedule.publishAt)}.` : `Performance task posted to ${sectionIds.length} class${sectionIds.length===1?'':'es'}.`, 'success');
+      toast(competencyTagResult.ok === false
+        ? `Performance task saved, but its competency was not linked. ${competencyTagResult.message} Open Competencies > Manage activity assignments to retry.`
+        : (schedule.status === 'draft' ? `Performance task scheduled for ${formatDeadlineDate(schedule.publishAt)}.` : `Performance task posted to ${sectionIds.length} class${sectionIds.length===1?'':'es'}.`),
+        competencyTagResult.ok === false ? 'orange' : 'success');
     } catch (error) {
       window.MathsideActionButton?.reset(submitBtn);
       console.error(error);
@@ -1744,6 +1763,7 @@
     if (activeStudentPanel === 'performance') renderStudentPerformanceTasks();
     if (activeStudentPanel === 'grades') renderStudentGrades();
     if (activeStudentPanel === 'account') renderStudentAccount();
+    if (activeStudentPanel === 'overview' && state.profile?.role === 'student') window.MathsideCompetencies?.renderStudent?.();
     window.MathsideV10?.renderStudentPanel?.(activeStudentPanel);
     window.MathsideStudent?.syncPanel();
   };
