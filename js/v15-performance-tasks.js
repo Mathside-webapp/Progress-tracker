@@ -1491,7 +1491,7 @@
   renderSubmissions = function() {
     const list = $('#submissionList'); if (!list) return;
     submissionSort = ['newest','name','name-desc'].includes(submissionSort) ? submissionSort : 'newest';
-    submissionReviewFilter = ['all','new','checked'].includes(submissionReviewFilter) ? submissionReviewFilter : 'all';
+    submissionReviewFilter = ['all','new','checked'].includes(submissionReviewFilter) ? submissionReviewFilter : 'new';
     submissionGroupMode = submissionGroupMode === 'combined' ? 'combined' : 'section';
     renderTypeTabs(); renderSubmissionSectionTabs(); renderSubmissionActivityFilter();
     if ($('#submissionSort')) $('#submissionSort').value = submissionSort;
@@ -1567,7 +1567,7 @@
     renderSubmissions();
   });
   $('#submissionClearFilters')?.addEventListener('click', () => {
-    submissionSectionId = 'all'; submissionAssignmentFilter = 'all'; submissionReviewFilter = 'all'; submissionGroupMode = 'section'; submissionSort = 'newest';
+    submissionSectionId = 'all'; submissionAssignmentFilter = 'all'; submissionReviewFilter = 'new'; submissionGroupMode = 'section'; submissionSort = 'newest';
     renderSubmissions();
   });
 

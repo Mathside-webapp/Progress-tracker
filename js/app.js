@@ -63,7 +63,7 @@ let activeRosterSectionId = null;
 let studentRosterSearch = '';
 let studentRosterSort = 'gender';
 let submissionSectionId = 'all';
-let submissionReviewFilter = 'all';
+let submissionReviewFilter = 'new';
 let submissionGroupMode = 'section';
 let submissionSort = 'newest';
 let activeTrackingStudentId = null;
@@ -2158,10 +2158,11 @@ function questionBlock(number) {
     <label>Question<div class="math-entry-wrap"><input class="q-text" placeholder="e.g. Solve 2x + 5 = 15"><button type="button" class="math-keyboard-btn" data-math-keyboard data-math-label="Question ${number}">∑ Math Keyboard</button></div></label>
     <div class="question-type-row"><label>Type<select class="q-type"><option value="short">Short answer</option><option value="mcq">Multiple choice</option></select></label><label>Correct answer <small class="field-optional">Optional</small><div class="math-entry-wrap"><input class="q-answer" placeholder="Add now or later for auto-checking"><button type="button" class="math-keyboard-btn" data-math-keyboard data-math-label="Correct answer">∑ Math Keyboard</button></div></label><label>Points<input class="q-points" type="number" min="0" step="0.25" value="1"></label></div>
     <div class="option-list" hidden>
+      <div class="mathside-choice-helper"><button type="button" class="btn btn-light q-auto-choices">✨ Suggest 3 incorrect choices</button><small>Mathside suggests three wrong choices (A–C); your answer fills D in the editor. Students see A–D shuffled separately for each question. Review before posting.</small><p class="mathside-choice-result" role="status" aria-live="polite"></p></div>
       <div class="option-row"><div class="math-entry-wrap"><input class="q-option" placeholder="Option A"><button type="button" class="math-keyboard-btn" data-math-keyboard data-math-label="Option A">∑ Math Keyboard</button></div><span></span></div>
       <div class="option-row"><div class="math-entry-wrap"><input class="q-option" placeholder="Option B"><button type="button" class="math-keyboard-btn" data-math-keyboard data-math-label="Option B">∑ Math Keyboard</button></div><span></span></div>
       <div class="option-row"><div class="math-entry-wrap"><input class="q-option" placeholder="Option C"><button type="button" class="math-keyboard-btn" data-math-keyboard data-math-label="Option C">∑ Math Keyboard</button></div><span></span></div>
-      <div class="option-row"><div class="math-entry-wrap"><input class="q-option" placeholder="Option D"><button type="button" class="math-keyboard-btn" data-math-keyboard data-math-label="Option D">∑ Math Keyboard</button></div><span></span></div>
+      <div class="option-row"><div class="math-entry-wrap"><input class="q-option" placeholder="Option D — teacher correct answer"><button type="button" class="math-keyboard-btn" data-math-keyboard data-math-label="Option D">∑ Math Keyboard</button></div><span></span></div>
     </div>
   </article>`;
 }
@@ -2278,6 +2279,7 @@ function resetAssignmentForm() {
   if ($('#ctAssignmentCompetency')) $('#ctAssignmentCompetency').value = '';
   populateAssignmentSections();
   if ($('#assignmentPublishMode')) $('#assignmentPublishMode').value = 'now';
+  if ($('#assignmentShuffleQuestions')) $('#assignmentShuffleQuestions').checked = false;
   if ($('#assignmentPublishAtWrap')) $('#assignmentPublishAtWrap').hidden = true;
   if ($('#assignmentPublishAt')) $('#assignmentPublishAt').value = '';
   $('#assignmentImagePreview').hidden = true;
@@ -2299,6 +2301,32 @@ $('#questionBuilder').addEventListener('change', event => {
   block.querySelector('.option-list').hidden = event.target.value !== 'mcq';
 });
 $('#questionBuilder').addEventListener('click', event => {
+  const suggestButton = event.target.closest('.q-auto-choices');
+  if (suggestButton) {
+    const block = suggestButton.closest('[data-question-block]');
+    const result = window.MathsideQuestionTools?.buildSuggestion(block.querySelector('.q-text').value, block.querySelector('.q-answer').value);
+    const notice = block.querySelector('.mathside-choice-result');
+    if (!result?.ok) {
+      if (notice) notice.textContent = result?.reason || 'Choice suggestions are unavailable.';
+      toast(result?.reason || 'Enter the question and answer first.', 'orange');
+      return;
+    }
+    const optionInputs = [...block.querySelectorAll('.q-option')];
+    const teacherAnswer = block.querySelector('.q-answer').value.trim();
+    if (!Array.isArray(result.distractors) || result.distractors.length !== 3 ||
+        result.distractors.some(value => value.trim().toLowerCase() === teacherAnswer.toLowerCase())) {
+      if (notice) notice.textContent = 'Could not suggest three distinct incorrect choices. Enter them manually.';
+      return;
+    }
+    if (optionInputs.some(input => input.value.trim()) && !window.confirm('Replace the four current choices? Mathside will suggest three incorrect answers (A–C) and use your entered correct answer as option D.')) return;
+    optionInputs.forEach((input, index) => {
+      input.value = index === 3 ? teacherAnswer : result.distractors[index];
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    if (notice) notice.textContent = `Three incorrect choices suggested (${result.reason}). Option D uses your teacher-entered correct answer. Review before posting.`;
+    toast('Three incorrect choices suggested. Option D is your correct answer.', 'success');
+    return;
+  }
   if (!event.target.classList.contains('question-remove')) return;
   const blocks = $$('[data-question-block]', $('#questionBuilder'));
   if (blocks.length === 1) return toast('Keep at least one question.', 'orange');
@@ -2740,6 +2768,7 @@ function openAssignmentModal(assignmentId = null) {
     form.elements.due_at.value = formatDateTimeLocalInput(assignment.due_at);
     form.elements.reminder_hours_before.value = String(Number(assignment.reminder_hours_before || 0));
     if (form.elements.allow_resubmission) form.elements.allow_resubmission.checked = Boolean(assignment.allow_resubmission);
+    if (form.elements.shuffle_questions) form.elements.shuffle_questions.checked = Boolean(assignment.shuffle_questions);
     const groupSectionIds = new Set((assignmentGroup.length ? assignmentGroup : [assignment]).map(item => item.section_id));
     $$('input[name="assignment_sections"]', $('#assignmentSectionChecklist')).forEach(input => {
       input.checked = groupSectionIds.has(input.value);
@@ -2866,7 +2895,8 @@ async function updateExistingAssignment(assignment, form, questions, dueAt, remi
       image_path: newImagePath,
       status: publishStatus,
       publish_at: publishAt,
-      allow_resubmission: form.get('allow_resubmission') === 'on'
+      allow_resubmission: form.get('allow_resubmission') === 'on',
+      shuffle_questions: form.get('shuffle_questions') === 'on'
     }).eq('id', assignment.id);
     if (updateRes.error) throw updateRes.error;
 
@@ -2930,6 +2960,7 @@ async function createWrittenWorkForAddedClass(source, sectionId, questions) {
     status: source.status,
     publish_at: source.publish_at,
     allow_resubmission: Boolean(source.allow_resubmission),
+    shuffle_questions: Boolean(source.shuffle_questions),
     work_type: source.work_type || 'written_work'
   }).select().single();
   if (insert.error) throw insert.error;
@@ -2970,6 +3001,7 @@ $('#assignmentForm').addEventListener('submit', async event => {
   })).filter(question => question.text);
   if (!questions.length) return toast('Add at least one question.', 'orange');
   if (questions.some(question => question.type === 'mcq' && question.options.length < 2)) return toast('Each multiple-choice question needs at least two options.', 'orange');
+  if (questions.some(question => question.type === 'mcq' && question.correctAnswer && !question.options.some(option => option.trim().toLowerCase() === question.correctAnswer.trim().toLowerCase()))) return toast('For multiple choice, one of the choices must exactly match the correct answer. Check the answer key and choices.', 'orange');
 
   const missingAnswerCount = questions.filter(question => !question.correctAnswer).length;
   if (missingAnswerCount) {
@@ -3098,7 +3130,8 @@ $('#assignmentForm').addEventListener('submit', async event => {
             reminder_hours_before: dueAt ? reminderHours : 0,
             status: publishStatus,
             publish_at: publishAt,
-            allow_resubmission: form.get('allow_resubmission') === 'on'
+            allow_resubmission: form.get('allow_resubmission') === 'on',
+            shuffle_questions: form.get('shuffle_questions') === 'on'
           }).select().single();
           if (error) throw error;
           const assignment = data;
@@ -3180,6 +3213,7 @@ function assignmentDisplaySignature(assignment) {
     reminderHours: Number(assignment.reminder_hours_before || 0),
     status: assignment.status || 'published',
     publishAt: assignment.publish_at || null,
+    shuffleQuestions: Boolean(assignment.shuffle_questions),
     questions: assignmentQuestionSignature(assignment.id)
   });
 }
@@ -3877,10 +3911,18 @@ document.addEventListener('click', event => {
   } else {
     $('#studentAssignmentImage').hidden = true;
   }
-  $('#answerQuestions').innerHTML = questionsFor(assignment.id).map((q,i) => {
+  const displayedQuestions = window.MathsideQuestionTools?.studentQuestionOrder(
+    questionsFor(assignment.id), assignment.id, state.user?.id, Boolean(assignment.shuffle_questions)
+  ) || questionsFor(assignment.id);
+  $('#answerQuestions').innerHTML = displayedQuestions.map((q,i) => {
     if (q.question_type === 'mcq') {
-      const options = Array.isArray(q.options) ? q.options : [];
-      return `<article class="answer-question"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3>${options.map(opt => `<label><input type="radio" name="answer_${q.id}" value="${esc(opt)}"> <span class="math-content">${richMath(opt)}</span></label>`).join('')}</article>`;
+      // Choices stay attached to this question ID. Only their DISPLAY order
+      // changes; radio values and saved answers remain the original option text.
+      // This preserves question_id -> answer -> answer-key grading integrity.
+      const options = window.MathsideQuestionTools?.studentOptionOrder(
+        q, assignment.id, state.user?.id
+      ) || (Array.isArray(q.options) ? q.options.slice() : []);
+      return `<article class="answer-question"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3>${options.map((opt, optionIndex) => `<label class="mathside-student-choice"><input type="radio" name="answer_${q.id}" value="${esc(opt)}"><span class="mathside-student-choice-letter" aria-hidden="true">${String.fromCharCode(65 + optionIndex)}.</span><span class="math-content">${richMath(opt)}</span></label>`).join('')}</article>`;
     }
     return `<article class="answer-question"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3><div class="student-math-answer-wrap student-math-answer-only"><div class="student-answer-input-stack"><input type="hidden" name="answer_${q.id}" value=""><div class="student-answer-rendered-preview is-empty" data-student-answer-preview><span>Your answer</span><div class="student-answer-screen" data-student-answer-screen aria-live="polite"><span class="student-answer-screen-placeholder">Your answer will appear here</span></div></div></div><button type="button" class="math-keyboard-btn student-answer-keyboard-btn" data-math-keyboard data-math-label="Your answer for question ${i+1}">∑ Math Keyboard</button></div></article>`;
   }).join('');

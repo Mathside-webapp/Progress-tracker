@@ -28,6 +28,7 @@
 <link href="css/orange-create-panels.css?v=22-github-update" rel="stylesheet"/>
 </link></link><link href="css/panel-identities.css?v=22-github-update" rel="stylesheet"/><link href="css/competency-dashboard-polish.css?v=16" rel="stylesheet"/><link rel="stylesheet" href="css/mobile-header-safety.css?v=19.0"/><link rel="stylesheet" href="css/student-v20-refresh.css?v=20.0"/>
 <link rel="stylesheet" href="css/student-v22-dashboard.css?v=22.2"/>
+<link rel="stylesheet" href="css/mathside-question-tools.css?v=1.1-choice-labels"/>
 </head>
 <body>
 <dialog class="app-loading" hidden="" id="appLoading" aria-labelledby="loadingTitle" aria-describedby="loadingMessage">
@@ -305,8 +306,8 @@
 <div class="submission-review-filter">
 <span class="field-label">Review status</span>
 <div aria-label="Filter submissions by review status" class="submission-review-tabs" id="submissionReviewTabs" role="group">
-<button class="submission-review-tab active" data-submission-review-filter="all" type="button">All <span data-review-count="all">0</span></button>
-<button class="submission-review-tab" data-submission-review-filter="new" type="button">New <span data-review-count="new">0</span></button>
+<button class="submission-review-tab" data-submission-review-filter="all" type="button">All <span data-review-count="all">0</span></button>
+<button class="submission-review-tab active" data-submission-review-filter="new" type="button">New <span data-review-count="new">0</span></button>
 <button class="submission-review-tab" data-submission-review-filter="checked" type="button">Checked <span data-review-count="checked">0</span></button>
 </div>
 </div>
@@ -637,6 +638,7 @@
 </div>
 <div class="ct-create-field"><label class="ct-label" for="ctAssignmentCompetency">Learning competency (optional)</label><div class="ct-choice"><select id="ctAssignmentCompetency"><option value="">No competency selected</option></select><button type="button" class="btn btn-light" id="ctNewCompetency">+ New</button></div><small>Choose an existing competency or add a name. You can also tag older and archived activities in Competency Manager.</small></div></section><section class="assignment-form-section question-editor-section">
 <div class="question-builder-head"><div><h3><span class="orange-step">3</span> Add questions</h3><p class="muted">Correct answers may be added now or later. Questions without an answer will not be auto-checked.</p></div><button class="btn btn-light" id="addQuestionBtn" type="button"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add question</button></div>
+<label class="v10-check-option mathside-shuffle-field"><input id="assignmentShuffleQuestions" name="shuffle_questions" type="checkbox"/><span><b>Shuffle question order for each student</b><small>Each learner gets a repeatable randomized arrangement. Answers and scores remain linked to the original question IDs. Works on newly posted and edited activities.</small></span></label>
 <div id="questionBuilder"></div>
 </section>
 <details class="editor-options"><summary><span>Posting &amp; deadline</span><small>Post now · No deadline by default</small></summary><section class="assignment-form-section compact-section">
@@ -1003,7 +1005,8 @@
 <!-- Converts iPhone/iPad HEIC photos to JPEG before Supabase upload. -->
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script defer="" id="mathliveScript" src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
-<script src="js/app.js?v=16.13-ct-v12-loading"></script>
+<script src="js/question-tools.js?v=1.2-per-question-choice-order"></script>
+<script src="js/app.js?v=16.16-shuffle-options-new-review"></script>
 <dialog id="ctCreateOverlay" class="ct-create-overlay" aria-labelledby="ctCreateTitle"><section class="ct-create-modal"><button id="ctCreateClose" type="button" class="ct-create-x" aria-label="Close">&times;</button><div class="ct-create-icon">+</div><h2 id="ctCreateTitle">Create New Competency</h2><p>Enter the name of the learning competency.</p><form id="ctCreateForm"><label for="ctCreateName">Competency name</label><input id="ctCreateName" maxlength="180" autocomplete="off" placeholder="e.g., Simplifying Radical Expressions" required><div id="ctCreateError" class="ct-create-error" role="alert" hidden></div><div class="ct-create-actions"><button id="ctCreateCancel" type="button" class="ct-create-cancel">Cancel</button><button id="ctCreateSubmit" type="submit" class="ct-create-submit">Add Competency</button></div></form></section></dialog>
 <dialog id="ctDeleteDialog" class="ct-delete-dialog" aria-labelledby="ctDeleteTitle" aria-describedby="ctDeleteDescription">
   <section class="ct-delete-card">
