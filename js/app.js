@@ -1067,19 +1067,47 @@ async function loadTeacherData() {
   state.archiveHistoryAvailable = false;
   submissionAnswerCache.clear();
   if (assignmentIds.length) {
-    const [questionsRes, submissionsRes] = await Promise.all([
-      db.from('mathside_questions').select('*').in('assignment_id', assignmentIds).order('position'),
-      db.from('mathside_submissions').select('*').in('assignment_id', assignmentIds).order('submitted_at', { ascending: false })
+    // A teacher can easily exceed the default 1,000-row Supabase response
+    // limit across their classes. Never discard older submissions/questions;
+    // they are needed for complete, pre-archive Excel backups and exports.
+    async function loadAllTeacherRows(table, key, ids, sortColumn = null, ascending = true) {
+      const all = [];
+      for (let i = 0; i < ids.length; i += 40) {
+        const group = ids.slice(i, i + 40);
+        for (let offset = 0;; offset += 400) {
+          let query = db.from(table).select('*').in(key, group);
+          if (sortColumn) query = query.order(sortColumn, { ascending });
+          query = query.order('id', { ascending: true }).range(offset, offset + 399);
+          const { data, error } = await query;
+          if (error) throw error;
+          const batch = data || [];
+          all.push(...batch);
+          if (batch.length < 400) break;
+        }
+      }
+      return all;
+    }
+    [state.questions, state.submissions] = await Promise.all([
+      loadAllTeacherRows('mathside_questions', 'assignment_id', assignmentIds, 'position'),
+      loadAllTeacherRows('mathside_submissions', 'assignment_id', assignmentIds, 'submitted_at', false)
     ]);
-    if (questionsRes.error) throw questionsRes.error;
-    if (submissionsRes.error) throw submissionsRes.error;
-    state.questions = questionsRes.data || [];
-    state.submissions = submissionsRes.data || [];
     const questionIds = state.questions.map(q => q.id);
     if (questionIds.length) {
-      const keysRes = await db.from('mathside_question_keys').select('*').in('question_id', questionIds);
-      if (keysRes.error) throw keysRes.error;
-      state.keys = keysRes.data || [];
+      // Keys do not have an id column; their primary key is question_id.
+      const keyRows = [];
+      for (let i = 0; i < questionIds.length; i += 40) {
+        const batchIds = questionIds.slice(i, i + 40);
+        for (let offset = 0;; offset += 400) {
+          const { data, error } = await db.from('mathside_question_keys').select('*')
+            .in('question_id', batchIds).order('question_id', { ascending: true })
+            .range(offset, offset + 399);
+          if (error) throw error;
+          const batch = data || [];
+          keyRows.push(...batch);
+          if (batch.length < 400) break;
+        }
+      }
+      state.keys = keyRows;
     }
   }
 

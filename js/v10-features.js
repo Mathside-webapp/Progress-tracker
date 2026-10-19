@@ -696,25 +696,75 @@
     return result;
   }
 
-  function performanceTaskExportScore(assignment, studentId, performanceData, archivedScores) {
-    const savedGrade = archivedScores.get(assignment.id)?.get(String(studentId));
-    // After archiving, all response/team records are gone: archived score is the
-    // ONLY durable grade. It must remain available even after unarchiving.
-    if (savedGrade !== undefined) return { value: savedGrade, note: 'Checked final score saved when submitted work was permanently archived.' };
+  // Fetch a full, current snapshot for exports. PostgREST defaults to at most
+  // 1,000 rows per response; without pagination large classes lose grades.
+  async function readClassRecordArchiveRows(table, columns, assignmentIds, { optional = false } = {}) {
+    const rows = [];
+    for (let i = 0; i < assignmentIds.length; i += 40) {
+      const group = assignmentIds.slice(i, i + 40);
+      for (let start = 0;; start += 400) {
+        const { data, error } = await db.from(table).select(columns)
+          .in('assignment_id', group)
+          .order('assignment_id', { ascending: true })
+          .order('student_id', { ascending: true })
+          .range(start, start + 399);
+        if (error) {
+          if (optional && ['42P01', 'PGRST205'].includes(String(error.code))) return null;
+          throw error;
+        }
+        const batch = data || [];
+        rows.push(...batch);
+        if (batch.length < 400) break;
+      }
+    }
+    return rows;
+  }
+
+  function classRecordRowsToMap(rows, valueKey) {
+    const result = new Map();
+    (rows || []).forEach(row => {
+      const assignmentKey = String(row.assignment_id);
+      if (!result.has(assignmentKey)) result.set(assignmentKey, new Map());
+      result.get(assignmentKey).set(String(row.student_id), valueKey === null ? row : Number(row[valueKey]));
+    });
+    return result;
+  }
+
+  function savedClassRecordValue(assignment, studentId, snapshots, archivedScores) {
+    const row = snapshots.get(String(assignment.id))?.get(String(studentId));
+    if (row) {
+      if (row.score !== null && row.score !== undefined && row.score !== '') {
+        const score = Number(row.score);
+        if (Number.isFinite(score)) return { value: score, note: 'Score preserved when this task was archived.' };
+      }
+      if (row.display_status === 'Pending' || row.display_status === 'Not rated')
+        return { value: row.display_status, note: 'Submission status preserved when this task was archived.' };
+    }
+    const olderGrade = archivedScores.get(String(assignment.id))?.get(String(studentId));
+    if (olderGrade !== undefined)
+      return { value: olderGrade, note: 'Teacher-graded score preserved from an earlier archive.' };
+    return null;
+  }
+
+  function performanceTaskExportScore(assignment, studentId, performanceData, archivedScores, snapshots) {
+    const preserved = savedClassRecordValue(assignment, studentId, snapshots, archivedScores);
+    // Archived team memberships and submissions were deliberately deleted.
+    // The durable score/status snapshot supplies this cell in the export.
+    if (assignment.status === 'archived') return preserved || { value: '—', note: '' };
     const ownSubmission = state.submissions.find(s => s.assignment_id === assignment.id && s.student_id === studentId);
     if ((assignment.collaboration_mode || 'individual') === 'individual') {
-      if (!ownSubmission) return { value: '—', note: '' };
+      if (!ownSubmission) return preserved || { value: '—', note: '' };
       const score = submissionNumericScore(ownSubmission, { performanceTask: true });
       return score === null ? { value: 'Pending', note: '' } : { value: score, note: 'Individual performance task score.' };
     }
 
     const assignmentData = performanceData.get(assignment.id) || { groups: [], ratingsByGroup: new Map() };
     const group = assignmentData.groups.find(item => (item.members || []).some(member => String(member.id) === String(studentId)));
-    if (!group) return { value: '—', note: 'No saved team was found for this learner.' };
+    if (!group) return preserved || { value: '—', note: 'No saved team was found for this learner.' };
 
     const leaderId = String(group.leader_id || '');
     const leaderSubmission = state.submissions.find(s => s.assignment_id === assignment.id && String(s.student_id) === leaderId);
-    if (!leaderSubmission) return { value: '—', note: `${group.name || 'Team'} has no leader submission yet.` };
+    if (!leaderSubmission) return preserved || { value: '—', note: `${group.name || 'Team'} has no leader submission yet.` };
 
     const leaderScore = submissionNumericScore(leaderSubmission, { performanceTask: true });
     if (leaderScore === null) return { value: 'Pending', note: 'The team leader submission has not been graded yet.' };
@@ -773,19 +823,20 @@
     try {
       let buffer = null;
       await withLoading('Preparing class record…', 'Creating separate Written Works and Performance Tasks sheets.', async () => {
-        const archivedScores = new Map();
-        if (assignments.length) {
-          const { data: savedScores, error: scoreError } = await db
-            .from('mathside_archived_scores')
-            .select('assignment_id, student_id, score')
-            .in('assignment_id', assignments.map(a => a.id));
-          if (scoreError && scoreError.code !== '42P01' && scoreError.code !== 'PGRST205') throw scoreError;
-          (savedScores || []).forEach(row => {
-            if (!archivedScores.has(row.assignment_id)) archivedScores.set(row.assignment_id, new Map());
-            archivedScores.get(row.assignment_id).set(String(row.student_id), Number(row.score));
-          });
+        const assignmentIds = assignments.map(a => a.id);
+        const [savedScoreRows, snapshotRows] = await Promise.all([
+          readClassRecordArchiveRows('mathside_archived_scores',
+            'assignment_id,student_id,score', assignmentIds, { optional: true }),
+          readClassRecordArchiveRows('mathside_class_record_snapshots',
+            'assignment_id,student_id,score,display_status', assignmentIds, { optional: true })
+        ]);
+        if (assignments.some(a => a.status === 'archived') && savedScoreRows === null && snapshotRows === null) {
+          throw new Error('Archived grades cannot be read. Install the archive SQL migrations in Supabase before exporting.');
         }
-        const performanceData = await loadPerformanceTaskExportData(performanceAssignments.filter(a => a.status !== 'archived' && !archivedScores.has(a.id)));
+        const archivedScores = classRecordRowsToMap(savedScoreRows, 'score');
+        const archivedSnapshots = classRecordRowsToMap(snapshotRows, null);
+        // Active tasks may have been restored; keep their current teams visible.
+        const performanceData = await loadPerformanceTaskExportData(performanceAssignments.filter(a => a.status !== 'archived'));
         const workbook = new ExcelJS.Workbook();
         workbook.creator = 'Mathside';
         workbook.created = new Date();
@@ -856,9 +907,10 @@
           }
 
           const scoreValues = writtenAssignments.map(a => {
-            const sub = state.submissions.find(s => s.assignment_id === a.id && s.student_id === student.id);
-            const savedGrade = archivedScores.get(a.id)?.get(String(student.id));
-            if (!sub) return savedGrade !== undefined ? savedGrade : '—';
+            const sub = state.submissions.find(s => String(s.assignment_id) === String(a.id) && String(s.student_id) === String(student.id));
+            const preserved = savedClassRecordValue(a, student.id, archivedSnapshots, archivedScores);
+            if (a.status === 'archived') return preserved ? preserved.value : '—';
+            if (!sub) return preserved ? preserved.value : '—';
             const numericScore = submissionNumericScore(sub);
             if (numericScore !== null) return numericScore;
             return sub.status === 'graded' ? 'Pending' : (sub.auto_score === null || sub.auto_score === undefined ? 'Pending' : Number(sub.auto_score));
@@ -939,7 +991,7 @@
             performanceRowNumber += 1;
           }
 
-          const scoreDetails = performanceAssignments.map(a => performanceTaskExportScore(a, student.id, performanceData, archivedScores));
+          const scoreDetails = performanceAssignments.map(a => performanceTaskExportScore(a, student.id, performanceData, archivedScores, archivedSnapshots));
           const row = performanceSheet.getRow(performanceRowNumber);
           row.values = [student.display_name || '', classRecordGenderLabel(student.gender), ...scoreDetails.map(item => item.value)];
           row.height = 22;

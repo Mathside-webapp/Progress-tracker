@@ -279,11 +279,20 @@
     const recordPlural = allPerformance ? 'performance tasks' : 'activities';
     if (!assignments.length) throw new Error(`No ${recordPlural} were found to archive.`);
     const submissionIds = state.submissions.filter(s => assignmentIds.includes(s.assignment_id)).map(s => s.id);
-    let answerRows = [];
-    if (submissionIds.length) {
-      const { data, error } = await db.from('mathside_submission_answers').select('*').in('submission_id', submissionIds);
-      if (error) throw error;
-      answerRows = data || [];
+    const answerRows = [];
+    // Archive backups must contain all answer rows, even when more than
+    // 1,000 answers have been submitted across a large class.
+    for (let i = 0; i < submissionIds.length; i += 40) {
+      const batchIds = submissionIds.slice(i, i + 40);
+      for (let offset = 0;; offset += 400) {
+        const { data, error } = await db.from('mathside_submission_answers')
+          .select('*').in('submission_id', batchIds)
+          .order('id', { ascending: true }).range(offset, offset + 399);
+        if (error) throw error;
+        const batch = data || [];
+        answerRows.push(...batch);
+        if (batch.length < 400) break;
+      }
     }
     const answersBySubmission = new Map();
     answerRows.forEach(answer => {
@@ -443,13 +452,13 @@
     const warning = $('.archive-warning span', modal);
     if (eyebrow) eyebrow.textContent = allPerformance ? 'ARCHIVE PERFORMANCE TASK' : 'ARCHIVE ACTIVITY';
     if (warning) warning.textContent = allPerformance
-      ? 'IMPORTANT: All submitted performance-task outputs, checked work, feedback, group memberships, participation ratings, and uploaded student files will be permanently deleted from Supabase, including Storage. This cannot be undone by unarchiving. Only checked final scores remain in Export Class Record. An Excel backup downloads first.'
-      : 'IMPORTANT: All submitted activity answers, checked work, feedback, and uploaded student solution files will be permanently deleted from Supabase, including Storage. Unarchiving will NOT restore them. Only checked final scores remain in Export Class Record. An Excel backup downloads first.';
+      ? 'IMPORTANT: All submitted performance-task outputs, checked work, feedback, group memberships, participation ratings, and uploaded student files will be permanently deleted from Supabase, including Storage. This cannot be undone by unarchiving. Numerical scores and recorded Pending/Not rated statuses will remain in Export Class Record when the retention SQL is installed. An Excel backup downloads first.'
+      : 'IMPORTANT: All submitted activity answers, checked work, feedback, and uploaded student solution files will be permanently deleted from Supabase, including Storage. Unarchiving will NOT restore them. Numerical scores and recorded Pending/Not rated statuses will remain in Export Class Record when the retention SQL is installed. An Excel backup downloads first.';
     if (archiveAck) archiveAck.checked = false;
     if ($('#confirmArchiveAssignmentBtn')) $('#confirmArchiveAssignmentBtn').disabled = true;
     $('#archiveAssignmentTitle').textContent = `Archive ${title}?`;
     $('#archiveAssignmentText').textContent = valid.length === 1
-      ? `Mathside will download an Excel backup of “${first?.title || `this ${kindSingular}`}”, preserve checked grades, then permanently delete the student submissions.`
+      ? `Mathside will download an Excel backup of “${first?.title || `this ${kindSingular}`}”, preserve each student’s Class Record score/status, then permanently delete the student submissions.`
       : `Mathside will download one Excel backup for ${valid.length} selected ${kindSingular} records before permanently deleting their submissions.`;
     openDialog('archiveAssignmentModal');
   }
@@ -464,7 +473,7 @@
     try {
       await withLoading(
         allPerformance ? 'Unarchiving performance task…' : 'Unarchiving activity…',
-        'Restoring the task only. Old submissions, proof files, and feedback cannot be recovered; checked scores stay in Class Record export.',
+        'Restoring the task only. Old submissions, proof files, and feedback cannot be recovered; saved Class Record scores and statuses stay in Excel export.',
         async () => {
           const now = Date.now();
           const scheduledIds = assignments
@@ -491,7 +500,7 @@
         }
       );
       toast(
-        allPerformance ? 'Performance task restored without old submissions. Saved grades remain in Class Record export.' : 'Activity restored without old submissions. Saved grades remain in Class Record export.',
+        allPerformance ? 'Performance task restored without old submissions. Saved scores remain in Class Record export.' : 'Activity restored without old submissions. Saved scores remain in Class Record export.',
         'success',
         'Unarchived'
       );
@@ -523,6 +532,18 @@
       return toast('Archive paused to protect students’ submission counts. Run sql/Mathside-Archive-Progress-History.sql in Supabase, then reload Mathside before archiving.', 'orange', 'Install progress history first');
     }
     if (!archiveAck?.checked) return toast('Please acknowledge that submitted work and files will be permanently deleted.', 'orange', 'Confirmation required');
+    // Never allow destructive archiving using an older RPC that does not
+    // snapshot ALL class-record values (including auto-scored written work).
+    let retentionVersion = null;
+    try {
+      const { data, error } = await db.rpc('mathside_class_record_retention_version');
+      if (!error) retentionVersion = data;
+    } catch (guardError) {
+      console.warn('Class Record archive protection verification failed:', guardError);
+    }
+    if (retentionVersion !== 'class-record-retention-v1') {
+      return toast('Archiving paused to protect your Excel class record. First run sql/Mathside-Class-Record-Archive-Retention-Fix.sql in Supabase, then reload Mathside.', 'orange', 'Class Record protection required');
+    }
     const assignments = ids.map(id => assignmentById(id)).filter(Boolean);
     const allPerformance = assignments.length > 0 && assignments.every(isPerformanceTask);
     const kindSingular = allPerformance ? 'performance task' : 'activity';
@@ -531,7 +552,7 @@
       closeDialog('archiveAssignmentModal');
       await withLoading(
         allPerformance ? 'Archiving performance task…' : 'Archiving activity…',
-        'Downloading an Excel backup, preserving checked scores, and permanently clearing student submissions.',
+        'Downloading an Excel backup, saving Class Record scores/statuses, and permanently clearing student submissions.',
         async () => {
           const workbook = await buildArchiveWorkbook(ids, allPerformance ? 'Performance Task Archive' : 'Activity Archive');
           const first = assignments[0];
@@ -555,9 +576,9 @@
           await refreshTeacher();
           showTeacherView(targetView);
           if (remainingCleanup) {
-            toast('Archive saved and checked scores preserved. Some uploaded files still need removal; use Archived → Retry file cleanup.', 'orange', 'Finish file cleanup');
+            toast('Archive saved and Class Record entries preserved. Some uploaded files still need removal; use Archived → Retry file cleanup.', 'orange', 'Finish file cleanup');
           } else {
-            toast(`Archive complete. ${Number(archivedResult?.deleted_submissions || 0)} responses permanently removed; checked scores kept for Class Record.`, 'success', 'Archived and cleaned');
+            toast(`Archive complete. ${Number(archivedResult?.deleted_submissions || 0)} responses permanently removed; Class Record scores/statuses preserved.`, 'success', 'Archived and cleaned');
           }
         }
       );
