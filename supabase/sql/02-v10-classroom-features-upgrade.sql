@@ -140,6 +140,7 @@ to authenticated
 using (user_id = (select auth.uid()));
 
 grant select on public.mathside_notifications to authenticated;
+grant select on public.mathside_notifications to service_role;
 
 create or replace function public.mathside_mark_notifications_read(p_ids uuid[] default null)
 returns integer

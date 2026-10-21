@@ -47,7 +47,7 @@ begin
   limit 1;
 
   if v_uid is null then
-    raise exception 'No Supabase Auth account exists for %. Ask the teacher to register first, then run this approval file.', v_email;
+    raise exception 'No Supabase Auth account exists for %. For a NEW account, add the email to the allowlist BEFORE signup. Use this repair script only for an EXISTING Auth account.', v_email;
   end if;
 
   -- Protect auto-generated student accounts from accidental conversion.

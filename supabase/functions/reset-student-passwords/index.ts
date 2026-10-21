@@ -10,10 +10,15 @@ function validUuid(value: string) {
 
 function randomPassword() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'
-  const bytes = new Uint8Array(12)
-  crypto.getRandomValues(bytes)
-  let value = 'M!'
-  for (const byte of bytes) value += alphabet[byte % alphabet.length]
+  const cutoff = 256 - (256 % alphabet.length)
+  let value = ''
+  while (value.length < 16) {
+    const bytes = crypto.getRandomValues(new Uint8Array(32))
+    for (const byte of bytes) {
+      if (byte < cutoff) value += alphabet[byte % alphabet.length]
+      if (value.length === 16) break
+    }
+  }
   return value
 }
 
@@ -120,8 +125,8 @@ const resetStudentPasswords = withSupabase({ auth: 'user' }, async (req, ctx) =>
           ? String(requestedPasswordMap.get(studentId) || '').trim()
           : randomPassword()
 
-        if (chosenPassword.length < 6 || chosenPassword.length > 72) {
-          throw new Error('Password must contain 6 to 72 characters.')
+        if (chosenPassword.length < 12 || chosenPassword.length > 72) {
+          throw new Error('Password must contain 12 to 72 characters.')
         }
 
         const { error: updateError } = await ctx.supabaseAdmin.auth.admin.updateUserById(studentId, {

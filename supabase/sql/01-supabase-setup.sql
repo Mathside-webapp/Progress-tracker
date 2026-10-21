@@ -1161,7 +1161,15 @@ to authenticated
 with check (
   bucket_id = 'mathside-submission-proofs'
   and (storage.foldername(name))[1] = (select auth.uid())::text
+  and array_length(storage.foldername(name), 1) = 2
   and mathside_private.is_student((select auth.uid()))
+  and exists (
+    select 1
+    from public.mathside_assignments a
+    where a.id = mathside_private.safe_uuid((storage.foldername(name))[2])
+      and a.status = 'published'
+      and mathside_private.student_in_section(a.section_id, (select auth.uid()))
+  )
 );
 
 create policy mathside_proof_read

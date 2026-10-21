@@ -1,0 +1,13 @@
+const fs=require('node:fs');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');
+const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+const refs=[...html.matchAll(/(?:src|href)="((?:\.\/)?(?:js|css|assets|icons|downloads)\/[^"#]+)"/g)].map(m=>m[1].split('?')[0]);
+const missing=refs.filter(r=>!fs.existsSync(path.join(root,r)));
+assert.deepEqual(missing,[],`Missing local references: ${missing}`);
+const worker=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
+const shell=[...worker.matchAll(/'\.(?:\/[a-zA-Z0-9._~!?=\/-]+)'/g)].map(m=>m[0].slice(1,-1).split('?')[0]);
+const bad=shell.filter(r=>r!=='./'&&!fs.existsSync(path.join(root,r)));
+assert.deepEqual(bad,[],`Missing PWA app shell: ${bad}`);
+console.log(`PASS: ${refs.length} local HTML and ${shell.length} PWA shell asset references`);

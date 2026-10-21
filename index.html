@@ -474,10 +474,10 @@
 <div class="student-import-panel">
 <div class="student-import-copy">
 <strong>Import SF1 / Excel</strong>
-<span>Supports DepEd SF1 <b>.xls / .xlsx</b> and simple Excel lists with Name + Sex/Gender columns. Up to 60 learners.</span>
+<span>Supports DepEd SF1 <b>.xlsx</b> and simple .xlsx or .csv lists with Name + Sex/Gender columns. Convert legacy .xls to .xlsx before importing. Up to 60 learners.</span>
 </div>
 <button class="btn btn-light" id="importStudentsFileBtn" type="button"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg>Import file</button>
-<input accept=".xls,.xlsx,.csv" hidden="" id="studentsFileInput" type="file"/>
+<input accept=".xlsx,.csv" hidden="" id="studentsFileInput" type="file"/>
 </div>
 <div class="student-import-status-row">
 <span class="student-import-status" id="studentImportStatus">You can review imported learners before generating accounts.</span>
@@ -503,7 +503,7 @@
 <p class="eyebrow">ACCOUNTS GENERATED</p>
 <h2>Student login credentials are ready.</h2>
 <p class="muted">Download a new Excel file and give each student only their own credentials.</p>
-<p class="account-note credential-warning">Temporary passwords are shown only when accounts are generated. Mathside does not store them for later download, so save the Excel file before closing if you need a copy.</p>
+<p class="account-note credential-warning">Temporary passwords are shown only when accounts are generated. Download this sensitive file privately, give each student only their own details, and delete the exported file once credentials have been distributed.</p>
 <div class="student-table-wrap"><table class="student-entry-table"><thead><tr><th>Name</th><th>Gender</th><th>Username</th><th>Temporary password</th></tr></thead><tbody id="generatedAccountsBody"></tbody></table></div>
 <div class="modal-actions"><button class="btn btn-light" data-close="accountsModal">Done</button><button class="btn btn-orange" id="downloadAccountsExcelBtn" type="button"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M5 20h14"></path></svg>Download Excel</button></div>
 </div>
@@ -565,7 +565,7 @@
 <form class="form-stack" id="resetPasswordsForm">
 <div class="reset-password-list" id="resetPasswordRows"></div>
 <label class="reset-password-show"><input id="showResetPasswords" type="checkbox"/> <span>Show passwords while typing</span></label>
-<p class="muted reset-password-help">Use at least 6 characters. Mathside does not store readable passwords after the reset, so download the Excel copy before closing the result.</p>
+<p class="muted reset-password-help">Use at least 12 characters. Mathside does not store readable passwords after the reset, so download the Excel copy before closing the result.</p>
 <div class="modal-actions">
 <button class="btn btn-light" data-close="resetPasswordsModal" type="button">Cancel</button>
 <button class="btn btn-orange" id="confirmResetPasswordsBtn" type="submit">Set new password</button>
@@ -679,7 +679,7 @@
 <div class="assignment-import-actions">
 <a class="btn btn-light" download="" href="downloads/Mathside-Assignment-Import-Template.xlsx">Download template</a>
 <button class="btn btn-dark" id="importAssignmentExcelBtn" type="button">Import Excel</button>
-<input accept=".xlsx,.xls" hidden="" id="assignmentExcelInput" type="file"/>
+<input accept=".xlsx" hidden="" id="assignmentExcelInput" type="file"/>
 </div>
 </section></details>
 <div class="modal-actions assignment-form-actions"><button class="btn btn-light" data-close="assignmentModal" type="button">Cancel</button><button class="btn btn-orange" id="assignmentSubmitBtn" type="submit">Post assignment</button></div>
@@ -1000,7 +1000,6 @@
 
 <script src="js/config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2"></script>
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <!-- Converts iPhone/iPad HEIC photos to JPEG before Supabase upload. -->
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>

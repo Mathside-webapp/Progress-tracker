@@ -22,19 +22,18 @@ function slugifyName(name: string) {
 }
 
 function randomPassword() {
-  // Easy-to-type temporary student password: 8 lowercase letters with a
-  // consonant/vowel pattern (example: "navetomi"). It avoids symbols,
-  // capitals and number-row switching while keeping each password random.
-  const consonants = 'bcdfghjkmnpqrstvwxyz'
-  const vowels = 'aeiou'
-  const bytes = new Uint8Array(8)
-  crypto.getRandomValues(bytes)
-  let value = ''
-  for (let index = 0; index < bytes.length; index += 1) {
-    const alphabet = index % 2 === 0 ? consonants : vowels
-    value += alphabet[bytes[index] % alphabet.length]
+  // 16 high-entropy, readable characters; never derive credentials from names.
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  const cutoff = 256 - (256 % alphabet.length);
+  let result = '';
+  while (result.length < 16) {
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    for (const value of bytes) {
+      if (value < cutoff) result += alphabet[value % alphabet.length];
+      if (result.length === 16) break;
+    }
   }
-  return value
+  return result;
 }
 
 const createStudents = withSupabase({ auth: 'user' }, async (req, ctx) => {
