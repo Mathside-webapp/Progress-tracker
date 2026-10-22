@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-21-class-performance-1';
+const CACHE_NAME = 'mathside-pwa-v24-23-class-leader-rating-1';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -50,16 +50,16 @@ const APP_SHELL = [
   './css/mathside-question-tools.css?v=1.1-choice-labels',
   './js/app.js?v=24.21-class-performance',
   './js/student-v8.js?v=15.3-overdue-history-fix',
-  './js/v10-features.js?v=24.18-class-record-retention-1',
+  './js/v10-features.js?v=24.23-class-leader-rating',
   './js/design-v9.js?v=9',
   './js/pwa.js?v=6.9.15',
   './js/push-notifications.js?v=6.12',
   './css/v12-archive-features.css?v=24.12',
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.11',
-  './css/performance-class-mode.css?v=1',
+  './css/performance-class-mode.css?v=2',
   './js/v12-archive-features.js?v=24.18-class-record-retention-1',
-  './js/v15-performance-tasks.js?v=24.21-class-performance'
+  './js/v15-performance-tasks.js?v=24.23-class-leader-rating'
 ];
 
 self.addEventListener('install', (event) => {

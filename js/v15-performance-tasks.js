@@ -1647,23 +1647,51 @@
   async function renderLeaderParticipationRatings(a, team) {
     const box = $('#performanceParticipationRatings');
     if (!box) return;
-    const members = a.collaboration_mode === 'class' ? [] : (team?.members || []).filter(member => member.id !== team.leader_id);
+    const members = (team?.members || []).filter(member => member.id !== team.leader_id);
     if (!members.length) { box.hidden = true; box.innerHTML = ''; return; }
     let existing = [];
     try { existing = await getPerformanceParticipationRatings(a.id, team.group?.id); } catch (_) {}
     const byMember = new Map(existing.map(row => [row.member_id, Number(row.rating || 0)]));
     box.hidden = false;
-    box.innerHTML = `<div class="performance-rating-head"><p class="eyebrow">MEMBER PARTICIPATION</p><h3>Rate each member from 1 to 5</h3><p>Only you and your teacher can see these ratings.</p></div><div class="performance-rating-list">${members.map(member => `<label><span>${esc(member.display_name)}</span><select data-participation-member="${esc(member.id)}" required><option value="">Choose</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${byMember.get(member.id)===n?'selected':''}>${n}</option>`).join('')}</select></label>`).join('')}</div>`;
+    box.innerHTML = `<div class="performance-rating-head"><p class="eyebrow">${a.collaboration_mode === 'class' ? 'CLASS PARTICIPATION' : 'MEMBER PARTICIPATION'}</p><h3>Rate each member from 1 to 5</h3><p>Only you and your teacher can see these ratings. Ratings affect the final score once the teacher grades the project. Deduction: 5 = 0 pts, 4 = 2 pts, 3 = 3 pts, 2 = 4 pts, 1 = 5 pts.</p>${a.collaboration_mode === 'class' ? '<input class="performance-class-member-search" type="search" placeholder="Search classmates" aria-label="Search classmates for participation ratings">' : ''}</div><div class="performance-rating-list ${a.collaboration_mode === 'class' ? 'class-participation-list' : ''}">${members.map(member => `<label data-rating-name="${esc(String(member.display_name || '').toLowerCase())}"><span>${esc(member.display_name)}</span><select data-participation-member="${esc(member.id)}" required><option value="">Choose</option>${[1,2,3,4,5].map(n=>`<option value="${n}" ${byMember.get(member.id)===n?'selected':''}>${n}</option>`).join('')}</select></label>`).join('')}</div>${a.collaboration_mode === 'class' ? '<div class="class-rating-actions"><button type="button" class="btn btn-orange" data-save-class-participation>Save participation ratings</button><small>Ratings may be saved separately from the class project. All classmates must receive a rating.</small></div>' : ''}`;
   }
 
   async function saveLeaderParticipationRatings(a, team) {
-    if (['individual','class'].includes(a.collaboration_mode || 'individual') || !team?.is_leader || !team?.group?.id) return;
+    if ((a.collaboration_mode || 'individual') === 'individual' || !team?.is_leader || !team?.group?.id) return;
     const selects = $$('[data-participation-member]', $('#performanceParticipationRatings'));
     const ratings = selects.map(select => ({ member_id:select.dataset.participationMember, rating:Number(select.value || 0) }));
-    if (ratings.some(item => item.rating < 1 || item.rating > 5)) throw new Error('Rate every team member from 1 to 5 before submitting.');
+    if (ratings.some(item => item.rating < 1 || item.rating > 5)) throw new Error('Rate every team member from 1 to 5 before saving.');
     const result = await db.rpc('mathside_save_participation_ratings', { p_assignment_id:a.id, p_group_id:team.group.id, p_ratings:ratings });
     if (result.error) throw result.error;
   }
+
+  document.addEventListener('input', event => {
+    const search = event.target.closest('.performance-class-member-search');
+    if (!search) return;
+    const query = String(search.value || '').toLocaleLowerCase().trim();
+    $$('.class-participation-list [data-rating-name]').forEach(label => {
+      label.hidden = !String(label.dataset.ratingName || '').includes(query);
+    });
+  });
+
+  document.addEventListener('click', async event => {
+    const btn = event.target.closest('[data-save-class-participation]');
+    if (!btn) return;
+    const a = assignmentById(activePerformanceTaskId);
+    if (!a || a.collaboration_mode !== 'class') return;
+    if (a.status === 'archived') return toast('Archived class ratings cannot be edited.', 'orange');
+    if (!window.MathsideActionButton?.start(btn, 'Saving ratings…')) return;
+    try {
+      const team = await getPerformanceTeamInfo(a.id);
+      if (!team?.is_leader) throw new Error('Only the teacher-selected class representative can rate classmates.');
+      await saveLeaderParticipationRatings(a, team);
+      await window.MathsideActionButton?.done(btn, 'Saved');
+      toast('Class participation ratings saved privately for your teacher.', 'success');
+    } catch (error) {
+      window.MathsideActionButton?.reset(btn);
+      toast(friendlyErrorMessage(error, 'Could not save participation ratings.'), 'orange');
+    }
+  });
 
   document.addEventListener('change', event => {
     const input = event.target.closest('input[name="performance_peer"]');
@@ -1715,11 +1743,15 @@
     const base = payload.base_score;
     const maxPoints = Number(payload.max_points || 0);
     const members = Array.isArray(payload.students) ? payload.students : [];
-    box.innerHTML = `<h3>Class Score Record</h3><p class="muted">${base == null ? 'Save the common class grade above first. Then reopen the review to adjust individual scores.' : `Common grade: ${Number(base)}/${maxPoints}. Individual adjustments are optional.`}</p><div class="class-grade-controls">${members.map(member => {
+    box.innerHTML = `<h3>Class Score Record</h3><p class="muted">${base == null ? 'Save the common class grade above first. Then reopen the review to adjust individual scores.' : `Common grade: ${Number(base)}/${maxPoints}. Participation ratings adjust member scores automatically; teacher adjustments are optional.`}</p><div class="class-grade-controls">${members.map(member => {
       const override = member.override != null;
-      const score = override ? Number(member.override) : (base == null ? '' : Number(base));
-      return `<label class="class-grade-person"><span>${esc(member.display_name || 'Learner')}${member.representative ? ' <small>(Representative)</small>' : ''}</span><input aria-label="Grade for ${esc(member.display_name || 'Learner')}" data-class-student-id="${esc(member.id)}" type="number" min="0" max="${maxPoints}" step="0.01" value="${score}" ${member.representative || !canAdjust ? 'disabled' : ''}></label>`;
-    }).join('')}</div>${canAdjust && base != null ? '<div class="class-grade-actions"><button class="btn btn-orange" type="button" data-save-class-scores>Save individual adjustments</button><small>Enter the common score to remove an adjustment.</small></div>' : ''}`;
+      const score = member.score == null ? '' : Number(member.score);
+      const rating = Number(member.rating || 0);
+      const deduction = {5:0,4:2,3:3,2:4,1:5}[rating];
+      const automatic = base == null || deduction == null ? '' : Math.max(0, Number(base) - deduction);
+      const explanation = member.representative ? 'Class representative' : override ? 'Teacher adjustment' : rating ? `Participation ${rating}/5` : 'Not rated yet';
+      return `<label class="class-grade-person"><span>${esc(member.display_name || 'Learner')}${member.representative ? ' <small>(Representative)</small>' : ''}<small>${esc(explanation)}</small></span><input aria-label="Grade for ${esc(member.display_name || 'Learner')}" data-class-student-id="${esc(member.id)}" data-automatic-score="${automatic}" type="number" min="0" max="${maxPoints}" step="0.01" value="${score}" ${member.representative || !canAdjust ? 'disabled' : ''}></label>`;
+    }).join('')}</div>${canAdjust && base != null ? '<div class="class-grade-actions"><button class="btn btn-orange" type="button" data-save-class-scores>Save individual adjustments</button><small>Enter the participation-based score to remove an adjustment; leave a score blank if the member is not rated.</small></div>' : ''}`;
     box.dataset.classAssignmentId = assignmentId;
     box.dataset.classBaseScore = base == null ? '' : String(base);
     box.dataset.classMaxPoints = String(maxPoints);
@@ -1735,10 +1767,11 @@
     const scores = [];
     for (const input of $$('[data-class-student-id]', box)) {
       const value = input.value.trim();
-      if (value === '' || !Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > max)
-        return toast(`Each learner must have a score from 0 to ${max}.`, 'orange');
-      const numeric = Number(value);
-      scores.push({student_id: input.dataset.classStudentId, score: numeric === base ? null : numeric});
+      if (value !== '' && (!Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > max))
+        return toast(`Scores must be from 0 to ${max}, or blank for unrated learners.`, 'orange');
+      const numeric = value === '' ? null : Number(value);
+      const automatic = input.dataset.automaticScore === '' ? null : Number(input.dataset.automaticScore);
+      scores.push({student_id: input.dataset.classStudentId, score: numeric === automatic ? null : numeric});
     }
     if (!window.MathsideActionButton?.start(btn,'Saving…')) return;
     try {
@@ -1779,11 +1812,11 @@
       if ((a.collaboration_mode || 'individual') !== 'individual' && teamBox) {
         try {
           const team = await getPerformanceTeamInfo(a.id, submission.student_id);
-          const ratings = (a.collaboration_mode !== 'class' && team?.group?.id) ? await getPerformanceParticipationRatings(a.id, team.group.id) : [];
+          const ratings = team?.group?.id ? await getPerformanceParticipationRatings(a.id, team.group.id) : [];
           const ratingMap = new Map(ratings.map(row => [row.member_id, Number(row.rating || 0)]));
           teamBox.hidden = false;
           teamBox.innerHTML = a.collaboration_mode === 'class'
-            ? `<p class="eyebrow">CLASS SUBMISSION</p><h3>${esc(sectionById(a.section_id)?.name || 'Whole class')}</h3><p>Representative: <b>${esc(student?.display_name || 'Student')}</b> · One submission for the class</p>`
+            ? `<p class="eyebrow">CLASS SUBMISSION</p><h3>${esc(sectionById(a.section_id)?.name || 'Whole class')}</h3><p>Representative: <b>${esc(student?.display_name || 'Student')}</b> · One submission for the class</p><p class="muted">Private 1–5 ratings are used for classmates' participation deductions. Only the teacher and the representative can view these.</p><div class="review-team-member-list class-review-member-list">${(team?.members || []).map(member => `<div><span>${esc(member.display_name || 'Student')}${member.id === team.leader_id ? ' · Representative' : ''}</span><b>${member.id === team.leader_id ? '—' : (ratingMap.get(member.id) ? `${ratingMap.get(member.id)}/5` : 'Not rated')}</b></div>`).join('')}</div>`
             : `<p class="eyebrow">PRIVATE TEAM INFORMATION</p><h3>${esc(team?.group?.name || collaborationLabel(a))}</h3><p class="muted">Participation ratings are visible only to the teacher and team leader.</p><div class="review-team-member-list">${(team.members || []).map(member => `<div><span>${esc(member.display_name || 'Student')}${member.id===team.leader_id?' · Leader':''}</span><b>${member.id===team.leader_id?'—':(ratingMap.get(member.id) ? `${ratingMap.get(member.id)}/5` : 'Not rated')}</b></div>`).join('')}</div>`;
         } catch (error) { console.warn('Could not load private team details', error); }
       }

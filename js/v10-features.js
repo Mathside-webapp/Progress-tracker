@@ -772,6 +772,19 @@
       return { value: leaderScore, note: `Team leader — full teacher-given grade (${leaderScore}).` };
     }
 
+    // Classmates have mirrored submissions that already include the 1–5 rating
+    // deduction and any teacher-entered individual adjustment. Do not subtract
+    // the rating a second time during Excel export.
+    if (assignment.collaboration_mode === 'class') {
+      const rating = assignmentData.ratingsByGroup.get(group.id)?.get(String(studentId));
+      const score = submissionNumericScore(ownSubmission, { performanceTask: true });
+      if (score !== null) return {
+        value: score,
+        note: rating ? `Class representative rated participation ${rating}/5. Saved score includes applicable participation adjustment or teacher override.` : 'Score individually adjusted by the teacher.'
+      };
+      return { value: 'Not rated', note: 'Class representative has not saved a participation rating for this learner yet.' };
+    }
+
     const rating = assignmentData.ratingsByGroup.get(group.id)?.get(String(studentId));
     const deduction = performanceRatingDeduction(rating);
     if (deduction === null) return { value: 'Not rated', note: 'The team leader has not saved a participation rating for this member yet.' };
@@ -954,7 +967,7 @@
         styleRecordTitle(performanceSheet, performanceLastColumn, `Mathside Performance Tasks — ${section.name}`, section);
         performanceSheet.mergeCells(`A3:${performanceLastColumn}3`);
         const performanceSummary = performanceSheet.getCell('A3');
-        performanceSummary.value = `Performance tasks: ${performanceAssignments.length}   •   Group scoring: leader keeps the teacher grade; members receive the leader grade minus the participation-rating deduction.`;
+        performanceSummary.value = `Performance tasks: ${performanceAssignments.length}   •   Team and class scoring: leader keeps the teacher grade; classmates and group members receive participation-based adjustments (teacher overrides take priority).`;
         performanceSummary.font = { bold: true, color: { argb: 'FF334155' } };
         performanceSummary.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
         performanceSummary.alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };

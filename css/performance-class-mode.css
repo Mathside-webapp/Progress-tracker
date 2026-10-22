@@ -15,3 +15,26 @@
 .performance-class-resource-links{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px;}
 .performance-class-resource-links a{font-size:.88rem;}
 @media(max-width:600px){.performance-class-grade-panel{padding:12px}.performance-class-grade-panel .class-grade-person{align-items:start}.performance-class-grade-panel input[type=number]{width:90px}}
+
+/* A class may have dozens of learners; keep rating and review lists navigable. */
+.class-participation-list,
+.class-review-member-list {
+  max-height: min(46vh, 430px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 6px;
+}
+.performance-class-member-search {
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px 13px;
+  border: 1px solid #f4bd93;
+  border-radius: 12px;
+  background: #fff;
+  color: #252b38;
+  font: inherit;
+}
+.class-rating-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+.class-rating-actions small { color: #6b7280; flex: 1 1 220px; }
+.class-grade-person span small { display: block; color: #9a562b; font-size: 10px; margin-top: 4px; }
+.class-participation-list [hidden] { display: none !important; }
