@@ -24,6 +24,7 @@
 <link href="css/v12-archive-features.css?v=24.12" rel="stylesheet">
 <link href="css/v14-layout-fixes.css?v=14.0" rel="stylesheet">
 <link href="css/v15-performance-calendar.css?v=15.11" rel="stylesheet"/>
+<link href="css/performance-class-mode.css?v=1" rel="stylesheet"/>
 <link href="css/friendly-editors.css?v=2" rel="stylesheet"/>
 <link href="css/orange-create-panels.css?v=22-github-update" rel="stylesheet"/>
 </link></link><link href="css/panel-identities.css?v=22-github-update" rel="stylesheet"/><link href="css/competency-dashboard-polish.css?v=16" rel="stylesheet"/><link rel="stylesheet" href="css/mobile-header-safety.css?v=19.0"/><link rel="stylesheet" href="css/student-v20-refresh.css?v=20.0"/>
@@ -244,7 +245,7 @@
 <div class="performance-task-filter-grid">
 <label>Section<select id="performanceTaskSectionFilter"><option value="all">All sections</option></select></label>
 <label>Status<select id="performanceTaskStatusFilter"><option value="all">All statuses</option><option value="posted">Posted</option><option value="scheduled">Scheduled</option></select></label>
-<label>Work setup<select id="performanceTaskModeFilter"><option value="all">All setups</option><option value="individual">Individual</option><option value="pair">Pair</option><option value="group">Group</option></select></label>
+<label>Work setup<select id="performanceTaskModeFilter"><option value="all">All setups</option><option value="individual">Individual</option><option value="pair">Pair</option><option value="group">Group</option><option value="class">Class</option></select></label>
 <label>Order<select id="performanceTaskSort"><option value="newest">Newest first</option><option value="name">Alphabetical A–Z</option><option value="name-desc">Alphabetical Z–A</option><option value="due">Deadline soonest</option></select></label>
 </div>
 <div class="compact-filter-actions"><button class="btn btn-light" id="performanceTaskClearFilters" type="button">Clear filters</button><button class="btn btn-orange" id="performanceTaskFilterDone" type="button">Done</button></div>
@@ -763,8 +764,10 @@
 <label class="performance-mode-option"><input checked="" name="performance_mode" type="radio" value="individual"><span><b>Individual</b><small>Each student submits their own output.</small></span></input></label>
 <label class="performance-mode-option"><input name="performance_mode" type="radio" value="pair"/><span><b>Pair</b><small>Students work in teams of two.</small></span></label>
 <label class="performance-mode-option"><input name="performance_mode" type="radio" value="group"/><span><b>Group</b><small>Students work in teacher-sized groups.</small></span></label>
+<label class="performance-mode-option performance-class-mode"><input name="performance_mode" type="radio" value="class"/><span><b>Whole Class</b><small>One project per section. Choose a class representative to submit for everyone.</small></span></label>
 </div>
 <div class="performance-grouping-options" hidden="" id="performanceGroupingOptions">
+<p class="performance-class-help" id="performanceClassHelp" hidden>Each selected section creates one project. Select its representative in the class list below. The teacher awards one common score and may adjust scores for individual learners.</p>
 <div><p class="field-label">Who creates the teams?</p><div class="performance-creator-options"><label><input checked="" name="grouping_creator" type="radio" value="teacher"/><span>Teacher creates teams</span></label><label><input name="grouping_creator" type="radio" value="students"/><span>Students create their teams</span></label></div></div>
 <label hidden="" id="performanceGroupCountWrap">How many groups per class?<input id="performanceGroupCount" min="1" name="group_count" step="1" type="number" value="4"/><small>Mathside will distribute students as evenly as possible.</small></label>
 <div class="performance-grouping-tools" id="performanceTeacherGroupingTools">
@@ -851,7 +854,7 @@
 <p class="eyebrow">PERFORMANCE TASK</p><h2 id="performanceStudentTitle">Performance Task</h2><p class="muted" id="performanceStudentInstructions"></p><div class="assignment-meta" id="performanceStudentMeta"></div><div class="performance-preview-images" id="performanceStudentPictures"></div><div class="performance-student-rubric" id="performanceStudentRubric"></div>
 <section class="performance-team-panel" hidden="" id="performanceTeamPanel"></section>
 <section class="performance-team-builder" hidden="" id="performanceStudentTeamBuilder"></section>
-<form class="form-stack" id="performanceSubmitForm"><label class="file-drop compact performance-output-upload">Upload pictures of your output<input accept="image/*" id="performanceOutputImages" multiple="" type="file"/><span>Choose one or more clear pictures</span></label><p class="muted" id="performanceOutputHint">At least one picture is required for your first submission.</p><section class="performance-participation-ratings" hidden="" id="performanceParticipationRatings"></section><div class="modal-actions"><button class="btn btn-light" data-close="performanceSubmitModal" type="button">Close</button><button class="btn btn-orange" type="submit">Submit performance task</button></div></form>
+<form class="form-stack" id="performanceSubmitForm"><div class="performance-class-links" id="performanceClassLinks" hidden><label>Video documentation URL (optional)<input id="performanceClassVideoUrl" type="url" maxlength="2048" placeholder="https://... (video of the class playing or presenting)"/></label><label>Digital game / project URL (optional)<input id="performanceClassProjectUrl" type="url" maxlength="2048" placeholder="https://... (playable class project)"/></label><p class="muted">Upload pictures of the class project and optionally link a video or playable game. Only the class representative submits.</p></div><label class="file-drop compact performance-output-upload">Upload pictures of your output<input accept="image/*" id="performanceOutputImages" multiple="" type="file"/><span>Choose one or more clear pictures</span></label><p class="muted" id="performanceOutputHint">At least one picture is required for your first submission.</p><section class="performance-participation-ratings" hidden="" id="performanceParticipationRatings"></section><div class="modal-actions"><button class="btn btn-light" data-close="performanceSubmitModal" type="button">Close</button><button class="btn btn-orange" type="submit">Submit performance task</button></div></form>
 </div>
 </dialog>
 <!-- REVIEW SUBMISSION MODAL -->
@@ -867,7 +870,7 @@
 <div><span>Manual review score</span><b id="manualReviewScore">0 / 0</b></div>
 <small>Changing any answer checkbox makes the recomputed manual-review score the teacher score.</small>
 </div>
-<section class="review-performance-team-info" hidden="" id="reviewPerformanceTeamInfo"></section>
+<section class="review-performance-team-info" hidden="" id="reviewPerformanceTeamInfo"></section><section class="performance-class-grade-panel" id="reviewClassScoring" hidden></section>
 <div class="proof-wrap" hidden="" id="reviewProofWrap">
 <p class="eyebrow" id="reviewProofLabel">SOLUTION PICTURES</p>
 <div class="proof-link-grid" id="reviewProofLinks"></div>
@@ -1005,7 +1008,7 @@
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script defer="" id="mathliveScript" src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
 <script src="js/question-tools.js?v=1.2-per-question-choice-order"></script>
-<script src="js/app.js?v=16.16-shuffle-options-new-review"></script>
+<script src="js/app.js?v=24.21-class-performance"></script>
 <dialog id="ctCreateOverlay" class="ct-create-overlay" aria-labelledby="ctCreateTitle"><section class="ct-create-modal"><button id="ctCreateClose" type="button" class="ct-create-x" aria-label="Close">&times;</button><div class="ct-create-icon">+</div><h2 id="ctCreateTitle">Create New Competency</h2><p>Enter the name of the learning competency.</p><form id="ctCreateForm"><label for="ctCreateName">Competency name</label><input id="ctCreateName" maxlength="180" autocomplete="off" placeholder="e.g., Simplifying Radical Expressions" required><div id="ctCreateError" class="ct-create-error" role="alert" hidden></div><div class="ct-create-actions"><button id="ctCreateCancel" type="button" class="ct-create-cancel">Cancel</button><button id="ctCreateSubmit" type="submit" class="ct-create-submit">Add Competency</button></div></form></section></dialog>
 <dialog id="ctDeleteDialog" class="ct-delete-dialog" aria-labelledby="ctDeleteTitle" aria-describedby="ctDeleteDescription">
   <section class="ct-delete-card">
@@ -1024,7 +1027,7 @@
 <script src="js/pwa.js?v=6.9.15"></script>
 <script src="js/push-notifications.js?v=6.12"></script>
 <script src="js/v12-archive-features.js?v=24.18-class-record-retention-1"></script>
-<script src="js/v15-performance-tasks.js?v=15.22-ct-v11"></script>
+<script src="js/v15-performance-tasks.js?v=24.21-class-performance"></script>
 <script src="js/friendly-editors.js?v=1"></script>
 <script src="js/orange-exact-forms.js?v=3"></script>
 </body>

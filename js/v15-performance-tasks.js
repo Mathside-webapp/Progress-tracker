@@ -266,7 +266,13 @@
   function syncPerformanceTeamOptions() {
     const mode = performanceMode();
     const grouped = mode !== 'individual';
+    if (mode === 'class') { const teacherRadio = $('input[name="grouping_creator"][value="teacher"]'); if (teacherRadio) teacherRadio.checked = true; }
     const creator = performanceGroupingCreator();
+    const help = $('#performanceClassHelp'); if (help) help.hidden = mode !== 'class';
+    const creatorRow = $('#performanceGroupingOptions .performance-creator-options')?.parentElement; if (creatorRow) creatorRow.hidden = mode === 'class';
+    const shuffle = $('#reshufflePerformanceTeamsBtn'); if (shuffle) shuffle.hidden = mode === 'class';
+    const generate = $('#generatePerformanceTeamsBtn'); if (generate) generate.hidden = mode === 'class';
+    const importRow = $('#performanceGroupingOptions .performance-import-groups-row'); if (importRow) importRow.hidden = mode === 'class';
     if ($('#performanceGroupingOptions')) $('#performanceGroupingOptions').hidden = !grouped;
     if ($('#performanceGroupCountWrap')) $('#performanceGroupCountWrap').hidden = mode !== 'group';
     if ($('#performanceTeacherGroupingTools')) $('#performanceTeacherGroupingTools').hidden = !grouped || creator !== 'teacher';
@@ -367,6 +373,12 @@
 
   function teamPreviewForSection(sectionId, mode, requestedGroupCount) {
     const imported = performanceImportedGroups.get(sectionId);
+    if (mode === 'class') {
+      const members = orderedStudentsForPerformanceSection(sectionId);
+      if (!members.length) return [];
+      const previous = Array.isArray(imported) ? imported[0] : null;
+      return [{ name: 'Whole Class', members, leader_id: previous?.leader_id || '' }];
+    }
     if (Array.isArray(imported) && imported.length) {
       return imported.map(group => ({
         ...group,
@@ -399,7 +411,7 @@
 
   function reshufflePerformanceTeams() {
     const mode = performanceMode();
-    if (mode === 'individual' || performanceGroupingCreator() !== 'teacher') return toast('Choose Pair or Group with teacher-created teams first.', 'orange');
+    if (mode === 'individual' || mode === 'class' || performanceGroupingCreator() !== 'teacher') return toast('Choose Pair or Group with teacher-created teams first.', 'orange');
     if (mode === 'group' && !performanceGroupCount()) return toast('Enter how many groups you want first.', 'orange');
     const sectionIds = selectedPerformanceSections();
     if (!sectionIds.length) return toast('Select at least one class first.', 'orange');
@@ -436,6 +448,7 @@
       performanceLeaderSelections.set(key, savedLeader);
       return savedLeader;
     }
+    if (performanceMode() === 'class') return ''; // Require a teacher-selected representative.
     const fallback = group.members[0]?.id || '';
     if (fallback) performanceLeaderSelections.set(key, fallback);
     return fallback;
@@ -461,7 +474,7 @@
       const section = sectionById(sectionId);
       const groups = teamPreviewForSection(sectionId, mode, performanceGroupCount());
       if (!groups.length) return `<article><h4>${esc(section?.name || 'Class')}</h4><p class="muted">No students are enrolled yet.</p></article>`;
-      return `<article data-team-preview-section="${esc(sectionId)}"><div class="performance-team-preview-head"><h4>${esc(section?.name || 'Class')} <small>Grade ${esc(section?.grade_level || '')}</small></h4><button type="button" class="btn btn-light performance-download-team-image" data-download-performance-team-image="${esc(sectionId)}">Download image</button></div><div class="performance-team-preview-grid">${groups.map(group => { const leaderId = selectedLeaderForGroup(sectionId, group); return `<div><b>${esc(group.name)}</b><label class="performance-leader-picker"><span>Team leader</span><select data-performance-leader-select data-section-id="${esc(sectionId)}" data-group-name="${esc(group.name)}">${group.members.map(member => `<option value="${esc(member.id)}" ${member.id===leaderId?'selected':''}>${esc(member.display_name)}</option>`).join('')}</select></label><div class="performance-team-members">${group.members.map(member => `<span>${member.id === leaderId ? '<strong>Leader</strong> ' : ''}${esc(member.display_name)}</span>`).join('')}</div></div>`; }).join('')}</div></article>`;
+      return `<article data-team-preview-section="${esc(sectionId)}"><div class="performance-team-preview-head"><h4>${esc(section?.name || 'Class')} <small>Grade ${esc(section?.grade_level || '')}</small></h4><button type="button" class="btn btn-light performance-download-team-image" data-download-performance-team-image="${esc(sectionId)}">Download image</button></div><div class="performance-team-preview-grid">${groups.map(group => { const leaderId = selectedLeaderForGroup(sectionId, group); return `<div><b>${esc(group.name)}</b><label class="performance-leader-picker"><span>${mode === 'class' ? 'Class representative (required)' : 'Team leader'}</span><select data-performance-leader-select data-section-id="${esc(sectionId)}" data-group-name="${esc(group.name)}" ${mode === 'class' ? 'required' : ''}>${mode === 'class' ? '<option value="">Choose a class representative</option>' : ''}${group.members.map(member => `<option value="${esc(member.id)}" ${member.id===leaderId?'selected':''}>${esc(member.display_name)}</option>`).join('')}</select></label><div class="performance-team-members">${group.members.map(member => `<span>${member.id === leaderId ? (mode === 'class' ? '<strong>Representative</strong> ' : '<strong>Leader</strong> ') : ''}${esc(member.display_name)}</span>`).join('')}</div></div>`; }).join('')}</div></article>`;
     }).join('');
   }
 
@@ -517,7 +530,7 @@
     ctx.fillStyle = '#ff6b00'; ctx.fillRect(0,0,width,18);
     ctx.fillStyle = '#2f241d'; ctx.font = '700 50px Arial'; ctx.fillText('Mathside Team Grouping', margin, 92);
     ctx.fillStyle = '#a94d0e'; ctx.font = '700 27px Arial'; ctx.fillText(`${section.name} · Grade ${section.grade_level}`, margin, 140);
-    ctx.fillStyle = '#75685f'; ctx.font = '24px Arial'; ctx.fillText(mode === 'pair' ? 'Pair Performance Task' : 'Group Performance Task', margin, 178);
+    ctx.fillStyle = '#75685f'; ctx.font = '24px Arial'; ctx.fillText(mode === 'class' ? 'Class Performance Task' : mode === 'pair' ? 'Pair Performance Task' : 'Group Performance Task', margin, 178);
 
     let y = 220;
     for (let r=0; r<rows; r+=1) {
@@ -875,8 +888,12 @@
         rubricPath = null;
       }
       const nextMode = performanceMode();
-      const nextCreator = nextMode === 'individual' ? 'teacher' : performanceGroupingCreator();
-      const nextGroupCount = nextMode === 'group' ? performanceGroupCount() : null;
+      if (nextMode === 'class') {
+        const groups = serializedPerformanceGroupsForSection(task.section_id, 'class', 1);
+        if (groups.length !== 1 || !groups[0].leader_id) throw new Error('Choose a class representative for each selected class.');
+      }
+      const nextCreator = ['individual','class'].includes(nextMode) ? 'teacher' : performanceGroupingCreator();
+      const nextGroupCount = nextMode === 'class' ? 1 : nextMode === 'group' ? performanceGroupCount() : null;
       const setupChanged = (task.collaboration_mode || 'individual') !== nextMode
         || (task.grouping_creator || 'teacher') !== nextCreator
         || Number(task.group_count || 0) !== Number(nextGroupCount || 0);
@@ -971,8 +988,15 @@
     const sectionIds = selectedPerformanceSections();
     if (!sectionIds.length) return toast('Select at least one class for this performance task.', 'orange');
     const mode = performanceMode();
-    const groupingCreator = mode === 'individual' ? 'teacher' : performanceGroupingCreator();
-    const groupCount = mode === 'group' ? performanceGroupCount() : null;
+    const groupingCreator = ['individual','class'].includes(mode) ? 'teacher' : performanceGroupingCreator();
+    const groupCount = mode === 'class' ? 1 : mode === 'group' ? performanceGroupCount() : null;
+    if (mode === 'class') {
+      for (const sectionId of sectionIds) {
+        const groups = serializedPerformanceGroupsForSection(sectionId, 'class', 1);
+        if (groups.length !== 1 || !groups[0].leader_id)
+          return toast(`Choose a class representative for ${sectionById(sectionId)?.name || 'every class'} before posting.`, 'orange');
+      }
+    }
     if (mode === 'group' && !groupCount) return toast('Enter how many groups you want for each class.', 'orange');
     const taskImages = [...($('#performanceImages')?.files || [])];
     if (taskImages.length > 8) return toast('Upload up to 8 reference pictures.', 'orange');
@@ -1095,7 +1119,7 @@
     const list = $('#performanceTaskList');
     if (!list) return;
     performanceTaskStatusFilter = ['all','posted','scheduled'].includes(performanceTaskStatusFilter) ? performanceTaskStatusFilter : 'all';
-    performanceTaskModeFilter = ['all','individual','pair','group'].includes(performanceTaskModeFilter) ? performanceTaskModeFilter : 'all';
+    performanceTaskModeFilter = ['all','individual','pair','group','class'].includes(performanceTaskModeFilter) ? performanceTaskModeFilter : 'all';
     performanceTaskSort = ['newest','name','name-desc','due'].includes(performanceTaskSort) ? performanceTaskSort : 'newest';
     syncPerformanceTaskFilterUi();
     let groups = performanceGroups().filter(group => {
@@ -1411,7 +1435,7 @@
   // ---------------------------------------------------------------
   // SUBMISSIONS: category > section > activity; newest by default
   // ---------------------------------------------------------------
-  function typeSubmissionCount(type) { return state.submissions.filter(s => workType(assignmentById(s.assignment_id)) === type).length; }
+  function typeSubmissionCount(type) { return state.submissions.filter(s => !s.is_class_mirror && workType(assignmentById(s.assignment_id)) === type).length; }
   function renderTypeTabs() {
     if ($('#writtenSubmissionCount')) $('#writtenSubmissionCount').textContent = String(typeSubmissionCount('written_work'));
     if ($('#performanceSubmissionCount')) $('#performanceSubmissionCount').textContent = String(typeSubmissionCount('performance_task'));
@@ -1483,8 +1507,8 @@
     const genderClass = student?.gender === 'Male' ? 'submission-male' : student?.gender === 'Female' ? 'submission-female' : 'submission-other';
     const late = isLateSubmission(s, a);
     const mode = isPerformanceTask(a) ? (a?.collaboration_mode || 'individual') : 'individual';
-    const teamPill = mode === 'pair' ? '<span class="submission-team-pill">Pair submission</span>' : mode === 'group' ? '<span class="submission-team-pill">Group submission</span>' : '';
-    const submitterPrefix = mode === 'individual' ? '' : 'Leader: ';
+    const teamPill = mode === 'class' ? '<span class="submission-team-pill">Class submission</span>' : mode === 'pair' ? '<span class="submission-team-pill">Pair submission</span>' : mode === 'group' ? '<span class="submission-team-pill">Group submission</span>' : '';
+    const submitterPrefix = mode === 'class' ? 'Class representative: ' : mode === 'individual' ? '' : 'Leader: ';
     return `<article class="submission-card ${genderClass}"><div class="submission-status-icon">${graded?iconSvg('check','assignment-line-icon'):iconSvg('inbox','assignment-line-icon')}</div><div class="submission-card-body"><div class="submission-student-row"><button type="button" class="submission-student-name" data-track-student-from-submissions="${student?.id||''}" data-track-section="${section?.id||''}">${submitterPrefix}${esc(student?.display_name||'Student')}</button><span class="gender-pill">${esc(student?.gender||'Not specified')}</span><span class="submission-review-pill ${graded?'is-checked':'is-new'}">${graded?'Checked':'New'}</span>${teamPill}${late?'<span class="submission-late-pill">Late</span>':''}</div><h3 class="submission-assignment-title">${esc(a?.title || (isPerformanceTask(a)?'Performance Task':'Activity'))}</h3><p class="submission-class-label">${esc(sectionLabel(section))}</p><div class="submission-meta-grid"><span><small>Status</small><b>${graded?'Checked':'New'}</b></span><span><small>Score</small><b>${shown===null?'Pending':`${shown}/${total}`}</b></span><span><small>Timing</small><b>${late?'Late':'On time'}</b></span><span><small>Submitted</small><b>${esc(formatStudentDate(s.submitted_at)||'')}</b></span></div></div><button class="btn btn-orange submission-review-btn" data-review-submission="${s.id}">${graded?'Review again':'Review'}</button></article>`;
   }
 
@@ -1500,6 +1524,7 @@
     const scopedRows = state.submissions.filter(s => {
       const assignment = assignmentById(s.assignment_id);
       return workType(assignment) === submissionWorkType
+        && !s.is_class_mirror
         && (submissionSectionId === 'all' || assignment?.section_id === submissionSectionId)
         && (submissionAssignmentFilter === 'all' || s.assignment_id === submissionAssignmentFilter);
     });
@@ -1597,7 +1622,7 @@
 
   function collaborationLabel(a) {
     const mode = a?.collaboration_mode || 'individual';
-    return mode === 'pair' ? 'Pair task' : mode === 'group' ? 'Group task' : 'Individual task';
+    return mode === 'class' ? 'Whole-class task' : mode === 'pair' ? 'Pair task' : mode === 'group' ? 'Group task' : 'Individual task';
   }
 
   function renderTeamMembers(team) {
@@ -1622,7 +1647,7 @@
   async function renderLeaderParticipationRatings(a, team) {
     const box = $('#performanceParticipationRatings');
     if (!box) return;
-    const members = (team?.members || []).filter(member => member.id !== team.leader_id);
+    const members = a.collaboration_mode === 'class' ? [] : (team?.members || []).filter(member => member.id !== team.leader_id);
     if (!members.length) { box.hidden = true; box.innerHTML = ''; return; }
     let existing = [];
     try { existing = await getPerformanceParticipationRatings(a.id, team.group?.id); } catch (_) {}
@@ -1632,7 +1657,7 @@
   }
 
   async function saveLeaderParticipationRatings(a, team) {
-    if ((a.collaboration_mode || 'individual') === 'individual' || !team?.is_leader || !team?.group?.id) return;
+    if (['individual','class'].includes(a.collaboration_mode || 'individual') || !team?.is_leader || !team?.group?.id) return;
     const selects = $$('[data-participation-member]', $('#performanceParticipationRatings'));
     const ratings = selects.map(select => ({ member_id:select.dataset.participationMember, rating:Number(select.value || 0) }));
     if (ratings.some(item => item.rating < 1 || item.rating > 5)) throw new Error('Rate every team member from 1 to 5 before submitting.');
@@ -1667,6 +1692,68 @@
     } catch (error) { toast(friendlyErrorMessage(error, 'Could not create the team.'), 'orange'); }
   });
 
+  function performanceClassResourceLinks(submission) {
+    if (!submission) return '';
+    const links = [
+      ['Video documentation', submission.class_video_url],
+      ['Open digital class project', submission.class_project_url]
+    ].filter(([, url]) => typeof url === 'string' && /^https:\/\/[^\s/]+/i.test(url));
+    return links.map(([label, url]) => `<a class="btn btn-light" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>`).join('');
+  }
+
+  async function loadClassScoresForReview(assignmentId, canAdjust) {
+    const box = $('#reviewClassScoring');
+    if (!box) return;
+    box.hidden = false;
+    box.innerHTML = '<p class="muted">Loading class score record…</p>';
+    const result = await db.rpc('mathside_get_class_scores', {p_assignment_id: assignmentId});
+    if (result.error) {
+      box.innerHTML = `<p class="muted">Class scores unavailable: ${esc(friendlyErrorMessage(result.error, 'Run the Class Mode SQL migration.'))}</p>`;
+      return;
+    }
+    const payload = result.data || {};
+    const base = payload.base_score;
+    const maxPoints = Number(payload.max_points || 0);
+    const members = Array.isArray(payload.students) ? payload.students : [];
+    box.innerHTML = `<h3>Class Score Record</h3><p class="muted">${base == null ? 'Save the common class grade above first. Then reopen the review to adjust individual scores.' : `Common grade: ${Number(base)}/${maxPoints}. Individual adjustments are optional.`}</p><div class="class-grade-controls">${members.map(member => {
+      const override = member.override != null;
+      const score = override ? Number(member.override) : (base == null ? '' : Number(base));
+      return `<label class="class-grade-person"><span>${esc(member.display_name || 'Learner')}${member.representative ? ' <small>(Representative)</small>' : ''}</span><input aria-label="Grade for ${esc(member.display_name || 'Learner')}" data-class-student-id="${esc(member.id)}" type="number" min="0" max="${maxPoints}" step="0.01" value="${score}" ${member.representative || !canAdjust ? 'disabled' : ''}></label>`;
+    }).join('')}</div>${canAdjust && base != null ? '<div class="class-grade-actions"><button class="btn btn-orange" type="button" data-save-class-scores>Save individual adjustments</button><small>Enter the common score to remove an adjustment.</small></div>' : ''}`;
+    box.dataset.classAssignmentId = assignmentId;
+    box.dataset.classBaseScore = base == null ? '' : String(base);
+    box.dataset.classMaxPoints = String(maxPoints);
+  }
+
+  document.addEventListener('click', async event => {
+    const btn = event.target.closest('[data-save-class-scores]');
+    if (!btn) return;
+    const box = $('#reviewClassScoring');
+    if (!box || !box.dataset.classAssignmentId) return;
+    const base = Number(box.dataset.classBaseScore);
+    const max = Number(box.dataset.classMaxPoints);
+    const scores = [];
+    for (const input of $$('[data-class-student-id]', box)) {
+      const value = input.value.trim();
+      if (value === '' || !Number.isFinite(Number(value)) || Number(value) < 0 || Number(value) > max)
+        return toast(`Each learner must have a score from 0 to ${max}.`, 'orange');
+      const numeric = Number(value);
+      scores.push({student_id: input.dataset.classStudentId, score: numeric === base ? null : numeric});
+    }
+    if (!window.MathsideActionButton?.start(btn,'Saving…')) return;
+    try {
+      const result = await db.rpc('mathside_set_class_scores', { p_assignment_id: box.dataset.classAssignmentId, p_scores: scores });
+      if (result.error) throw result.error;
+      await refreshTeacher();
+      await loadClassScoresForReview(box.dataset.classAssignmentId, true);
+      await window.MathsideActionButton?.done(btn,'Saved');
+      toast('Individual class scores updated in the students’ records.', 'success');
+    } catch (error) {
+      window.MathsideActionButton?.reset(btn);
+      toast(friendlyErrorMessage(error, 'Could not save the class scores.'), 'orange');
+    }
+  });
+
   // ---------------------------------------------------------------
   // REVIEW PERFORMANCE TASK
   // ---------------------------------------------------------------
@@ -1674,6 +1761,7 @@
     const submission = state.submissions.find(s=>s.id===submissionId), a = assignmentById(submission?.assignment_id);
     if (!submission || !isPerformanceTask(a)) {
       if ($('#reviewPerformanceTeamInfo')) { $('#reviewPerformanceTeamInfo').hidden = true; $('#reviewPerformanceTeamInfo').innerHTML = ''; }
+      if ($('#reviewClassScoring')) { $('#reviewClassScoring').hidden = true; $('#reviewClassScoring').innerHTML = ''; }
       return originalOpenSubmissionReview(submissionId);
     }
     activeSubmissionId = submissionId;
@@ -1686,13 +1774,17 @@
       $('#reviewSubmissionAnswers').innerHTML = `<article class="answer-question review-answer"><p class="eyebrow">TASK INSTRUCTIONS</p><p>${esc(a.instructions||'No additional instructions.')}</p></article>`;
       const teamBox = $('#reviewPerformanceTeamInfo');
       if (teamBox) { teamBox.hidden = true; teamBox.innerHTML = ''; }
+      const classGrades = $('#reviewClassScoring');
+      if (classGrades) { classGrades.hidden = true; classGrades.innerHTML = ''; }
       if ((a.collaboration_mode || 'individual') !== 'individual' && teamBox) {
         try {
           const team = await getPerformanceTeamInfo(a.id, submission.student_id);
-          const ratings = team?.group?.id ? await getPerformanceParticipationRatings(a.id, team.group.id) : [];
+          const ratings = (a.collaboration_mode !== 'class' && team?.group?.id) ? await getPerformanceParticipationRatings(a.id, team.group.id) : [];
           const ratingMap = new Map(ratings.map(row => [row.member_id, Number(row.rating || 0)]));
           teamBox.hidden = false;
-          teamBox.innerHTML = `<p class="eyebrow">PRIVATE TEAM INFORMATION</p><h3>${esc(team?.group?.name || collaborationLabel(a))}</h3><p class="muted">Participation ratings are visible only to the teacher and team leader.</p><div class="review-team-member-list">${(team.members || []).map(member => `<div><span>${esc(member.display_name || 'Student')}${member.id===team.leader_id?' · Leader':''}</span><b>${member.id===team.leader_id?'—':(ratingMap.get(member.id) ? `${ratingMap.get(member.id)}/5` : 'Not rated')}</b></div>`).join('')}</div>`;
+          teamBox.innerHTML = a.collaboration_mode === 'class'
+            ? `<p class="eyebrow">CLASS SUBMISSION</p><h3>${esc(sectionById(a.section_id)?.name || 'Whole class')}</h3><p>Representative: <b>${esc(student?.display_name || 'Student')}</b> · One submission for the class</p>`
+            : `<p class="eyebrow">PRIVATE TEAM INFORMATION</p><h3>${esc(team?.group?.name || collaborationLabel(a))}</h3><p class="muted">Participation ratings are visible only to the teacher and team leader.</p><div class="review-team-member-list">${(team.members || []).map(member => `<div><span>${esc(member.display_name || 'Student')}${member.id===team.leader_id?' · Leader':''}</span><b>${member.id===team.leader_id?'—':(ratingMap.get(member.id) ? `${ratingMap.get(member.id)}/5` : 'Not rated')}</b></div>`).join('')}</div>`;
         } catch (error) { console.warn('Could not load private team details', error); }
       }
       $('#manualReviewSummary').hidden = true;
@@ -1705,8 +1797,9 @@
       const links = await signedLinks('mathside-submission-proofs', submissionOutputPaths(submission), 1800);
       const wrap = $('#reviewProofWrap');
       if ($('#reviewProofLabel')) $('#reviewProofLabel').textContent = 'PERFORMANCE TASK OUTPUT';
-      $('#reviewProofLinks').innerHTML = links.map((x,i)=>`<a class="btn btn-light" href="${esc(x.url)}" target="_blank" rel="noopener">Open output picture ${i+1}</a>`).join('');
-      wrap.hidden = !links.length;
+      $('#reviewProofLinks').innerHTML = links.map((x,i)=>`<a class="btn btn-light" href="${esc(x.url)}" target="_blank" rel="noopener">Open output picture ${i+1}</a>`).join('') + performanceClassResourceLinks(submission);
+      wrap.hidden = !links.length && !(a.collaboration_mode === 'class' && (submission.class_video_url || submission.class_project_url));
+      if (a.collaboration_mode === 'class') await loadClassScoresForReview(a.id, submission.status === 'graded');
       const allowAgainBtn = $('#allowResubmissionBtn');
       if (allowAgainBtn) {
         allowAgainBtn.hidden = !a.allow_resubmission;
@@ -1786,6 +1879,10 @@
     const form = $('#performanceSubmitForm');
     const upload = form?.querySelector('.performance-output-upload');
     const ratingsBox = $('#performanceParticipationRatings');
+    const classLinks = $('#performanceClassLinks');
+    if (classLinks) classLinks.hidden = a.collaboration_mode !== 'class';
+    if ($('#performanceClassVideoUrl')) $('#performanceClassVideoUrl').value = submissionFor(a.id)?.class_video_url || '';
+    if ($('#performanceClassProjectUrl')) $('#performanceClassProjectUrl').value = submissionFor(a.id)?.class_project_url || '';
     if (teamPanel) { teamPanel.hidden = true; teamPanel.innerHTML = ''; }
     if (teamBuilder) { teamBuilder.hidden = true; teamBuilder.innerHTML = ''; }
     if (ratingsBox) { ratingsBox.hidden = true; ratingsBox.innerHTML = ''; }
@@ -1812,11 +1909,11 @@
         if (teamPanel) {
           teamPanel.hidden = false;
           const leaderMessage = !team.leader_id
-            ? '<p class="team-member-note waiting-leader-note">Your teacher has not chosen the team leader yet. You can still view this task and its resources.</p>'
+            ? '<p class="team-member-note waiting-leader-note">Your teacher has not chosen the class representative or team leader yet. You can still view this task and its resources.</p>'
             : team.is_leader
-              ? '<p class="team-leader-note">You are the leader. Only you can submit the team output.</p>'
-              : '<p class="team-member-note">Your team leader will submit the final output. You can still view this task and its resources.</p>';
-          teamPanel.innerHTML = `<p class="eyebrow">YOUR TEAM</p><h3>${esc(team.group.name || collaborationLabel(a))}</h3><ul class="performance-team-member-list">${renderTeamMembers(team)}</ul>${leaderMessage}`;
+              ? `<p class="team-leader-note">${mode === 'class' ? 'You are the class representative. Submit one project for the entire class.' : 'You are the leader. Only you can submit the team output.'}</p>`
+              : `<p class="team-member-note">${mode === 'class' ? 'Your class representative will submit for everyone. Your grade and task status will update automatically.' : 'Your team leader will submit the final output. You can still view this task and its resources.'}</p>`;
+          teamPanel.innerHTML = `<p class="eyebrow">${mode === 'class' ? 'YOUR CLASS PROJECT' : 'YOUR TEAM'}</p><h3>${esc(team.group.name || collaborationLabel(a))}</h3><ul class="performance-team-member-list">${renderTeamMembers(team)}</ul>${leaderMessage}`;
         }
         if (!team.is_leader && form) form.hidden = true;
         if (team.is_leader) await renderLeaderParticipationRatings(a, team);
@@ -1855,6 +1952,9 @@
     if (a.status === 'archived') return toast('This performance task has been archived.', 'orange');
     if (existing && !existing.resubmit_allowed) return toast('Your teacher must allow another attempt before you can resubmit.', 'orange');
     const files = [...($('#performanceOutputImages')?.files || [])];
+    const classVideoUrl = a.collaboration_mode === 'class' ? String($('#performanceClassVideoUrl')?.value || '').trim() : '';
+    const classProjectUrl = a.collaboration_mode === 'class' ? String($('#performanceClassProjectUrl')?.value || '').trim() : '';
+    if ([classVideoUrl,classProjectUrl].some(link => link && (!/^https:\/\/[^\s/]+/i.test(link) || link.length > 2048))) return toast('Video and project links must be valid HTTPS URLs.', 'orange');
     if (!files.length) return toast('Upload at least one picture of your output.', 'orange');
     if (files.length > 10) return toast('Choose up to 10 output pictures.', 'orange');
     if (files.some(f => !String(f.type||'').startsWith('image/') && !isHeicImage(f))) return toast('Performance task outputs must be image files.', 'orange');
@@ -1862,11 +1962,13 @@
     const submitBtn = event.currentTarget.querySelector('button[type="submit"]');
     if (!window.MathsideActionButton?.start(submitBtn, 'Submitting…')) return;
     const oldPaths = submissionOutputPaths(existing), newPaths = [];
+    let submittedToServer = false;
+    let classLinksWarning = false;
     try {
       let team = null;
       if ((a.collaboration_mode || 'individual') !== 'individual') {
         team = await getPerformanceTeamInfo(a.id);
-        if (!team?.is_leader) throw new Error('Only your team leader can submit this performance task.');
+        if (!team?.is_leader) throw new Error(a.collaboration_mode === 'class' ? 'Only the class representative selected by your teacher may submit this project.' : 'Only your team leader can submit this performance task.');
         await saveLeaderParticipationRatings(a, team);
       }
 
@@ -1880,17 +1982,26 @@
         }
         const { error } = await db.rpc('mathside_submit_work', { p_assignment_id:a.id, p_answers:[], p_proof_paths:newPaths });
         if (error) throw error;
+        submittedToServer = true;
+        if (a.collaboration_mode === 'class') {
+          const linksSaved = await db.rpc('mathside_save_class_submission_links', { p_assignment_id:a.id, p_video_url:classVideoUrl || null, p_project_url:classProjectUrl || null });
+          if (linksSaved.error) {
+            classLinksWarning = true;
+            console.warn('Class project submitted, optional links could not be saved:', linksSaved.error);
+          }
+        }
         if (oldPaths.length) await removeStoragePaths('mathside-submission-proofs', oldPaths);
         await refreshStudent();
         showStudentPanel('performance');
       });
       await window.MathsideActionButton.done(submitBtn, 'Done');
       closeDialog('performanceSubmitModal');
-      toast('Performance task submitted.', 'success');
+      toast(classLinksWarning ? 'Class project submitted. Optional links were not saved; contact your teacher or ask to resubmit after the database upgrade.' : 'Performance task submitted.', classLinksWarning ? 'orange' : 'success');
     } catch (error) {
       window.MathsideActionButton?.reset(submitBtn);
-      console.error(error); if (newPaths.length) await removeStoragePaths('mathside-submission-proofs', newPaths);
-      toast(friendlyErrorMessage(error, 'Could not submit the performance task.'), 'orange');
+      console.error(error); if (!submittedToServer && newPaths.length) await removeStoragePaths('mathside-submission-proofs', newPaths);
+      if (submittedToServer) { try { await refreshStudent(); } catch (_) {} }
+      toast(submittedToServer ? 'Your project was submitted, but refreshing the page failed. Reopen Mathside to check your submission.' : friendlyErrorMessage(error, 'Could not submit the performance task.'), 'orange');
     }
   });
 
@@ -1906,8 +2017,9 @@
     $('#studentResponseAnswers').innerHTML = `<article class="answer-question student-preview-answer"><p class="eyebrow">PERFORMANCE TASK</p><p>${esc(a.instructions||'')}</p></article>`;
     const links = await signedLinks('mathside-submission-proofs', submissionOutputPaths(submission), 1800);
     $('#studentResponseProofLabel').textContent = 'MY OUTPUT PICTURES';
-    $('#studentResponseProofLinks').innerHTML = links.map((x,i)=>`<a class="btn btn-light" href="${esc(x.url)}" target="_blank" rel="noopener">Open output picture ${i+1}</a>`).join('');
-    $('#studentResponseProofWrap').hidden = !links.length;
+    $('#studentResponseProofLinks').innerHTML = links.map((x,i)=>`<a class="btn btn-light" href="${esc(x.url)}" target="_blank" rel="noopener">Open output picture ${i+1}</a>`).join('') + performanceClassResourceLinks(submission);
+    $('#studentResponseProofWrap').hidden = !links.length && !(a.collaboration_mode === 'class' && (submission.class_video_url || submission.class_project_url));
+    if (a.collaboration_mode === 'class') $('#studentResponseProofLabel').textContent = 'CLASS PROJECT & DOCUMENTATION';
     const feedback = $('#studentResponseFeedback');
     if (submission.feedback) { feedback.innerHTML = `<p class="eyebrow">TEACHER FEEDBACK</p><p>${esc(submission.feedback)}</p>`; feedback.hidden = false; }
     else feedback.hidden = true;

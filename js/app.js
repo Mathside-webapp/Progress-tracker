@@ -2,12 +2,33 @@ const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const config = window.MATHSIDE_CONFIG || {};
+// Only public frontend keys are accepted here. Supabase secrets/service-role JWTs
+// must NEVER be used by the browser, even if someone pastes one into config.js.
+function mathsideIsPublicSupabaseKey(value) {
+  const key = String(value || '').trim();
+  if (key.startsWith('sb_publishable_')) return key.length > 'sb_publishable_'.length + 15;
+  if (key.startsWith('sb_secret_')) return false;
+  const jwtParts = key.split('.');
+  if (jwtParts.length !== 3) return false;
+  try {
+    const payload = JSON.parse(atob(jwtParts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return payload?.role === 'anon'; // legacy anon JWT; never service_role
+  } catch (_) { return false; }
+}
+
+// Existing Mathside student accounts use a deterministic internal Auth email.
+// No unauthenticated username-lookup request is needed before sign-in.
+function mathsideStudentAuthEmail(username) {
+  const name = String(username || '').trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9._-]{1,78}$/.test(name)) return null;
+  return `${name}@students.mathside.invalid`;
+}
+
 const isConfigured = Boolean(
   !window.MATHSIDE_PREVIEW && window.supabase &&
   /^https?:\/\//i.test(String(config.SUPABASE_URL || '')) &&
   !String(config.SUPABASE_URL || '').includes('YOUR-PROJECT') &&
-  String(config.SUPABASE_PUBLISHABLE_KEY || '').length > 20 &&
-  !String(config.SUPABASE_PUBLISHABLE_KEY || '').includes('REPLACE_ME')
+  mathsideIsPublicSupabaseKey(config.SUPABASE_PUBLISHABLE_KEY)
 );
 
 const db = isConfigured
@@ -860,10 +881,8 @@ $('#authForm').addEventListener('submit', async event => {
     await withLoading('Signing you in…', 'Opening your Mathematics classroom.', async () => {
       let authEmail = login;
       if (!login.includes('@')) {
-        const { data, error } = await db.rpc('mathside_resolve_login', { p_username: login.toLowerCase() });
-        if (error) throw error;
-        if (!data) throw new Error('Student username or password is incorrect.');
-        authEmail = data;
+        authEmail = mathsideStudentAuthEmail(login);
+        if (!authEmail) throw new Error('Student username or password is incorrect.');
       }
       const { error } = await db.auth.signInWithPassword({ email: authEmail, password });
       if (error) throw error;
@@ -1490,6 +1509,7 @@ async function buildResetPasswordsExcel(accounts, section) {
 function isIOSDevice(){return /iPad|iPhone|iPod/i.test(navigator.userAgent||'')||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);}
 function downloadPreparedResetExcel(exportFile){
   if(!exportFile?.blob||!exportFile?.filename)return toast('The reset Excel file is not ready. Please reset the password again.','orange','Download unavailable');
+  if(!window.confirm('This Excel file contains REAL student passwords. Save it only on your private device, do not upload it to GitHub or shared folders, and give each student only their own password. Download now?'))return;
   const url=URL.createObjectURL(exportFile.blob);
   const link=document.createElement('a');
   link.href=url; link.download=exportFile.filename; link.rel='noopener';
@@ -1749,6 +1769,7 @@ function excelTimestamp(date = new Date()) {
 }
 
 async function downloadGeneratedAccountsExcel() {
+  if (!window.confirm('This Excel file contains REAL student passwords. Keep it private, do not commit or share the complete file, and give each student only their own credentials. Download now?')) return;
   if (!window.ExcelJS) return toast('Excel export could not load. Check your internet connection and try again.', 'orange');
   if (!lastGeneratedAccounts.length) return toast('There are no newly generated student credentials to download.', 'orange');
 
@@ -4461,7 +4482,10 @@ $('#gradeForm').addEventListener('submit', async event => {
 
       // Once the teacher has saved the final grade, the uploaded proof pictures
       // are no longer needed for checking. Delete them to keep Supabase Storage small.
-      cleanupResult = await cleanupGradedSubmissionProofs(submission);
+      // Class project photos are shared across every learner's submission mirror;
+      // keep them available for the class after grading.
+      const gradedAssignment = assignmentById(submission.assignment_id);
+      if (gradedAssignment?.collaboration_mode !== 'class') cleanupResult = await cleanupGradedSubmissionProofs(submission);
       closeDialog('reviewSubmissionModal');
       showTeacherView('submissions');
     });
