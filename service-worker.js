@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-24-choice-layout-1';
+const CACHE_NAME = 'mathside-pwa-v24-25-activity-ux';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -47,10 +47,10 @@ const APP_SHELL = [
   './assets/panel-identity/archive-records.svg',
   './js/config.js',
   './js/question-tools.js?v=1.2-per-question-choice-order',
-  './css/mathside-question-tools.css?v=1.2-student-choice-layout',
-  './js/app.js?v=24.21-class-performance',
+  './css/mathside-question-tools.css?v=1.3-activity-ux',
+  './js/app.js?v=24.25-activity-ux',
   './js/student-v8.js?v=15.3-overdue-history-fix',
-  './js/v10-features.js?v=24.23-class-leader-rating',
+  './js/v10-features.js?v=24.25-draft-progress',
   './js/design-v9.js?v=9',
   './js/pwa.js?v=6.9.15',
   './js/push-notifications.js?v=6.12',

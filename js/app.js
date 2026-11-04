@@ -201,6 +201,72 @@ function richStudentAnswer(value = '') {
 
 function refreshStudentAnswerPreviews() {
   $$('#answerQuestions input[name^="answer_"]').forEach(updateStudentAnswerPreview);
+  refreshStudentAnswerProgress();
+}
+
+function unansweredStudentQuestionIndexes() {
+  if (!activeStudentAssignment) return [];
+  const questionsById = new Map(questionsFor(activeStudentAssignment.id).map(question => [String(question.id), question]));
+  // Use displayed card order rather than database order: shuffled activities
+  // must highlight and scroll to the right question.
+  return $$('#answerQuestions .answer-question').map((card, index) => {
+    const question = questionsById.get(card.dataset.questionId);
+    if (!question) return -1;
+    const value = question.question_type === 'mcq'
+      ? $(`input[name="answer_${question.id}"]:checked`, card)?.value
+      : $(`input[name="answer_${question.id}"]`, card)?.value;
+    return String(value || '').trim() ? -1 : index;
+  }).filter(index => index >= 0);
+}
+
+function refreshStudentAnswerProgress() {
+  if (!activeStudentAssignment) return;
+  const total = questionsFor(activeStudentAssignment.id).length;
+  const unanswered = unansweredStudentQuestionIndexes().length;
+  const answered = total - unanswered;
+  const count = $('#studentAnsweredCount');
+  const hint = $('#studentUnansweredHint');
+  const bar = $('#studentAnswerProgressBar');
+  const fill = $('#studentAnswerProgressFill');
+  if (count) count.textContent = `${answered} of ${total} answered`;
+  if (hint) hint.textContent = unanswered ? `${unanswered} remaining` : 'All questions answered';
+  if (bar) {
+    bar.setAttribute('aria-valuemax', String(total));
+    bar.setAttribute('aria-valuenow', String(answered));
+  }
+  if (fill) fill.style.width = `${total ? (100 * answered / total) : 0}%`;
+  if (!unanswered) $('#answerQuestions')?.classList.remove('mathside-show-unanswered');
+  const cards = $$('#answerQuestions .answer-question');
+  const missingSet = new Set(unansweredStudentQuestionIndexes());
+  cards.forEach((card, index) => card.classList.toggle('mathside-question-unanswered', missingSet.has(index)));
+}
+
+function confirmStudentIncomplete(unanswered, total) {
+  if (!unanswered.length) return Promise.resolve(true);
+  const modal = $('#studentIncompleteDialog');
+  if (!modal?.showModal) return Promise.resolve(window.confirm(`${unanswered.length} of ${total} questions are unanswered. Submit anyway?`));
+  $('#studentIncompleteMessage').textContent = `${unanswered.length} of ${total} questions are unanswered. You can review them now, or submit with those answers blank.`;
+  return new Promise(resolve => {
+    const review = $('#studentIncompleteReview');
+    const proceed = $('#studentIncompleteProceed');
+    let settled = false;
+    const finish = accepted => {
+      if (settled) return;
+      settled = true;
+      review.removeEventListener('click', onReview);
+      proceed.removeEventListener('click', onProceed);
+      modal.removeEventListener('cancel', onCancel);
+      if (modal.open) modal.close();
+      resolve(accepted);
+    };
+    const onReview = () => finish(false);
+    const onProceed = () => finish(true);
+    const onCancel = event => { event.preventDefault(); finish(false); };
+    review.addEventListener('click', onReview);
+    proceed.addEventListener('click', onProceed);
+    modal.addEventListener('cancel', onCancel);
+    modal.showModal();
+  });
 }
 
 
@@ -2390,6 +2456,8 @@ function resetAssignmentForm() {
   populateAssignmentSections();
   if ($('#assignmentPublishMode')) $('#assignmentPublishMode').value = 'now';
   if ($('#assignmentShuffleQuestions')) $('#assignmentShuffleQuestions').checked = false;
+  if ($('#assignmentRequireSolutionPhoto')) $('#assignmentRequireSolutionPhoto').checked = true;
+  if ($('#assignmentDuplicateNotice')) $('#assignmentDuplicateNotice').hidden = true;
   if ($('#assignmentPublishAtWrap')) $('#assignmentPublishAtWrap').hidden = true;
   if ($('#assignmentPublishAt')) $('#assignmentPublishAt').value = '';
   $('#assignmentImagePreview').hidden = true;
@@ -2402,7 +2470,37 @@ function resetAssignmentForm() {
 function addQuestion() {
   questionCount += 1;
   $('#questionBuilder').insertAdjacentHTML('beforeend', questionBlock(questionCount));
+  updateDuplicateQuestionNotice();
 }
+
+// Non-destructive warning; identical questions may be intentional.
+function normalizeQuestionForDuplicate(value) {
+  return String(value || '').normalize('NFKC').trim().replace(/\s+/g, ' ').replace(/\s*([+\-*/=])\s*/g, '$1').toLowerCase();
+}
+function duplicateQuestionGroups(questions) {
+  const positions = new Map();
+  questions.forEach((question, index) => {
+    const key = normalizeQuestionForDuplicate(question.text);
+    if (!key) return;
+    if (!positions.has(key)) positions.set(key, []);
+    positions.get(key).push(index + 1);
+  });
+  return [...positions.values()].filter(group => group.length > 1);
+}
+function updateDuplicateQuestionNotice() {
+  const message = $('#assignmentDuplicateNotice');
+  if (!message) return;
+  const groups = duplicateQuestionGroups($$('[data-question-block]', $('#questionBuilder')).map(block => ({
+    text: block.querySelector('.q-text')?.value || ''
+  })));
+  message.hidden = !groups.length;
+  message.textContent = groups.length
+    ? `Possible repeated questions: ${groups.map(group => group.map(number => `#${number}`).join(' and ')).join('; ')}. Check whether the repetition is intentional.`
+    : '';
+}
+$('#questionBuilder').addEventListener('input', event => {
+  if (event.target?.classList.contains('q-text')) updateDuplicateQuestionNotice();
+});
 
 $('#addQuestionBtn').addEventListener('click', addQuestion);
 $('#questionBuilder').addEventListener('change', event => {
@@ -2443,6 +2541,7 @@ $('#questionBuilder').addEventListener('click', event => {
   event.target.closest('[data-question-block]').remove();
   $$('[data-question-block]', $('#questionBuilder')).forEach((b,i) => b.querySelector('.question-top strong').textContent = `Question ${i+1}`);
   questionCount = $$('[data-question-block]', $('#questionBuilder')).length;
+  updateDuplicateQuestionNotice();
 });
 
 let mathKeyboardTarget = null;
@@ -2821,6 +2920,7 @@ function loadAssignmentQuestions(assignmentId) {
     [...block.querySelectorAll('.q-option')].forEach((input, index) => { input.value = options[index] || ''; });
     block.querySelector('.option-list').hidden = question.question_type !== 'mcq';
   });
+  updateDuplicateQuestionNotice();
 }
 
 function setAssignmentEditorMode(assignment = null, assignmentGroup = []) {
@@ -2879,6 +2979,7 @@ function openAssignmentModal(assignmentId = null) {
     form.elements.reminder_hours_before.value = String(Number(assignment.reminder_hours_before || 0));
     if (form.elements.allow_resubmission) form.elements.allow_resubmission.checked = Boolean(assignment.allow_resubmission);
     if (form.elements.shuffle_questions) form.elements.shuffle_questions.checked = Boolean(assignment.shuffle_questions);
+    if (form.elements.require_solution_photo) form.elements.require_solution_photo.checked = assignment.require_solution_photo !== false;
     const groupSectionIds = new Set((assignmentGroup.length ? assignmentGroup : [assignment]).map(item => item.section_id));
     $$('input[name="assignment_sections"]', $('#assignmentSectionChecklist')).forEach(input => {
       input.checked = groupSectionIds.has(input.value);
@@ -3006,7 +3107,8 @@ async function updateExistingAssignment(assignment, form, questions, dueAt, remi
       status: publishStatus,
       publish_at: publishAt,
       allow_resubmission: form.get('allow_resubmission') === 'on',
-      shuffle_questions: form.get('shuffle_questions') === 'on'
+      shuffle_questions: form.get('shuffle_questions') === 'on',
+      require_solution_photo: form.get('require_solution_photo') === 'on'
     }).eq('id', assignment.id);
     if (updateRes.error) throw updateRes.error;
 
@@ -3071,6 +3173,7 @@ async function createWrittenWorkForAddedClass(source, sectionId, questions) {
     publish_at: source.publish_at,
     allow_resubmission: Boolean(source.allow_resubmission),
     shuffle_questions: Boolean(source.shuffle_questions),
+    require_solution_photo: source.require_solution_photo !== false,
     work_type: source.work_type || 'written_work'
   }).select().single();
   if (insert.error) throw insert.error;
@@ -3112,6 +3215,8 @@ $('#assignmentForm').addEventListener('submit', async event => {
   if (!questions.length) return toast('Add at least one question.', 'orange');
   if (questions.some(question => question.type === 'mcq' && question.options.length < 2)) return toast('Each multiple-choice question needs at least two options.', 'orange');
   if (questions.some(question => question.type === 'mcq' && question.correctAnswer && !question.options.some(option => option.trim().toLowerCase() === question.correctAnswer.trim().toLowerCase()))) return toast('For multiple choice, one of the choices must exactly match the correct answer. Check the answer key and choices.', 'orange');
+  const duplicateGroups = duplicateQuestionGroups(questions);
+  if (duplicateGroups.length && !window.confirm(`Possible duplicate questions: ${duplicateGroups.map(group => group.join(' and ')).join('; ')}. Keep these repeated questions and continue?`)) return;
 
   const missingAnswerCount = questions.filter(question => !question.correctAnswer).length;
   if (missingAnswerCount) {
@@ -3241,7 +3346,8 @@ $('#assignmentForm').addEventListener('submit', async event => {
             status: publishStatus,
             publish_at: publishAt,
             allow_resubmission: form.get('allow_resubmission') === 'on',
-            shuffle_questions: form.get('shuffle_questions') === 'on'
+            shuffle_questions: form.get('shuffle_questions') === 'on',
+            require_solution_photo: form.get('require_solution_photo') === 'on'
           }).select().single();
           if (error) throw error;
           const assignment = data;
@@ -3465,6 +3571,7 @@ function openAssignmentPreview(assignmentId) {
     ['Deadline', assignment.due_at ? formatDeadlineDate(assignment.due_at) : 'No deadline'],
     ['Student reminder', assignment.due_at ? reminderLabel(assignment.reminder_hours_before) : 'No reminder'],
     ['Questions', `${questions.length} question${questions.length === 1 ? '' : 's'}`],
+    ['Solution pictures', assignment.require_solution_photo === false ? 'Optional' : 'Required'],
     ['Submissions', `${submissionCount} submission${submissionCount === 1 ? '' : 's'}`],
     ['Total points', `${totalPoints(assignment.id)} points`]
   ];
@@ -3980,9 +4087,9 @@ async function openStudentResponsePreview(submissionId) {
     if (url) proofLinks.push(url);
   }
   const proofLinksBox = $('#studentResponseProofLinks');
-  if (proofLinksBox) proofLinksBox.innerHTML = proofLinks.map((url, index) => `<a class="btn btn-light" href="${esc(url)}" target="_blank" rel="noopener">Open solution ${index + 1}</a>`).join('');
+  if (proofLinksBox) proofLinksBox.innerHTML = proofLinks.length ? proofLinks.map((url, index) => `<a class="btn btn-light" href="${esc(url)}" target="_blank" rel="noopener">Open solution ${index + 1}</a>`).join('') : '<p class="muted">No solution photos attached (optional for this activity).</p>';
   if ($('#studentResponseProofLabel')) $('#studentResponseProofLabel').textContent = proofLinks.length > 1 ? 'MY SOLUTION PICTURES' : 'MY SOLUTION PICTURE';
-  proofWrap.hidden = !proofLinks.length;
+  proofWrap.hidden = !proofLinks.length && assignment.require_solution_photo !== false;
   const feedback = $('#studentResponseFeedback');
   if (submission.feedback) {
     feedback.innerHTML = `<p class="eyebrow">TEACHER FEEDBACK</p><p>${esc(submission.feedback)}</p>`;
@@ -4032,11 +4139,20 @@ document.addEventListener('click', event => {
       const options = window.MathsideQuestionTools?.studentOptionOrder(
         q, assignment.id, state.user?.id
       ) || (Array.isArray(q.options) ? q.options.slice() : []);
-      return `<article class="answer-question"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3>${options.map((opt, optionIndex) => `<label class="mathside-student-choice"><input type="radio" name="answer_${q.id}" value="${esc(opt)}"><span class="mathside-student-choice-letter" aria-hidden="true">${String.fromCharCode(65 + optionIndex)}.</span><span class="math-content">${richMath(opt)}</span></label>`).join('')}</article>`;
+      return `<article class="answer-question" data-question-id="${esc(q.id)}"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3>${options.map((opt, optionIndex) => `<label class="mathside-student-choice"><input type="radio" name="answer_${q.id}" value="${esc(opt)}"><span class="mathside-student-choice-letter" aria-hidden="true">${String.fromCharCode(65 + optionIndex)}.</span><span class="math-content">${richMath(opt)}</span></label>`).join('')}</article>`;
     }
-    return `<article class="answer-question"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3><div class="student-math-answer-wrap student-math-answer-only"><div class="student-answer-input-stack"><input type="hidden" name="answer_${q.id}" value=""><div class="student-answer-rendered-preview is-empty" data-student-answer-preview><span>Your answer</span><div class="student-answer-screen" data-student-answer-screen aria-live="polite"><span class="student-answer-screen-placeholder">Your answer will appear here</span></div></div></div><button type="button" class="math-keyboard-btn student-answer-keyboard-btn" data-math-keyboard data-math-label="Your answer for question ${i+1}">∑ Math Keyboard</button></div></article>`;
+    return `<article class="answer-question" data-question-id="${esc(q.id)}"><h3 class="math-content">${i+1}. ${richMath(q.question_text)}</h3><div class="student-math-answer-wrap student-math-answer-only"><div class="student-answer-input-stack"><input type="hidden" name="answer_${q.id}" value=""><div class="student-answer-rendered-preview is-empty" data-student-answer-preview><span>Your answer</span><div class="student-answer-screen" data-student-answer-screen aria-live="polite"><span class="student-answer-screen-placeholder">Your answer will appear here</span></div></div></div><button type="button" class="math-keyboard-btn student-answer-keyboard-btn" data-math-keyboard data-math-label="Your answer for question ${i+1}">∑ Math Keyboard</button></div></article>`;
   }).join('');
   $('#studentSolutionImage').value = '';
+  $('#answerQuestions').classList.remove('mathside-show-unanswered');
+  const photoRequired = assignment.require_solution_photo !== false;
+  $('#studentSolutionImage').required = photoRequired;
+  $('#studentSolutionRequirement').textContent = photoRequired ? 'Required' : 'Optional';
+  $('#studentSolutionHelp').textContent = photoRequired
+    ? 'Choose one or more clear photos of your written solution before submitting.'
+    : 'You may attach photos of your solution, but they are not required for this activity.';
+  $('#studentSolutionProofField').classList.toggle('mathside-proof-optional', !photoRequired);
+  refreshStudentAnswerProgress();
   openDialog('answerModal');
   window.MathsideV10?.prepareAnswerDraft?.(assignment);
   // Draft restore is asynchronous; refresh twice so both a blank form and a
@@ -4048,7 +4164,14 @@ document.addEventListener('click', event => {
 document.addEventListener('input', event => {
   if (event.target?.matches?.('#answerQuestions input[name^="answer_"]')) {
     updateStudentAnswerPreview(event.target);
+    refreshStudentAnswerProgress();
   }
+});
+document.addEventListener('change', event => {
+  if (event.target?.matches?.('#answerQuestions input[type="radio"]')) refreshStudentAnswerProgress();
+});
+document.addEventListener('mathside:answer-draft-applied', event => {
+  if (event.detail?.assignmentId === activeStudentAssignment?.id) refreshStudentAnswerPreviews();
 });
 
 $('#answerForm').addEventListener('submit', async event => {
@@ -4063,9 +4186,19 @@ $('#answerForm').addEventListener('submit', async event => {
     return { question_id: q.id, answer };
   });
   const proofFiles = [...($('#studentSolutionImage')?.files || [])];
-  if (!proofFiles.length) return toast('Upload at least one clear photo of your written solution before submitting.', 'orange');
+  if (activeStudentAssignment.require_solution_photo !== false && !proofFiles.length) return toast('Upload at least one clear photo of your written solution before submitting.', 'orange');
   if (proofFiles.some(file => !String(file.type || '').startsWith('image/') && !isHeicImage(file))) return toast('Solution uploads must be image files.', 'orange');
   if (proofFiles.length > 10) return toast('Choose up to 10 solution pictures for one submission.', 'orange');
+  const unanswered = unansweredStudentQuestionIndexes();
+  if (unanswered.length) {
+    $('#answerQuestions').classList.add('mathside-show-unanswered');
+    refreshStudentAnswerProgress();
+    const proceed = await confirmStudentIncomplete(unanswered, qs.length);
+    if (!proceed) {
+      $$('#answerQuestions .answer-question')[unanswered[0]]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+  }
 
   const previousProofPaths = submissionProofPaths(submissionFor(activeStudentAssignment.id));
   const uploadedPaths = [];
@@ -4073,7 +4206,7 @@ $('#answerForm').addEventListener('submit', async event => {
   if (!startActionButton(submitBtn, 'Submitting…')) return;
   try {
     let rpcResult;
-    await withLoading('Submitting your answers…', `Uploading ${proofFiles.length} solution picture${proofFiles.length === 1 ? '' : 's'} and saving your answers.`, async () => {
+    await withLoading('Submitting your answers…', proofFiles.length ? `Uploading ${proofFiles.length} solution picture${proofFiles.length === 1 ? '' : 's'} and saving your answers.` : 'Saving your answers without a solution photo.', async () => {
       for (let index = 0; index < proofFiles.length; index += 1) {
         const proofFile = await compressImageForUpload(proofFiles[index], { maxDimension: 1600, targetBytes: 450 * 1024, hardLimitBytes: 500 * 1024, quality: 0.80, minQuality: 0.50, minLongEdge: 900 });
         const proofPath = `${state.user.id}/${activeStudentAssignment.id}/${Date.now()}-${index + 1}-${safeFileName(proofFile.name)}`;
@@ -4273,9 +4406,9 @@ async function openSubmissionReview(submissionId) {
         if (url) proofLinks.push(url);
       }
       const proofLinksBox = $('#reviewProofLinks');
-      if (proofLinksBox) proofLinksBox.innerHTML = proofLinks.map((url, index) => `<a class="btn btn-light" href="${esc(url)}" target="_blank" rel="noopener">Open solution ${index + 1}</a>`).join('');
+      if (proofLinksBox) proofLinksBox.innerHTML = proofLinks.length ? proofLinks.map((url, index) => `<a class="btn btn-light" href="${esc(url)}" target="_blank" rel="noopener">Open solution ${index + 1}</a>`).join('') : '<p class="muted">No solution photos submitted (optional for this activity).</p>';
       if ($('#reviewProofLabel')) $('#reviewProofLabel').textContent = proofLinks.length > 1 ? 'SOLUTION PICTURES' : 'SOLUTION PICTURE';
-      proofWrap.hidden = !proofLinks.length;
+      proofWrap.hidden = !proofLinks.length && assignment.require_solution_photo !== false;
       openDialog('reviewSubmissionModal');
     });
   } catch (error) {

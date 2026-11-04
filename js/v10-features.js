@@ -223,6 +223,7 @@
         }
       }
     });
+    document.dispatchEvent(new CustomEvent('mathside:answer-draft-applied', { detail: { assignmentId: assignment.id } }));
   }
 
   async function saveDraft() {

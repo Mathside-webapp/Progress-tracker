@@ -29,7 +29,7 @@
 <link href="css/orange-create-panels.css?v=22-github-update" rel="stylesheet"/>
 </link></link><link href="css/panel-identities.css?v=22-github-update" rel="stylesheet"/><link href="css/competency-dashboard-polish.css?v=16" rel="stylesheet"/><link rel="stylesheet" href="css/mobile-header-safety.css?v=19.0"/><link rel="stylesheet" href="css/student-v20-refresh.css?v=20.0"/>
 <link rel="stylesheet" href="css/student-v22-dashboard.css?v=22.2"/>
-<link rel="stylesheet" href="css/mathside-question-tools.css?v=1.2-student-choice-layout"/>
+<link rel="stylesheet" href="css/mathside-question-tools.css?v=1.3-activity-ux"/>
 </head>
 <body>
 <dialog class="app-loading" hidden="" id="appLoading" aria-labelledby="loadingTitle" aria-describedby="loadingMessage">
@@ -641,6 +641,7 @@
 <div class="question-builder-head"><div><h3><span class="orange-step">3</span> Add questions</h3><p class="muted">Correct answers may be added now or later. Questions without an answer will not be auto-checked.</p></div><button class="btn btn-light" id="addQuestionBtn" type="button"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Add question</button></div>
 <label class="v10-check-option mathside-shuffle-field"><input id="assignmentShuffleQuestions" name="shuffle_questions" type="checkbox"/><span><b>Shuffle question order for each student</b><small>Each learner gets a repeatable randomized arrangement. Answers and scores remain linked to the original question IDs. Works on newly posted and edited activities.</small></span></label>
 <div id="questionBuilder"></div>
+<p class="mathside-duplicate-notice" id="assignmentDuplicateNotice" role="status" aria-live="polite" hidden></p>
 </section>
 <details class="editor-options"><summary><span>Posting &amp; deadline</span><small>Post now · No deadline by default</small></summary><section class="assignment-form-section compact-section">
 <div class="assignment-deadline-field">
@@ -660,6 +661,7 @@
 <option value="72">3 days before</option>
 </select>
 </label>
+<label class="v10-check-option"><input id="assignmentRequireSolutionPhoto" name="require_solution_photo" type="checkbox" checked/><span><b>Require solution pictures</b><small>On by default. Uncheck for quick quizzes where photos are not needed. Performance tasks still require output pictures.</small></span></label>
 <label class="v10-check-option"><input id="assignmentAllowResubmission" name="allow_resubmission" type="checkbox"/><span><b>Allow teacher-approved resubmission</b><small>Students can submit another attempt only after you allow it from their submission review.</small></span></label>
 <p class="muted">Scheduled activities stay hidden from students until the selected posting time. Deadline and reminder work normally after publication.</p>
 </div>
@@ -840,12 +842,17 @@
 <p class="muted" id="answerInstructions"></p>
 <img alt="Assignment image" class="student-assignment-image" hidden="" id="studentAssignmentImage"/>
 <form id="answerForm">
+<div class="mathside-answer-progress" id="studentAnswerProgress" aria-live="polite"><div class="mathside-answer-progress-caption"><strong id="studentAnsweredCount">0 of 0 answered</strong><span id="studentUnansweredHint">Answer each question before submitting.</span></div><div class="mathside-answer-progress-track" role="progressbar" aria-label="Questions answered" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" id="studentAnswerProgressBar"><span id="studentAnswerProgressFill"></span></div></div>
 <div id="answerQuestions"></div>
-<label class="file-drop compact required-proof-drop">Upload solution pictures <small>Required</small><input accept="image/*" id="studentSolutionImage" multiple="" required="" type="file"/><span>Choose one or more clear photos of your written solution before submitting.</span></label>
+<label class="file-drop compact required-proof-drop" id="studentSolutionProofField"><span class="mathside-proof-title">Upload solution pictures <small id="studentSolutionRequirement">Required</small></span><input accept="image/*" id="studentSolutionImage" multiple="" required="" type="file"/><span id="studentSolutionHelp">Choose one or more clear photos of your written solution before submitting.</span></label>
 <div class="v10-draft-status"><span id="studentDraftStatus">Draft saving is ready.</span><small>Typed and selected answers save automatically. Images upload only when you submit.</small></div>
 <div class="modal-actions"><button class="btn btn-light" data-close="answerModal" type="button">Close &amp; continue later</button><button class="btn btn-orange" type="submit">Submit answers</button></div>
 </form>
 </div>
+</dialog>
+<!-- Student can return to unanswered questions without losing the draft. -->
+<dialog class="modal mathside-incomplete-modal" id="studentIncompleteDialog" aria-labelledby="studentIncompleteTitle">
+<div class="modal-box mathside-incomplete-box"><p class="eyebrow">CHECK YOUR ACTIVITY</p><h2 id="studentIncompleteTitle">Some questions are unanswered</h2><p id="studentIncompleteMessage">Your unanswered questions will receive no points.</p><div class="modal-actions"><button class="btn btn-light" type="button" id="studentIncompleteReview">Review questions</button><button class="btn btn-orange" type="button" id="studentIncompleteProceed">Submit anyway</button></div></div>
 </dialog>
 <!-- STUDENT PERFORMANCE TASK SUBMISSION -->
 <dialog class="modal assignment-modal" id="performanceSubmitModal">
@@ -1008,7 +1015,7 @@
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script defer="" id="mathliveScript" src="https://cdn.jsdelivr.net/npm/mathlive@0.110.0"></script>
 <script src="js/question-tools.js?v=1.2-per-question-choice-order"></script>
-<script src="js/app.js?v=24.21-class-performance"></script>
+<script src="js/app.js?v=24.25-activity-ux"></script>
 <dialog id="ctCreateOverlay" class="ct-create-overlay" aria-labelledby="ctCreateTitle"><section class="ct-create-modal"><button id="ctCreateClose" type="button" class="ct-create-x" aria-label="Close">&times;</button><div class="ct-create-icon">+</div><h2 id="ctCreateTitle">Create New Competency</h2><p>Enter the name of the learning competency.</p><form id="ctCreateForm"><label for="ctCreateName">Competency name</label><input id="ctCreateName" maxlength="180" autocomplete="off" placeholder="e.g., Simplifying Radical Expressions" required><div id="ctCreateError" class="ct-create-error" role="alert" hidden></div><div class="ct-create-actions"><button id="ctCreateCancel" type="button" class="ct-create-cancel">Cancel</button><button id="ctCreateSubmit" type="submit" class="ct-create-submit">Add Competency</button></div></form></section></dialog>
 <dialog id="ctDeleteDialog" class="ct-delete-dialog" aria-labelledby="ctDeleteTitle" aria-describedby="ctDeleteDescription">
   <section class="ct-delete-card">
@@ -1022,7 +1029,7 @@
 </dialog>
 <script src="js/competency-tracker.js?v=21.0-student-repair"></script>
 <script src="js/student-v8.js?v=15.3-overdue-history-fix"></script>
-<script src="js/v10-features.js?v=24.23-class-leader-rating"></script>
+<script src="js/v10-features.js?v=24.25-draft-progress"></script>
 <script src="js/design-v9.js?v=9"></script>
 <script src="js/pwa.js?v=6.9.15"></script>
 <script src="js/push-notifications.js?v=6.12"></script>

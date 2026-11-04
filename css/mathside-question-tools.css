@@ -74,3 +74,67 @@
     font-size: 14px;
   }
 }
+
+
+/* Activity quality-of-life improvements, scoped to editor and student answer modal.
+   Do not override global input styles or performance task forms. */
+#assignmentDuplicateNotice.mathside-duplicate-notice:not([hidden]) {
+  display: block; margin: 10px 0 0; padding: 12px 14px;
+  background: #fff6e8; color: #864311; border: 1px solid #f1c590;
+  border-radius: 11px; font-size: 13px; line-height: 1.5; font-weight: 650;
+}
+#answerModal .mathside-answer-progress {
+  position: sticky; top: -1px; z-index: 2;
+  padding: 12px 0 13px; background: #fffaf6; margin: 0 0 10px;
+}
+#answerModal .mathside-answer-progress-caption {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 6px 12px; color: #743a14; font-size: 12px; margin-bottom: 7px;
+}
+#answerModal .mathside-answer-progress-caption strong { font-size: 13px; }
+#answerModal .mathside-answer-progress-track {
+  width: 100%; height: 7px; overflow: hidden; background: #f7e5d7; border-radius: 99px;
+}
+#answerModal .mathside-answer-progress-track > span {
+  display: block; height: 100%; width: 0; background: #e57a23;
+  border-radius: inherit; transition: width .18s ease;
+}
+#answerModal #answerQuestions .answer-question {
+  padding: 13px 14px; margin: 0 0 11px; overflow-wrap: anywhere;
+}
+#answerModal #answerQuestions .answer-question h3 {
+  margin: 0 0 10px; font-size: clamp(15px, 1.9vw, 18px);
+  line-height: 1.55; color: #241d18;
+}
+#answerModal #answerQuestions.mathside-show-unanswered .answer-question.mathside-question-unanswered {
+  border-color: #e8a46b; background: #fff9f1;
+  box-shadow: inset 3px 0 0 #e57a23;
+}
+#answerModal #answerQuestions .answer-question label.mathside-student-choice {
+  min-height: 46px; margin: 5px 0; padding: 9px 11px;
+}
+#answerModal #studentSolutionProofField.mathside-proof-optional {
+  border-style: dashed; background: #fffdfb;
+}
+#answerModal #studentSolutionProofField.mathside-proof-optional #studentSolutionRequirement {
+  color: #725a49;
+}
+#studentIncompleteDialog .mathside-incomplete-box { max-width: 500px; }
+#studentIncompleteDialog .mathside-incomplete-box > p:not(.eyebrow) { line-height: 1.6; }
+@media (max-width: 600px) {
+  #answerModal .modal-box { padding: 16px 13px; }
+  #answerModal #answerQuestions .answer-question { padding: 12px 11px; margin-bottom: 9px; }
+  #answerModal #answerQuestions .answer-question label.mathside-student-choice {
+    padding: 8px 9px; gap: 9px; font-size: 14px;
+  }
+  #answerModal #answerQuestions .answer-question label.mathside-student-choice input[type="radio"] {
+    width: 20px; min-width: 20px; max-width: 20px;
+    height: 20px; min-height: 20px; max-height: 20px; flex-basis: 20px;
+  }
+  #answerModal .mathside-answer-progress { padding: 10px 0 11px; }
+  #studentIncompleteDialog .mathside-incomplete-box .modal-actions { flex-wrap: wrap; }
+  #studentIncompleteDialog .mathside-incomplete-box .modal-actions button { flex: 1 1 150px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #answerModal .mathside-answer-progress-track > span { transition: none; }
+}
