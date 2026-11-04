@@ -796,6 +796,20 @@
     };
   }
 
+  // Progress is based on a saved score or an actual submitted-but-pending record.
+  // This includes scores of 0 and preserved archive records, but never the "—"
+  // placeholder for an assignment the student has not submitted.
+  function writtenWorkCompletionValue(scoreValues, cellRange) {
+    const total = scoreValues.length;
+    const completed = scoreValues.filter(value => value !== '—' && value !== null && value !== undefined && value !== '').length;
+    if (!total) return '0/0';
+    return {
+      // Excel recalculates the ratio if the teacher edits a score/status later.
+      formula: `(COUNTA(${cellRange})-COUNTIF(${cellRange},"—"))&"/${total}"`,
+      result: `${completed}/${total}`
+    };
+  }
+
   function styleRecordTitle(sheet, lastColumn, title, section) {
     sheet.mergeCells(`A1:${lastColumn}1`);
     const titleCell = sheet.getCell('A1');
@@ -870,9 +884,10 @@
         });
         const writtenItemCount = writtenAssignments.reduce((sum, assignment) => sum + questionsFor(assignment.id).length, 0);
         const writtenPossiblePoints = writtenAssignments.reduce((sum, assignment) => sum + Number(totalPoints(assignment.id) || 0), 0);
-        const writtenTotalColumns = Math.max(3, 3 + writtenAssignments.length);
+        const writtenTotalColumns = 4 + writtenAssignments.length;
         const writtenLastAssignmentColumn = 2 + writtenAssignments.length;
-        const writtenTotalScoreColumn = 3 + writtenAssignments.length;
+        const writtenCompletedColumn = 3 + writtenAssignments.length;
+        const writtenTotalScoreColumn = 4 + writtenAssignments.length;
         const writtenLastColumn = writtenSheet.getColumn(writtenTotalColumns).letter;
 
         styleRecordTitle(writtenSheet, writtenLastColumn, `Mathside Written Works — ${section.name}`, section);
@@ -891,6 +906,7 @@
             const items = questionsFor(a.id).length;
             return `${a.title}\n(${items} item${items === 1 ? '' : 's'} · ${totalPoints(a.id)} pts)`;
           }),
+          `Activities Completed\n(of ${writtenAssignments.length})`,
           `Total Score\n(/ ${writtenPossiblePoints})`
         ];
         const writtenHeaderRow = writtenSheet.getRow(4);
@@ -931,15 +947,23 @@
           });
           const totalEarned = scoreValues.reduce((sum, value) => typeof value === 'number' && Number.isFinite(value) ? sum + value : sum, 0);
           const row = writtenSheet.getRow(writtenRowNumber);
-          row.values = [student.display_name || '', classRecordGenderLabel(student.gender), ...scoreValues, totalEarned];
-          row.getCell(writtenTotalScoreColumn).font = { bold: true, color: { argb: 'FF7C2D00' } };
-          row.getCell(writtenTotalScoreColumn).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
+          const firstActivityLetter = writtenSheet.getColumn(3).letter;
+          const lastActivityLetter = writtenSheet.getColumn(writtenLastAssignmentColumn).letter;
+          const activityCellRange = `${firstActivityLetter}${writtenRowNumber}:${lastActivityLetter}${writtenRowNumber}`;
+          const completionValue = writtenWorkCompletionValue(scoreValues, activityCellRange);
+          row.values = [student.display_name || '', classRecordGenderLabel(student.gender), ...scoreValues, completionValue, totalEarned];
           row.height = 22;
           row.eachCell((cell, colNumber) => {
             cell.border = thinBorder;
             cell.alignment = { vertical: 'middle', horizontal: colNumber <= 2 ? 'left' : 'center', wrapText: true };
-            if (colNumber >= 3 && colNumber !== writtenTotalScoreColumn) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFAF5' } };
+            if (colNumber >= 3 && colNumber !== writtenTotalScoreColumn && colNumber !== writtenCompletedColumn) {
+              cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFAF5' } };
+            }
           });
+          row.getCell(writtenCompletedColumn).font = { bold: true, color: { argb: 'FF146349' } };
+          row.getCell(writtenCompletedColumn).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9F6F0' } };
+          row.getCell(writtenTotalScoreColumn).font = { bold: true, color: { argb: 'FF7C2D00' } };
+          row.getCell(writtenTotalScoreColumn).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFE8D5' } };
           row.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rank === 0 ? 'FFF0F7FF' : rank === 1 ? 'FFFFF1F7' : 'FFF5F5F5' } };
           writtenRowNumber += 1;
         });
@@ -947,13 +971,14 @@
         writtenRowNumber += 1;
         writtenSheet.mergeCells(`A${writtenRowNumber}:${writtenLastColumn}${writtenRowNumber}`);
         const writtenLegend = writtenSheet.getCell(`A${writtenRowNumber}`);
-        writtenLegend.value = '— = Not submitted   •   Pending = Submitted but not yet scored';
+        writtenLegend.value = '— = Not submitted   •   Pending = Submitted but not yet scored   •   Activities Completed counts submitted work (including 0 scores and Pending)';
         writtenLegend.font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
         writtenLegend.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
         writtenLegend.border = thinBorder;
         writtenSheet.getColumn(1).width = 34;
         writtenSheet.getColumn(2).width = 13;
         for (let col = 3; col <= writtenLastAssignmentColumn; col += 1) writtenSheet.getColumn(col).width = 22;
+        writtenSheet.getColumn(writtenCompletedColumn).width = 23;
         writtenSheet.getColumn(writtenTotalScoreColumn).width = 18;
         writtenSheet.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4, column: writtenTotalColumns } };
 
