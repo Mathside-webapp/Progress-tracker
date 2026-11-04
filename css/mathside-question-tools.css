@@ -8,8 +8,69 @@
 .mathside-choice-result:empty {display:none;}
 @media(max-width:600px){.mathside-choice-helper{padding:10px}.mathside-choice-helper .q-auto-choices{width:100%;}}
 
-/* Student MC choices: label the shuffled display position, not the answer key. */
-.answer-question label.mathside-student-choice{display:flex;align-items:flex-start;gap:9px;width:100%;box-sizing:border-box;min-width:0;}
-.answer-question label.mathside-student-choice input[type="radio"]{flex:none;margin-top:5px;}
-.mathside-student-choice-letter{flex:none;min-width:21px;font-weight:800;color:#a54d12;}
-.answer-question label.mathside-student-choice .math-content{flex:1;min-width:0;overflow-wrap:anywhere;}
+/* Student MC choices: repair radio sizing overridden by the global full-width
+   input rule in styles.css. Keep the circle, letter, and math answer together. */
+#answerQuestions .answer-question label.mathside-student-choice {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 3px 0;
+  padding: 9px 10px;
+  border: 1px solid #f1e3d8;
+  border-radius: 11px;
+  background: #ffffff;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+#answerQuestions .answer-question label.mathside-student-choice input[type="radio"] {
+  box-sizing: border-box;
+  display: block;
+  width: 19px;
+  min-width: 19px;
+  max-width: 19px;
+  height: 19px;
+  min-height: 19px;
+  max-height: 19px;
+  padding: 0;
+  margin: 0;
+  flex: 0 0 19px;
+  border-radius: 50%;
+  accent-color: #e76b15;
+  cursor: pointer;
+}
+#answerQuestions .answer-question .mathside-student-choice-letter {
+  display: inline-block;
+  flex: 0 0 23px;
+  min-width: 23px;
+  font-weight: 850;
+  color: #a54d12;
+}
+#answerQuestions .answer-question label.mathside-student-choice > .math-content {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #33241c;
+}
+#answerQuestions .answer-question label.mathside-student-choice:has(input:checked) {
+  border-color: #ed9c5f;
+  background: #fff4e8;
+}
+#answerQuestions .answer-question label.mathside-student-choice:focus-within {
+  outline: 2px solid #ed9c5f;
+  outline-offset: 1px;
+}
+@media (max-width: 600px) {
+  #answerQuestions .answer-question label.mathside-student-choice {
+    gap: 9px;
+    padding: 9px 8px;
+    font-size: 14px;
+  }
+}
