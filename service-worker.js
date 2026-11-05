@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-32-record-scores-ui';
+const CACHE_NAME = 'mathside-pwa-v24-34-css-recovery-png';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -57,12 +57,13 @@ const APP_SHELL = [
   './js/teacher-preview-fixes-v24.32.js?v=24.32',
   './css/teacher-empty-art-v24.32.css?v=24.32',
   './js/teacher-empty-art-v24.32.js?v=24.32',
-  './assets/empty-states/activities.svg',
-  './assets/empty-states/submissions.svg',
-  './assets/empty-states/performance.svg',
-  './assets/empty-states/classes.svg',
-  './assets/empty-states/competencies.svg',
-  './assets/empty-states/archive.svg',
+  './assets/empty-states/activities.png',
+  './assets/empty-states/submissions.png',
+  './assets/empty-states/performance.png',
+  './assets/empty-states/classes.png',
+  './assets/empty-states/competencies.png',
+  './assets/empty-states/archive.png',
+  './assets/empty-states/records.png',
   './js/app.js?v=24.25-activity-ux',
   './js/student-v8.js?v=15.3-overdue-history-fix',
   './js/v10-features.js?v=24.26-completed-activities',

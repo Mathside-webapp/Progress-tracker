@@ -1,0 +1,243 @@
+/*
+  Mathside V24.28 — Effective teacher-only classic layout refinements.
+  Original logo, illustrations, colors, content and creation dialogs retained.
+  All selectors are limited to the teacher workspace, except its grading modal.
+  This intentionally replaces the previous near-invisible refinement rules.
+*/
+#teacherApp {
+  --teacher-gap-xs: 6px;
+  --teacher-gap-sm: 10px;
+  --teacher-gap-md: 16px;
+  --teacher-border: #ead7c8;
+  --teacher-ink: #33271f;
+  --teacher-muted: #6e625b;
+  --teacher-accent: #f46b08;
+  --teacher-focus: #9e4709;
+  --teacher-card-shadow: 0 4px 15px rgba(104, 58, 26, .065);
+}
+
+/* 1. A more usable teacher workspace, without redesigning navigation. */
+#teacherApp .workspace-main {min-width:0;}
+#teacherApp .workspace-content {box-sizing:border-box;max-width:1510px;padding:18px 28px 38px;}
+#teacherApp .workspace-topbar {min-height:64px;gap:11px;border-bottom:1px solid var(--teacher-border);}
+#teacherApp .workspace-topbar h1 {font-family:Helvetica,Arial,sans-serif;font-size:clamp(22px,2vw,27px);letter-spacing:-.035em;line-height:1.16;}
+#teacherApp .side-nav {gap:4px;}
+#teacherApp .side-nav .side-link {min-height:42px;gap:10px;border-radius:10px;}
+#teacherApp .side-nav .side-link .ui-icon {flex:0 0 19px;width:19px;height:19px;}
+#teacherApp .side-nav .side-link span {line-height:1.3;}
+#teacherApp .side-nav .side-link:hover {transform:none;}
+
+/* 2. Compact illustrated page headers: keep every original drawing and slogan.
+   We hide only duplicate decorative label chips that repeat the surrounding copy. */
+#teacherApp .ms-panel-hero:not(.ct-page-hero) {
+  display:grid;align-items:center;grid-template-columns:minmax(0,1fr) minmax(215px,30%);
+  box-sizing:border-box;min-height:0!important;
+  padding:16px 22px 16px 25px!important;
+  gap:12px;margin-bottom:14px;border-radius:18px;
+  box-shadow:0 5px 18px rgba(112,62,20,.06);
+}
+#teacherApp .ms-panel-hero:not(.ct-page-hero) .ms-hero-copy {width:100%;min-width:0;max-width:760px;}
+#teacherApp .ms-panel-hero:not(.ct-page-hero) .ms-hero-kicker {font-size:10px;letter-spacing:1.5px;}
+#teacherApp .ms-panel-hero:not(.ct-page-hero) h2 {
+  margin:7px 0 5px!important;
+  font-size:clamp(27px,2.3vw,33px)!important;
+  letter-spacing:-.8px;line-height:1.07;
+}
+#teacherApp .ms-panel-hero:not(.ct-page-hero) p {
+  max-width:590px;margin:0;font-size:12.5px;line-height:1.45;
+}
+#teacherApp .ms-panel-hero:not(.ct-page-hero) .ms-hero-tags {display:none;}
+#teacherApp .ms-panel-hero:not(.ct-page-hero) .ms-hero-art {
+  position:relative!important;inset:auto!important;transform:none!important;
+  display:flex;align-items:center;justify-content:center;
+  width:100%!important;height:145px!important;min-height:0!important;
+  margin:0!important;align-self:center;overflow:visible;opacity:1!important;
+}
+#teacherApp .ms-panel-hero:not(.ct-page-hero) .ms-hero-art img {
+  display:block;width:100%!important;max-width:100%!important;
+  height:145px!important;max-height:100%!important;object-fit:contain;object-position:center;
+  transform:none!important;
+}
+/* Prevent specialty illustration transforms from overflowing the shorter banner. */
+#teacherApp .ms-hero-classes .ms-hero-art img,
+#teacherApp .ms-hero-performance .ms-hero-art img,
+#teacherApp .ms-hero-archive .ms-hero-art img {mix-blend-mode:normal;}
+
+/* The competency header has a separate structure; artwork remains visible. */
+#teacherApp #view-competencies .ct-page-hero.ms-panel-hero {
+  box-sizing:border-box;min-height:0;padding:19px 24px;margin-bottom:15px;border-radius:18px;
+}
+#teacherApp #view-competencies .ct-page-hero.ms-panel-hero h2 {font-size:clamp(27px,2.3vw,34px);line-height:1.12;}
+#teacherApp #view-competencies .ct-page-hero.ms-panel-hero .ct-hero-art {height:155px;min-height:0;}
+#teacherApp #view-competencies .ct-page-hero.ms-panel-hero .ct-hero-art img {max-height:155px;object-fit:contain;}
+
+/* 3. Make the dashboard usable above the fold. */
+#teacherApp #view-dashboard .stats-grid {
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin:12px 0 18px;
+}
+#teacherApp #view-dashboard .stats-grid article {
+  box-sizing:border-box;min-width:0;padding:12px 14px;border-radius:13px;
+  box-shadow:var(--teacher-card-shadow);border-color:var(--teacher-border);
+}
+#teacherApp #view-dashboard .stats-grid .stat-icon {width:43px;height:43px;border-radius:12px;}
+#teacherApp #view-dashboard .stats-grid .stat-icon svg {width:22px;height:22px;}
+#teacherApp #view-dashboard .stats-grid b {font-family:Helvetica,Arial,sans-serif;font-size:25px;line-height:1.07;}
+#teacherApp #view-dashboard .stats-grid small {font-size:12px;line-height:1.25;}
+#teacherApp .section-row.ms-dashboard-toolbar {margin:13px 0 10px!important;gap:12px;}
+#teacherApp .section-row.ms-dashboard-toolbar .eyebrow {margin:0 0 2px;}
+#teacherApp .section-row.ms-dashboard-toolbar .muted {line-height:1.35;margin:0;}
+#teacherApp .section-row.ms-panel-toolbar {margin-bottom:12px;min-height:41px;gap:10px;}
+#teacherApp .ms-toolbar-label {font-family:Helvetica,Arial,sans-serif;font-size:14px;letter-spacing:0;line-height:1.35;}
+#teacherApp .ms-panel-toolbar .row-actions {display:flex;align-items:center;gap:8px;}
+
+/* 4. Retain original class cards but remove surplus vertical whitespace.
+   Applies to the dashboard AND Classes page; actions stay in the same place. */
+#teacherApp .class-grid,
+#teacherApp #view-classes .class-grid-group {grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+#teacherApp .class-card {
+  box-sizing:border-box;min-width:0;min-height:0!important;
+  display:flex;flex-direction:column;justify-content:flex-start;gap:11px;
+  padding:15px 17px!important;border-radius:15px;
+  box-shadow:var(--teacher-card-shadow);
+}
+#teacherApp .class-card:hover {transform:translateY(-1px);box-shadow:0 7px 18px rgba(104,58,26,.095);}
+#teacherApp .class-card-top {align-items:center;gap:10px;}
+#teacherApp .class-card-heading {min-width:0;gap:11px;}
+#teacherApp .class-icon {height:40px;width:40px;border-radius:11px;flex:0 0 40px;}
+#teacherApp .class-card-icon {height:23px;width:23px;}
+#teacherApp .class-card-copy {min-width:0;}
+#teacherApp .class-card-copy small {font-size:10px;line-height:1.2;letter-spacing:1px;}
+#teacherApp .class-card-copy h3 {margin:3px 0 0;font:700 24px/1.17 Helvetica,Arial,sans-serif;letter-spacing:-.6px;overflow-wrap:anywhere;}
+#teacherApp .grade-pill {font-size:10px;letter-spacing:.3px;padding:6px 9px;white-space:nowrap;}
+#teacherApp .class-card footer {
+  display:flex;justify-content:space-between;align-items:center;gap:8px;
+  padding:0!important;margin:0;line-height:1.35;border-top:0;
+  color:var(--teacher-muted);font-size:12px;font-weight:700;
+}
+#teacherApp .class-card footer span {min-width:0;}
+#teacherApp .class-card-actions {display:flex;flex-wrap:wrap;gap:7px;margin:0;}
+#teacherApp .class-card-actions .btn {
+  box-sizing:border-box;min-height:37px;line-height:1.2;border-radius:10px;padding:8px 11px;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+}
+#teacherApp #view-dashboard .class-card .class-card-actions {width:100%;}
+#teacherApp #view-dashboard .class-card .class-card-actions .btn {width:100%!important;min-width:0;min-height:38px;}
+
+/* 5. Existing activity, performance, submission, archive and competency lists. */
+#teacherApp :is(.assignment-card,.performance-task-card,.submission-card,.archive-record) {
+  box-sizing:border-box;min-width:0;border-radius:14px;box-shadow:var(--teacher-card-shadow);
+}
+#teacherApp .assignment-list {gap:10px;min-width:0;}
+#teacherApp :is(.assignment-card,.performance-task-card) h3 {line-height:1.26;overflow-wrap:anywhere;}
+#teacherApp :is(.assignment-meta,.performance-task-meta,.submission-student-row) {gap:8px;}
+#teacherApp .submission-card {padding:13px;}
+#teacherApp .submission-student-name {line-height:1.35;overflow-wrap:anywhere;}
+#teacherApp .submission-kind-tabs {gap:6px;max-width:100%;}
+#teacherApp .submission-kind-tab {min-height:40px;line-height:1.3;}
+#teacherApp .submission-card img {max-width:100%;height:auto;}
+#teacherApp .archive-record {gap:10px;}
+#teacherApp .archive-record-body {min-width:0;overflow-wrap:anywhere;}
+#teacherApp .archive-record-actions {gap:7px;}
+#teacherApp #view-archive .archive-summary-grid article {border-radius:14px;box-shadow:var(--teacher-card-shadow);}
+#teacherApp :is(.tracking-list,.ct-page-card,.ct-manager,.archive-center-list,.archive-summary-grid) {min-width:0;}
+
+/* Better filters and actions, without touching any create/edit dialogs. */
+#teacherApp .compact-filter-panel {box-sizing:border-box;max-width:100%;border-radius:13px;}
+#teacherApp .compact-filter-panel :is(input,select) {box-sizing:border-box;min-width:0;max-width:100%;min-height:41px;}
+#teacherApp .compact-filter-panel label {min-width:0;line-height:1.4;}
+#teacherApp .compact-filter-panel-head {gap:9px;}
+#teacherApp .compact-filter-actions {gap:8px;}
+#teacherApp :is(.ms-panel-toolbar,.ms-dashboard-toolbar,.compact-filter-actions,.archive-record-actions) .btn {
+  box-sizing:border-box;min-height:40px;border-radius:10px;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;line-height:1.25;
+}
+#teacherApp .app-view button:focus-visible,
+#teacherApp .side-nav button:focus-visible,
+#teacherApp .workspace-topbar button:focus-visible,
+#reviewSubmissionModal button:focus-visible,
+#reviewSubmissionModal input:focus-visible,
+#reviewSubmissionModal textarea:focus-visible {outline:3px solid var(--teacher-focus,#9e4709);outline-offset:3px;}
+#teacherApp .app-view button:disabled {cursor:not-allowed;opacity:.65;}
+
+/* The grading modal is teacher-specific and NOT a creation dialog. */
+#reviewSubmissionModal .modal-box {box-sizing:border-box;max-height:min(91dvh,900px);overflow-y:auto;overscroll-behavior:contain;}
+#reviewSubmissionModal .proof-wrap {min-width:0;max-width:100%;}
+#reviewSubmissionModal .proof-wrap img,
+#reviewSubmissionModal .proof-link-grid img {max-width:100%;height:auto;object-fit:contain;}
+#reviewSubmissionModal .grade-modal-actions {gap:9px;align-items:center;}
+#reviewSubmissionModal .grade-modal-actions .btn {min-height:42px;}
+
+@media (hover:hover) and (prefers-reduced-motion:no-preference) {
+  #teacherApp .app-view .btn:not(:disabled) {transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;}
+}
+@media (prefers-reduced-motion:reduce) {
+  #teacherApp .app-view,#teacherApp .app-view * {animation-duration:.01ms;transition-duration:.01ms;scroll-behavior:auto;}
+}
+@media (max-width:1100px) {
+  #teacherApp .workspace-content {padding:16px 18px 32px;}
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) {grid-template-columns:minmax(0,1fr) minmax(170px,31%);padding:16px 18px!important;}
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) .ms-hero-art,
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) .ms-hero-art img {height:133px!important;}
+}
+@media (max-width:780px) {
+  #teacherApp .workspace-content {padding:13px 14px 30px;}
+  #teacherApp .workspace-topbar {min-height:63px;padding:10px 14px;}
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) {grid-template-columns:minmax(0,1fr) 32%;gap:8px;border-radius:16px;}
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) h2 {font-size:clamp(24px,4.6vw,29px)!important;}
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) p {font-size:12px;}
+  #teacherApp #view-dashboard .stats-grid {grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px;margin:11px 0 16px;}
+  /* Undo the old 3-plus-1 special-card arrangement on phones. */
+  #teacherApp #view-dashboard .stats-grid article {
+    order:initial!important;grid-column:auto!important;min-height:95px!important;
+    display:grid;grid-template-columns:1fr!important;grid-template-rows:auto auto auto!important;
+    padding:10px!important;justify-items:center!important;text-align:center!important;
+    column-gap:0!important;row-gap:2px!important;
+  }
+  #teacherApp #view-dashboard .stats-grid article:nth-child(2) {
+    order:initial!important;grid-column:auto!important;min-height:95px!important;
+    grid-template-columns:1fr!important;grid-template-rows:auto auto auto!important;
+    justify-items:center!important;text-align:center!important;column-gap:0!important;
+  }
+  #teacherApp #view-dashboard .stats-grid .stat-icon,
+  #teacherApp #view-dashboard .stats-grid article:nth-child(2) .stat-icon {
+    grid-row:auto!important;grid-column:auto!important;align-self:center!important;
+    justify-self:center!important;margin:0 0 2px!important;
+  }
+  #teacherApp #view-dashboard .stats-grid article b,
+  #teacherApp #view-dashboard .stats-grid article small {
+    grid-column:auto!important;justify-self:center!important;
+  }
+  #teacherApp #view-dashboard .stats-grid b {font-size:24px;}
+  #teacherApp .class-grid,
+  #teacherApp #view-classes .class-grid-group {grid-template-columns:1fr;gap:10px;}
+  #teacherApp .class-card {padding:13px 14px!important;gap:10px;}
+  #teacherApp .class-card-copy h3 {font-size:22px;}
+  #teacherApp #view-competencies .ct-page-hero.ms-panel-hero {padding:17px 18px;}
+  #teacherApp #view-competencies .ct-page-hero.ms-panel-hero .ct-hero-art {height:130px;}
+  #reviewSubmissionModal .modal-box {max-height:calc(100dvh - 20px);}
+}
+@media (max-width:520px) {
+  #teacherApp .workspace-content {padding:12px 11px 25px;}
+  #teacherApp .workspace-topbar {padding:10px 12px;gap:9px;}
+  #teacherApp .workspace-topbar h1 {font-size:22px;}
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) {
+    display:flex;flex-direction:column;align-items:stretch;gap:6px;
+    height:auto;min-height:0!important;padding:15px 15px 10px!important;margin-bottom:12px;
+  }
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) h2 {font-size:26px!important;line-height:1.08;letter-spacing:-.65px;}
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) p {max-width:100%;font-size:12px;line-height:1.42;}
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) .ms-hero-art {
+    width:min(100%,270px)!important;height:105px!important;align-self:center;margin:0 auto!important;
+  }
+  #teacherApp .ms-panel-hero:not(.ct-page-hero) .ms-hero-art img {height:105px!important;width:100%!important;}
+  #teacherApp .section-row.ms-panel-toolbar {gap:9px;}
+  #teacherApp .ms-panel-toolbar .row-actions {gap:7px;}
+  #teacherApp .ms-panel-toolbar .row-actions .btn {min-width:0;}
+  #teacherApp .section-row.ms-dashboard-toolbar {gap:8px;}
+  #teacherApp #view-dashboard .stats-grid article {padding:10px 10px;}
+  #teacherApp #view-dashboard .stats-grid small {font-size:11px;}
+  #teacherApp .class-card footer {font-size:11.5px;flex-wrap:wrap;}
+  #teacherApp .archive-record-actions .btn {min-height:40px;}
+  #reviewSubmissionModal .grade-modal-actions {flex-direction:column;align-items:stretch;}
+  #reviewSubmissionModal .grade-modal-actions .btn {width:100%;}
+}
