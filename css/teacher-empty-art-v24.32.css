@@ -1,0 +1,18 @@
+/* Teacher empty states; these rules intentionally cannot affect student/creation dialogs. */
+#teacherApp .ms-has-empty-art{box-sizing:border-box;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;text-align:center!important;gap:9px!important;padding:22px 18px!important;min-height:245px!important;border:1px dashed #efd9c9!important;background:#fffdfb!important;border-radius:15px!important;box-shadow:none!important;color:#574439!important}
+#teacherApp .ms-has-empty-art>.ms-empty-art{display:block!important;flex:none!important;width:215px!important;max-width:min(84%,275px)!important;height:142px!important;min-height:0!important;max-height:142px!important;object-fit:contain!important;margin:0 auto 2px!important;background:transparent!important;border:0!important;padding:0!important;filter:none!important}
+#teacherApp .ms-has-empty-art>h3,#teacherApp .ms-has-empty-art>b,#teacherApp .ms-has-empty-art>strong{font:750 17px/1.3 Helvetica,Arial,sans-serif!important;color:#33291f!important;max-width:400px}
+#teacherApp .ms-has-empty-art>p,#teacherApp .ms-has-empty-art>span:not(.ms-empty-art){font:500 13px/1.55 Inter,Arial,sans-serif!important;color:#6e5c4c!important;max-width:400px;margin:0 auto!important}
+#teacherApp .ms-has-empty-art .v9-empty-icon,#teacherApp .ms-has-empty-art .empty-icon,#teacherApp .ms-has-empty-art .ct-single-student-icon{display:none!important}
+#teacherApp .ms-has-empty-art>button{margin-top:7px!important;min-height:40px!important;align-self:center!important}
+#teacherApp #ctDashboardContent .ct-empty.ms-has-empty-art,#teacherApp #ctLibraryList .ct-library-empty.ms-has-empty-art{width:100%;min-height:235px!important;margin:12px 0!important}
+#teacherApp #ctDashboardContent .ct-single-student-empty.ms-has-empty-art{width:100%;min-height:245px!important}
+#teacherApp #msRecordsBody td.ms-record-empty-cell{display:table-cell!important;text-align:center!important;padding:20px 15px!important;min-height:0!important}
+#teacherApp #msRecordsBody td.ms-record-empty-cell .ms-empty-art{display:block!important;width:190px!important;height:128px!important;object-fit:contain!important;margin:0 auto 10px!important}
+#teacherApp #archiveList>.ms-has-empty-art,#teacherApp #assignmentList>.ms-has-empty-art,#teacherApp #performanceTaskList>.ms-has-empty-art,#teacherApp #submissionList>.ms-has-empty-art{width:100%!important}
+@media(max-width:600px){
+ #teacherApp .ms-has-empty-art{padding:18px 12px!important;min-height:217px!important}
+ #teacherApp .ms-has-empty-art>.ms-empty-art{width:180px!important;height:125px!important;max-height:125px!important}
+ #teacherApp #ctDashboardContent .ct-empty.ms-has-empty-art,#teacherApp #ctLibraryList .ct-library-empty.ms-has-empty-art{min-height:210px!important}
+}
+@media(prefers-reduced-motion:reduce){#teacherApp .ms-empty-art{transition:none!important;animation:none!important}}

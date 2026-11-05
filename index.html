@@ -30,6 +30,12 @@
 </link></link><link href="css/panel-identities.css?v=22-github-update" rel="stylesheet"/><link href="css/competency-dashboard-polish.css?v=16" rel="stylesheet"/><link rel="stylesheet" href="css/mobile-header-safety.css?v=19.0"/><link rel="stylesheet" href="css/student-v20-refresh.css?v=20.0"/>
 <link rel="stylesheet" href="css/student-v22-dashboard.css?v=22.2"/>
 <link rel="stylesheet" href="css/mathside-question-tools.css?v=1.3-activity-ux"/>
+<link rel="stylesheet" href="css/teacher-classic-refinement.css?v=24.28-teacher-compact"/>
+<link rel="stylesheet" href="css/teacher-preview-alignment.css?v=24.29"/>
+<link rel="stylesheet" href="css/teacher-all-panels-v24.30.css?v=24.30"/>
+<link rel="stylesheet" href="css/teacher-preview-match-v24.31.css?v=24.31"/>
+<link rel="stylesheet" href="css/teacher-preview-fixes-v24.32.css?v=24.32"/>
+<link rel="stylesheet" href="css/teacher-empty-art-v24.32.css?v=24.32"/>
 </head>
 <body>
 <dialog class="app-loading" hidden="" id="appLoading" aria-labelledby="loadingTitle" aria-describedby="loadingMessage">
@@ -155,6 +161,7 @@
 <button class="side-link" data-view="assignments"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 11h6M9 15h6"></path></svg><span>Activities</span></button>
 <button class="side-link" data-view="performance"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5M7 3v4M17 3v4"></path></svg><span>Performance Tasks</span></button>
 <button class="side-link" data-view="submissions"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M5 12.5 10 17l9-10M4 4h10M4 8h7"></path></svg><span>Submissions</span></button>
+<button class="side-link" data-view="records" type="button"><svg aria-hidden="true" class="ui-icon" viewBox="0 0 24 24"><path d="M5 3h14v18H5zM9 7h6M9 11h6M9 15h3M13 15h3"/></svg><span>Class Records</span></button>
 <button class="side-link ct-nav-button" data-view="competencies" id="ctTeacherOpen" type="button"><svg aria-hidden="true" class="ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg><span>Competencies</span></button><button class="side-link" data-view="archive"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M4 7h16v13H4zM3 4h18v3H3zM9 11h6"></path></svg><span>Archived</span></button>
 </nav>
 <button class="side-link signout" id="teacherSignout"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"></path></svg><span>Sign out</span></button>
@@ -163,17 +170,17 @@
 <div class="workspace-main">
 <header class="workspace-topbar">
 <button aria-label="Open teacher menu" class="mobile-side-toggle icon-button" id="teacherMenuBtn"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></button>
-<div><p class="eyebrow">TEACHER WORKSPACE</p><h1 id="teacherPageTitle">Dashboard</h1></div>
+<div><p class="eyebrow">TEACHER WORKSPACE <span class="ms-teacher-release" title="Mathside teacher interface update">V24.32</span></p><h1 id="teacherPageTitle">Dashboard</h1></div>
 <button aria-label="Open notifications" class="v10-notification-button" id="teacherNotificationBtn" title="Notifications" type="button"><svg aria-hidden="true" class="ui-icon" viewbox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path></svg><span hidden="" id="teacherNotificationBadge">0</span></button>
 </header>
 <main class="workspace-content">
 <section class="app-view active" id="view-dashboard">
 <div class="ms-panel-hero ms-hero-dashboard" aria-label="Dashboard introduction">
 <div class="ms-hero-copy">
-<span class="ms-hero-kicker">00 / THE HOME BASE</span>
-<h2>All your teaching,<br/><em>beautifully organized.</em></h2>
-<p>One welcoming space to guide your classes, plan meaningful activities, and celebrate every step of learning.</p>
-<div class="ms-hero-tags"><span>Your daily overview</span><span>Everything in one place</span></div>
+<span class="ms-hero-kicker">TODAY AT A GLANCE</span>
+<h2>Your teaching,<br/><em>clearly organized.</em></h2>
+<p>See your classrooms, review student work, and keep each activity on track.</p>
+<div class="teacher-hero-actions"><button type="button" class="btn btn-light" data-go-view="submissions">Review submissions</button><button type="button" class="btn btn-orange" data-go-view="assignments">View activities</button></div>
 </div>
 <div aria-hidden="true" class="ms-hero-art"><img alt="" src="assets/panel-identity/dashboard-workspace.svg"/></div>
 <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-one"></span>
@@ -185,8 +192,22 @@
 <article><span class="stat-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M6 3h9l3 3v15H6zM14 3v4h4M9 11h6M9 15h6"></path></svg></span><b id="assignmentTotal">0</b><small>Activities</small></article>
 <article><span class="stat-icon"><svg aria-hidden="true" viewbox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h5M7 3v4M17 3v4"></path></svg></span><b id="performanceTotal">0</b><small>Performance Tasks</small></article>
 </div>
-<div class="section-row ms-dashboard-toolbar"><div><p class="eyebrow">MY CLASSES</p><p class="muted">Quick access to your classes</p></div><div class="row-actions"><button class="btn btn-light" data-go-view="classes">Manage classes</button><button class="btn btn-orange" id="dashboardCreateClass"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Create class</button></div></div>
-<div class="class-grid" id="dashboardClassGrid"></div>
+<div class="teacher-dashboard-grid">
+  <section class="teacher-classes-panel" aria-label="Your classrooms">
+    <div class="section-row ms-dashboard-toolbar"><div><p class="eyebrow">YOUR CLASSES</p><p class="muted">Open a class or manage its learners.</p></div><div class="row-actions"><button class="btn btn-light" data-go-view="classes">Manage classes</button><button class="btn btn-orange" id="dashboardCreateClass"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Create class</button></div></div>
+    <div class="class-grid" id="dashboardClassGrid"></div>
+  </section>
+  <aside class="teacher-shortcuts" aria-label="Teacher quick actions">
+    <div class="teacher-shortcuts-head"><p class="eyebrow">DAILY WORKFLOW</p><h3>What would you like to do?</h3><p>Go directly to the tools you use most.</p></div>
+    <div class="teacher-shortcut-list">
+      <button type="button" class="teacher-shortcut" data-go-view="submissions"><span class="teacher-shortcut-symbol" aria-hidden="true">✓</span><span><b>Review submissions</b><small>Check answers, scores and feedback</small></span><span class="teacher-shortcut-arrow" aria-hidden="true">›</span></button>
+      <button type="button" class="teacher-shortcut" data-go-view="assignments"><span class="teacher-shortcut-symbol" aria-hidden="true">≡</span><span><b>Manage activities</b><small>View published and upcoming work</small></span><span class="teacher-shortcut-arrow" aria-hidden="true">›</span></button>
+      <button type="button" class="teacher-shortcut" data-go-view="performance"><span class="teacher-shortcut-symbol" aria-hidden="true">▣</span><span><b>Performance tasks</b><small>See student project submissions</small></span><span class="teacher-shortcut-arrow" aria-hidden="true">›</span></button>
+      <button type="button" class="teacher-shortcut" data-go-view="records"><span class="teacher-shortcut-symbol" aria-hidden="true">▤</span><span><b>Class records &amp; Excel</b><small>Review grades and download WW/PT records</small></span><span class="teacher-shortcut-arrow" aria-hidden="true">›</span></button>
+      <button type="button" class="teacher-shortcut" onclick="document.getElementById('ctTeacherOpen')?.click()"><span class="teacher-shortcut-symbol" aria-hidden="true">◎</span><span><b>Competency tracker</b><small>Review skill mastery and progress</small></span><span class="teacher-shortcut-arrow" aria-hidden="true">›</span></button>
+    </div>
+  </aside>
+</div>
 </section>
 <section class="app-view" id="view-classes"><div aria-label="Classes introduction" class="ms-panel-hero ms-hero-classes">
 <div class="ms-hero-copy">
@@ -200,6 +221,11 @@
 <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-two"></span>
 </div>
 <div class="section-row ms-panel-toolbar"><span class="ms-toolbar-label">Your classrooms</span><div class="ms-original-heading"><p class="eyebrow">STUDENT ORGANIZATION</p><h2>Classes</h2><p class="muted">Create a class, choose its grade level, then add students to that class.</p></div><button class="btn btn-orange" id="createClassBtn"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg>Create class</button></div>
+<div class="ms-class-tools" aria-label="Class search and filters">
+ <label class="ms-class-search"><span class="sr-only">Search classes</span><input id="msClassSearch" type="search" placeholder="Search section or grade…" aria-label="Search classes"></label>
+ <label class="ms-class-grade"><span class="sr-only">Filter classes by grade</span><select id="msClassGrade" aria-label="Filter classes by grade"><option value="all">All grades</option></select></label>
+ <button type="button" class="btn btn-light" data-go-view="archive">Archived classes</button>
+</div>
 <div class="class-grid" id="classGrid"></div>
 </section>
 <section class="app-view" id="view-assignments"><div aria-label="Assignments introduction" class="ms-panel-hero ms-hero-assignments">
@@ -253,9 +279,20 @@
 </div>
 <div class="assignment-list" id="performanceTaskList"></div>
 </section>
+<section class="app-view" id="view-records" aria-label="Class Records and Excel exports">
+ <div class="ms-panel-hero ms-hero-records" aria-label="Class Records introduction">
+  <div class="ms-hero-copy"><span class="ms-hero-kicker">05 / THE CLASS RECORD</span><h2>Every score,<br><em>in its place.</em></h2><p>Review your learners' written work and performance task records, then export the complete Excel class record.</p></div>
+  <div class="ms-hero-art" aria-hidden="true"><img src="assets/panel-identity/archive-records.svg" alt=""></div>
+ </div>
+ <div class="section-row ms-panel-toolbar"><span class="ms-toolbar-label">Class Records &amp; Export</span><div class="row-actions"><button type="button" class="btn btn-light" id="msRecordsOpenRoster">View roster</button><button type="button" class="btn btn-orange" id="msRecordsExport"><svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"/></svg>Export Excel</button></div></div>
+ <div class="ms-records-toolbar"><label for="msRecordsSection">Class<select id="msRecordsSection" aria-label="Choose class"><option value="">Choose a class</option></select></label><div class="ms-records-tabs" role="group" aria-label="Record type"><button type="button" data-ms-record-type="ww" class="active" aria-pressed="true">Written Works</button><button type="button" data-ms-record-type="pt" aria-pressed="false">Performance Tasks</button></div></div>
+ <div class="ms-records-summary" id="msRecordsSummary" aria-live="polite"></div>
+ <div class="ms-records-table-scroll" role="region" aria-label="Class record table" tabindex="0"><table class="ms-records-table"><thead id="msRecordsHead"></thead><tbody id="msRecordsBody"></tbody></table></div>
+ <p class="ms-records-note" id="msRecordsNote">Choose a class to view current and preserved scores. Archived files cannot be restored.</p>
+</section>
 <section class="app-view" id="view-archive"><div aria-label="Archive introduction" class="ms-panel-hero ms-hero-archive">
 <div class="ms-hero-copy">
-<span class="ms-hero-kicker">06 / THE MEMORY SHELF</span>
+<span class="ms-hero-kicker">07 / THE MEMORY SHELF</span>
 <h2>Past lessons,<br/><em>kept in order.</em></h2>
 <p>Find previously archived classroom work in one calm, organized place whenever you need to revisit it.</p>
 <div class="ms-hero-tags"><span>Archived records</span><span>Class history</span></div>
@@ -265,6 +302,13 @@
 <span aria-hidden="true" class="ms-hero-corner ms-hero-corner-two"></span>
 </div>
 <div class="section-row ms-panel-toolbar"><span class="ms-toolbar-label">Archive library</span><div class="ms-original-heading"><p class="eyebrow">ARCHIVE CENTER</p><h2>Archived</h2><p class="muted">Archived tasks are retained, but their student submissions and files are permanently removed. Checked scores remain in Class Record export.</p></div><div class="row-actions"><button class="btn btn-light" id="retryArchiveCleanupBtn" type="button">Retry file cleanup</button><button aria-controls="archiveFilterPanel" aria-expanded="false" class="btn btn-light compact-filter-button" id="archiveFilterBtn" type="button"><svg aria-hidden="true" class="btn-icon" viewbox="0 0 24 24"><path d="M4 5h16M7 12h10M10 19h4"></path></svg>Filter <span class="filter-count-badge" hidden="" id="archiveFilterBadge">0</span></button></div></div>
+<div class="ms-archive-category-tabs" aria-label="Archived item categories" role="group">
+  <button type="button" data-ms-archive-category="all" aria-pressed="true">All</button>
+  <button type="button" data-ms-archive-category="class" aria-pressed="false">Classes</button>
+  <button type="button" data-ms-archive-category="activity" aria-pressed="false">Activities</button>
+  <button type="button" data-ms-archive-category="performance" aria-pressed="false">Performance Tasks</button>
+</div>
+<div class="ms-archive-warning" role="note"><strong>Archived work:</strong> Scores remain in class-record exports, but archived submission images may have been permanently deleted. Restoring an item does not restore deleted images.</div>
 <div aria-label="Archive summary" class="archive-summary-grid">
 <article><span>Classes</span><b id="archivedClassCount">0</b></article>
 <article><span>Activities</span><b id="archivedActivityCount">0</b></article>
@@ -340,7 +384,7 @@
 </section>
 <section id="view-competencies" class="app-view ct-page"><div class="ms-panel-hero ms-hero-competencies ct-page-hero" aria-label="Competency Tracker introduction">
   <div class="ms-hero-copy">
-    <span class="ms-hero-kicker">05 / THE MASTERY STUDIO</span>
+    <span class="ms-hero-kicker">06 / THE MASTERY STUDIO</span>
     <h2>Every skill,<br><em>one step forward.</em></h2>
     <p>Explore your learners' progress, see where support is needed, and keep every competency within reach.</p>
     <div class="ct-hero-stats" aria-label="My competency overview">
@@ -1037,5 +1081,8 @@
 <script src="js/v15-performance-tasks.js?v=24.23-class-leader-rating"></script>
 <script src="js/friendly-editors.js?v=1"></script>
 <script src="js/orange-exact-forms.js?v=3"></script>
+<script src="js/teacher-preview-match-v24.31.js?v=24.31"></script>
+<script src="js/teacher-preview-fixes-v24.32.js?v=24.32"></script>
+<script src="js/teacher-empty-art-v24.32.js?v=24.32"></script>
 </body>
 </html>

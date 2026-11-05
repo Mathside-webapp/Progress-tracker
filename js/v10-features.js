@@ -828,9 +828,57 @@
     sheet.getRow(2).height = 22;
   }
 
-  async function exportClassRecord() {
+  // Read-only record data for the teacher Class Records panel. This deliberately
+  // shares archive snapshots and participation calculations with Excel export.
+  // Does not update any score, grade, archive or submission.
+  async function classRecordPreview(sectionId) {
+    const section = sectionById(sectionId);
+    if (!section) throw new Error('Select a class to view its scores.');
+    const students = studentsForSection(section.id).slice().sort((a, b) =>
+      classRecordGenderRank(a.gender) - classRecordGenderRank(b.gender) ||
+      String(a.display_name || '').localeCompare(String(b.display_name || ''), undefined, { sensitivity: 'base' })
+    );
+    const assignments = state.assignments.filter(a => String(a.section_id) === String(section.id) &&
+      (a.status === 'published' || a.status === 'archived'));
+    const ids = assignments.map(a => a.id);
+    const [scoreRows, snapshotRows] = await Promise.all([
+      readClassRecordArchiveRows('mathside_archived_scores', 'assignment_id,student_id,score', ids, {optional: true}),
+      readClassRecordArchiveRows('mathside_class_record_snapshots', 'assignment_id,student_id,score,display_status', ids, {optional: true})
+    ]);
+    const archivedUnavailable = scoreRows === null && snapshotRows === null && assignments.some(a => a.status === 'archived');
+    const archivedScores = classRecordRowsToMap(scoreRows, 'score');
+    const archivedSnapshots = classRecordRowsToMap(snapshotRows, null);
+    const performanceAssignments = assignments.filter(isPerformanceTask);
+    const performanceData = await loadPerformanceTaskExportData(performanceAssignments.filter(a => a.status !== 'archived'));
+    const writtenAssignments = assignments.filter(a => !isPerformanceTask(a));
+    const valuesFor = (workType, workAssignments) => students.map(student => {
+      const values = workAssignments.map(a => {
+        if (workType === 'pt') return performanceTaskExportScore(a, student.id, performanceData, archivedScores, archivedSnapshots).value;
+        const preserved = savedClassRecordValue(a, student.id, archivedSnapshots, archivedScores);
+        if (a.status === 'archived') return preserved ? preserved.value : (archivedUnavailable ? 'Unavailable' : '—');
+        const sub = state.submissions.find(x => String(x.assignment_id) === String(a.id) && String(x.student_id) === String(student.id));
+        if (!sub) return preserved ? preserved.value : '—';
+        const score = submissionNumericScore(sub);
+        if (score !== null) return score;
+        return sub.status === 'graded' ? 'Pending' : (sub.auto_score == null ? 'Pending' : Number(sub.auto_score));
+      });
+      const completed = values.filter(v => v !== '—' && v !== '' && v != null && v !== 'Unavailable').length;
+      const totalScore = values.reduce((n, v) => n + (typeof v === 'number' && Number.isFinite(v) ? v : 0), 0);
+      return {id:student.id,name:student.display_name || 'Student',gender:student.gender,values,completed,totalScore,
+        incompleteHistory:values.includes('Unavailable'),hasPending:values.includes('Pending') || values.includes('Not rated')};
+    });
+    return {
+      section:{id:section.id,name:section.name,grade_level:section.grade_level,archived:!!section.archived_at},
+      students:students.length,
+      written:{assignments:writtenAssignments.map(a=>({id:a.id,title:a.title,archived:a.status==='archived',possible:totalPoints(a.id) || Number(a.max_points) || null})),rows:valuesFor('ww',writtenAssignments)},
+      performance:{assignments:performanceAssignments.map(a=>({id:a.id,title:a.title,archived:a.status==='archived',possible:totalPoints(a.id) || Number(a.max_points) || null})),rows:valuesFor('pt',performanceAssignments)},
+      archivedUnavailable
+    };
+  }
+
+  async function exportClassRecord(sectionId = null) {
     if (!window.ExcelJS) return toast('Excel export library is not available.', 'orange', 'Export unavailable');
-    const section = sectionById(activeRosterSectionId);
+    const section = sectionById(typeof sectionId === 'string' ? sectionId : activeRosterSectionId);
     if (!section) return toast('Open a class roster first.', 'orange', 'Choose a class');
 
     const students = studentsForSection(section.id).slice().sort((a, b) => {
@@ -1184,7 +1232,8 @@
     refreshNotifications,
     openNotifications,
     routeNotification,
-    exportClassRecord
+    exportClassRecord,
+    classRecordPreview
   };
 
   // Initial render for sessions restored before this script loaded.

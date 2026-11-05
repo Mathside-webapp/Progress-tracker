@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-26-completed-activities';
+const CACHE_NAME = 'mathside-pwa-v24-32-record-scores-ui';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -48,6 +48,21 @@ const APP_SHELL = [
   './js/config.js',
   './js/question-tools.js?v=1.2-per-question-choice-order',
   './css/mathside-question-tools.css?v=1.3-activity-ux',
+  './css/teacher-classic-refinement.css?v=24.28-teacher-compact',
+  './css/teacher-preview-alignment.css?v=24.29',
+  './css/teacher-all-panels-v24.30.css?v=24.30',
+  './css/teacher-preview-match-v24.31.css?v=24.31',
+  './js/teacher-preview-match-v24.31.js?v=24.31',
+  './css/teacher-preview-fixes-v24.32.css?v=24.32',
+  './js/teacher-preview-fixes-v24.32.js?v=24.32',
+  './css/teacher-empty-art-v24.32.css?v=24.32',
+  './js/teacher-empty-art-v24.32.js?v=24.32',
+  './assets/empty-states/activities.svg',
+  './assets/empty-states/submissions.svg',
+  './assets/empty-states/performance.svg',
+  './assets/empty-states/classes.svg',
+  './assets/empty-states/competencies.svg',
+  './assets/empty-states/archive.svg',
   './js/app.js?v=24.25-activity-ux',
   './js/student-v8.js?v=15.3-overdue-history-fix',
   './js/v10-features.js?v=24.26-completed-activities',

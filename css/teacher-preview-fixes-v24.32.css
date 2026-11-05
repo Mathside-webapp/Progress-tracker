@@ -1,0 +1,93 @@
+/* Mathside V24.32: preview-accurate controls and teacher pages only.
+   The original e^x logo, all illustrations, creators and student UI are untouched. */
+#teacherApp{--ms32-border:#edd9c8;--ms32-muted:#826e5e;--ms32-orange:#f66b0a}
+#teacherApp .ms-action-sr{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+#teacherApp .ms-icon-action{box-sizing:border-box!important;display:inline-flex!important;justify-content:center!important;align-items:center!important;flex:0 0 36px!important;width:36px!important;min-width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important;padding:7px!important;border-radius:9px!important;box-shadow:none!important;line-height:1!important}
+#teacherApp .ms-icon-action svg{width:19px!important;height:19px!important;flex:0 0 19px;stroke-width:1.8!important}
+#teacherApp .ms-icon-action:focus-visible{outline:3px solid #ffa45e!important;outline-offset:2px}
+#teacherApp .ms-icon-action.ms-icon-trash{background:#fff7f6!important;border:1px solid #e7b1b4!important;color:#b52d41!important}
+#teacherApp .ms-icon-action.ms-icon-archive{background:#fff9f4!important;color:#a75a22!important;border:1px solid #e9c8af!important}
+#teacherApp .ms-icon-action.ms-icon-restore{color:#18704f!important;background:#f0faf4!important;border:1px solid #b6dcc4!important}
+/* Dashboard class rows: compact non-stretching roster action, aligned badges and buttons. */
+#teacherApp #dashboardClassGrid .class-card{grid-template-columns:minmax(0,1fr) 142px!important;column-gap:12px!important}
+#teacherApp #dashboardClassGrid .class-card-actions{grid-column:2!important;grid-row:1 / 3!important;display:flex!important;justify-content:flex-end!important;align-items:center!important;width:auto!important;min-width:0!important;margin:0!important}
+#teacherApp #dashboardClassGrid .class-view-students-btn{display:inline-flex!important;flex:0 0 auto!important;width:135px!important;max-width:135px!important;min-width:0!important;min-height:36px!important;justify-content:center!important;margin:0!important;white-space:nowrap!important;padding:7px 10px!important}
+#teacherApp #dashboardClassGrid .grade-pill{align-self:center!important;vertical-align:middle!important}
+/* Class cards: icon actions, not full-width Delete/Archive buttons. */
+#teacherApp #view-classes .class-card{gap:9px!important}
+#teacherApp #view-classes .class-card-actions{display:flex!important;justify-content:flex-start!important;align-items:center!important;flex-wrap:nowrap!important;gap:8px!important;width:100%!important;padding-top:2px!important}
+#teacherApp #view-classes .class-card-actions button.ms-icon-action{flex:0 0 36px!important;width:36px!important;max-width:36px!important;margin:0!important}
+#teacherApp #view-classes .class-card-actions .class-view-students-btn{flex:0 0 auto!important;width:auto!important;max-width:none!important;min-width:132px!important;padding:7px 13px!important;min-height:36px!important;justify-content:center!important;margin-right:auto!important;font-size:12px!important}
+#teacherApp #view-classes .class-card-top{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;column-gap:12px!important}
+#teacherApp #view-classes .grade-pill{justify-self:end!important;align-self:center!important;margin:0!important}
+/* Four accessible, compact activity tools in both desktop table and stacked phone cards. */
+#teacherApp :is(#view-assignments,#view-performance) .ms-list-actions{display:flex!important;justify-content:flex-start!important;align-items:center!important;gap:7px!important;flex-wrap:wrap!important;min-width:140px!important}
+#teacherApp :is(#view-assignments,#view-performance) .ms-list-actions button.ms-icon-action{flex:0 0 35px!important;width:35px!important;min-width:35px!important;max-width:35px!important;height:35px!important;min-height:35px!important;padding:7px!important}
+#teacherApp :is(#view-assignments,#view-performance) .ms-list-table th:last-child{min-width:160px}
+/* Records: actual activity names (no A1/A2), scores, archived results, completion and totals. */
+#teacherApp #view-records .ms-records-summary{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+#teacherApp #view-records .ms-records-summary article{padding:13px 12px!important}
+#teacherApp #view-records .ms-records-table th.ms-record-activity-heading{min-width:148px;max-width:225px;white-space:normal!important;font-size:11px!important;line-height:1.45!important;text-align:center;vertical-align:middle}
+#teacherApp #view-records .ms-records-table th.ms-record-activity-heading span{display:block;max-width:190px;white-space:normal;overflow-wrap:break-word;margin:0 auto}
+#teacherApp #view-records .ms-records-table th.ms-record-activity-heading small{white-space:normal;display:block;max-width:190px;margin-top:4px;font-size:10px;color:#9a6b51}
+#teacherApp #view-records .ms-records-table td.ms-record-total,#teacherApp #view-records .ms-records-table th:last-child{position:sticky;right:0;z-index:1;border-left:2px solid #f0cba9}
+#teacherApp #view-records .ms-records-table th:last-child{z-index:3}
+#teacherApp #view-records .ms-records-table td.ms-record-total{background:#fff0e6;z-index:2}
+#teacherApp #view-records .ms-records-table td.ms-record-error,#teacherApp #view-records .ms-records-table td.ms-history-unavailable{color:#a43137;font-weight:700}
+#teacherApp #view-records .ms-records-table td.ms-record-loading{padding:23px!important;text-align:center}
+#teacherApp #view-records .ms-records-table td.ms-record-name{position:sticky;left:0;background:#fff;z-index:2;min-width:190px}
+#teacherApp #view-records .ms-records-table th:nth-child(2){position:sticky;left:0;z-index:4}
+#teacherApp #view-records .ms-records-table-scroll{max-width:100%;overflow-x:auto}
+/* Archive: visible overview categories, honest deletion warning, compact rows and icon actions. */
+#teacherApp #view-archive .archive-summary-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important;margin:11px 0 13px!important}
+#teacherApp #view-archive .archive-summary-grid article{padding:12px 14px!important;background:#fff!important;border:1px solid var(--ms32-border)!important;border-radius:11px!important;box-shadow:none!important}
+#teacherApp #view-archive .archive-summary-grid b{font-size:22px!important;color:#b85311!important}
+#teacherApp .ms-archive-category-tabs{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin:12px 0}
+#teacherApp .ms-archive-category-tabs button{border:1px solid var(--ms32-border);background:#fff;color:#6f5445;padding:9px 13px;border-radius:9px;font:750 12px/1 Inter,Arial,sans-serif;cursor:pointer;min-height:36px}
+#teacherApp .ms-archive-category-tabs button[aria-pressed="true"]{background:#f66b0a;color:#fff;border-color:#f66b0a}
+#teacherApp .ms-archive-warning{padding:11px 13px;border:1px solid #f0d4a7;background:#fff7e9;color:#79512d;border-radius:10px;font:500 12px/1.5 Inter,Arial,sans-serif;margin:0 0 11px}
+#teacherApp #view-archive .archive-center-list{display:grid!important;gap:9px!important;background:transparent!important;border:0!important;box-shadow:none!important;overflow:visible!important}
+#teacherApp #view-archive .archive-record{grid-template-columns:42px minmax(0,1fr) auto!important;display:grid!important;align-items:center!important;gap:11px!important;border:1px solid var(--ms32-border)!important;background:#fff!important;border-radius:12px!important;padding:12px 14px!important;box-shadow:none!important;min-width:0!important}
+#teacherApp #view-archive .archive-record-icon{width:40px!important;height:40px!important;border-radius:10px!important}
+#teacherApp #view-archive .archive-record-title h3{font-size:14px!important}
+#teacherApp #view-archive .archive-record-body>p{font-size:11px!important;margin:3px 0 6px!important}
+#teacherApp #view-archive .archive-record-actions{grid-column:3!important;display:flex!important;gap:7px!important;justify-content:flex-end!important;align-items:center!important;flex-wrap:wrap!important;padding:0!important}
+#teacherApp #view-archive .archive-record-actions button.ms-icon-action{display:inline-flex!important;flex:0 0 36px!important;width:36px!important;max-width:36px!important;height:36px!important;min-height:36px!important}
+/* Competencies panel is a first-class compact teacher panel, retaining its artwork. */
+#teacherApp #view-competencies .ct-page-hero.ms-panel-hero{min-height:0!important;height:auto!important;grid-template-columns:minmax(0,1fr) minmax(120px,24%)!important;gap:14px!important;padding:16px 22px!important;margin-bottom:12px!important;border-radius:14px!important;box-shadow:none!important}
+#teacherApp #view-competencies .ct-page-hero h2{font:800 clamp(23px,2.2vw,30px)/1.12 Helvetica,Arial,sans-serif!important;letter-spacing:-.6px!important;margin:4px 0 7px!important;max-width:none!important}
+#teacherApp #view-competencies .ct-page-hero p{font-size:12px!important;line-height:1.5!important;max-width:580px!important}
+#teacherApp #view-competencies .ct-page-hero .ct-hero-art{position:relative!important;inset:auto!important;transform:none!important;height:95px!important;width:100%!important;opacity:1!important}
+#teacherApp #view-competencies .ct-page-hero .ct-hero-art img{display:block!important;position:static!important;width:100%!important;height:95px!important;max-height:95px!important;object-fit:contain!important;opacity:1!important}
+#teacherApp #view-competencies .ct-hero-stats{gap:8px!important;margin-top:9px!important}
+#teacherApp #view-competencies .ct-hero-stat{padding:6px 10px!important;min-width:105px!important;border-radius:9px!important}
+#teacherApp #view-competencies .ct-hero-stat strong{font:800 19px Helvetica,Arial,sans-serif!important}
+#teacherApp #view-competencies .ct-page-card{padding:16px 19px!important;border:1px solid var(--ms32-border)!important;border-radius:13px!important;box-shadow:none!important;background:#fff!important}
+#teacherApp #view-competencies .ct-head h2{font:800 19px Helvetica,Arial,sans-serif!important;letter-spacing:-.3px!important}
+#teacherApp #view-competencies .ct-filters{gap:10px!important;margin:11px 0!important}
+#teacherApp #view-competencies .ct-filters select{min-height:40px!important;border-radius:9px!important;font-size:12px!important}
+#teacherApp #view-competencies .ct-summary-cards{gap:9px!important}
+#teacherApp #view-competencies .ct-summary-cards>div{min-height:68px!important;border-radius:10px!important;padding:10px!important}
+#teacherApp #view-competencies .ct-summary-cards strong{font:800 22px Helvetica,Arial,sans-serif!important}
+#teacherApp #view-competencies .ct-dashboard-panel{padding:14px!important;border-radius:12px!important;box-shadow:none!important}
+#teacherApp #view-competencies .ct-dashboard-panel h3{font:800 16px Helvetica,Arial,sans-serif!important}
+@media(max-width:900px){#teacherApp #view-records .ms-records-summary{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+@media(max-width:680px){
+ #teacherApp #dashboardClassGrid .class-card{grid-template-columns:minmax(0,1fr) 112px!important}
+ #teacherApp #dashboardClassGrid .class-card-actions .class-view-students-btn{width:110px!important;max-width:110px!important;font-size:10px!important;padding:6px 5px!important}
+ #teacherApp #view-classes .class-card-actions .class-view-students-btn{width:auto!important;max-width:none!important;min-width:118px!important;flex:0 0 auto!important}
+ #teacherApp :is(#view-assignments,#view-performance) .ms-list-actions{display:flex!important;flex-wrap:nowrap!important;min-width:0!important;justify-content:flex-start!important}
+ #teacherApp :is(#view-assignments,#view-performance) .ms-list-actions button.ms-icon-action{width:40px!important;max-width:40px!important;flex:0 0 40px!important;height:40px!important;min-height:40px!important}
+ #teacherApp #view-archive .archive-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ #teacherApp #view-archive .archive-summary-grid article{padding:9px!important;flex-direction:column!important;align-items:flex-start!important;gap:3px!important}
+ #teacherApp #view-archive .archive-summary-grid b{font-size:21px!important}
+ #teacherApp #view-archive .archive-record{grid-template-columns:40px minmax(0,1fr)!important}
+ #teacherApp #view-archive .archive-record-actions{grid-column:1/-1!important;justify-content:flex-start!important;border-top:1px solid #f2e5da;padding-top:9px!important}
+ #teacherApp #view-archive .archive-record-actions button.ms-icon-action{display:inline-flex!important;width:42px!important;min-width:42px!important;max-width:42px!important;height:42px!important;min-height:42px!important;flex:0 0 42px!important}
+ #teacherApp #view-competencies .ct-page-hero.ms-panel-hero{grid-template-columns:minmax(0,1fr) 90px!important;padding:13px!important;gap:4px!important}
+ #teacherApp #view-competencies .ct-page-hero .ct-hero-art,#teacherApp #view-competencies .ct-page-hero .ct-hero-art img{height:74px!important;max-width:90px!important}
+ #teacherApp #view-competencies .ct-page-hero h2{font-size:20px!important}
+ #teacherApp #view-competencies .ct-hero-stat{min-width:0!important;padding:6px 8px!important}
+ #teacherApp #view-competencies .ct-summary-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #teacherApp #view-records .ms-records-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
