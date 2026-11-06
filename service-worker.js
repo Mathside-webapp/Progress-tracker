@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-34-css-recovery-png';
+const CACHE_NAME = 'mathside-pwa-v24-35-student-zigzag-css';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -35,11 +35,12 @@ const APP_SHELL = [
   './css/design-v9.css?v=9.1',
   './css/v10-features.css?v=11.5',
   './css/competency-tracker.css?v=16.0-add-competency',
-  './js/competency-tracker.js?v=21.0-student-repair',
+  './js/competency-tracker.js?v=24.35-zigzag',
   './css/competency-dashboard-polish.css?v=16',
   './css/mobile-header-safety.css?v=19.0',
   './css/student-v20-refresh.css?v=20.0',
   './css/student-v22-dashboard.css?v=22.2',
+  './css/student-zigzag-v24.35.css?v=24.35-student-journey',
   './assets/panel-identity/competencies.svg',
   './assets/panel-identity/classes-study.svg',
   './assets/panel-identity/dashboard-workspace.svg',

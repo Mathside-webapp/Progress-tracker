@@ -1,0 +1,52 @@
+/* Mathside V24.35: student-only competency zigzag — based on V24.34 repaired source. */
+/* Keep this AFTER all existing CSS. Every rule is scoped to student Overview. */
+#studentApp .v22-dashboard-competencies{min-width:0;overflow:hidden}
+#studentApp .v22-dashboard-competencies .v22-competency-heading{min-height:0;margin:0 0 14px;padding:0;border:0}
+#studentApp .v22-dashboard-competencies .v22-competency-heading h2{margin:0;font-family:Helvetica,Arial,sans-serif;font-size:clamp(19px,2.25vw,25px);font-weight:800;color:#29221c}
+#studentApp .v22-dashboard-competencies .v22-competency-heading h2 svg{display:none}
+#studentApp .ms-journey{border:1px solid #f1dac5;background:#fff9f3;border-radius:20px;overflow:hidden;min-width:0}
+#studentApp .ms-journey-banner{display:flex;align-items:center;gap:10px;padding:15px 18px;background:#ef760a;color:#fff}
+#studentApp .ms-journey-banner h3{font:800 16px/1.25 Helvetica,Arial,sans-serif;margin:0;color:#fff}
+#studentApp .ms-journey-star{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;background:#fff4e3;color:#ef760a;border-radius:10px;font-size:20px}
+#studentApp .ms-journey-scroll{width:100%;max-width:100%;min-width:0;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#ddb38f #fff3e5;touch-action:pan-x pan-y;box-sizing:border-box;padding:8px 0 8px;background:#fff9f3;cursor:grab}
+#studentApp .ms-journey-scroll:focus-visible{outline:3px solid #ec8833;outline-offset:-3px}
+#studentApp .ms-journey-scroll.is-dragging{cursor:grabbing;user-select:none}
+#studentApp .ms-journey-scroll::-webkit-scrollbar{height:8px}
+#studentApp .ms-journey-scroll::-webkit-scrollbar-track{background:#fff3e5}
+#studentApp .ms-journey-scroll::-webkit-scrollbar-thumb{background:#ddb38f;border-radius:8px}
+#studentApp .ms-journey-track{height:330px;position:relative;isolation:isolate}
+#studentApp .ms-journey-wave{position:absolute;inset:0;width:100%;height:330px;pointer-events:none;z-index:0}
+#studentApp .ms-journey-node{position:absolute;z-index:1;transform:translateX(-50%);width:154px;display:flex;flex-direction:column;align-items:center;gap:5px;padding:0 4px;background:transparent;border:0;box-shadow:none;text-align:center;cursor:pointer;color:#372922;font-family:Inter,'Segoe UI',sans-serif;white-space:normal;appearance:none}
+#studentApp .ms-journey-node:focus-visible{outline:3px solid #f4a84d;outline-offset:4px;border-radius:13px}
+#studentApp .ms-journey-orb{width:80px;height:80px;flex:none;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:#fff;border:5px solid #e3d5c6;box-shadow:0 6px 0 #d4c4b2,0 12px 22px #70411c18;transition:transform .16s ease}
+#studentApp .ms-journey-node:hover .ms-journey-orb,#studentApp .ms-journey-node:focus-visible .ms-journey-orb{transform:translateY(-3px)}
+#studentApp .ms-journey-orb strong{font:800 23px/1 Helvetica,Arial,sans-serif;color:#5c4a3b}
+#studentApp .ms-journey-orb small{font:800 15px/1 Inter,system-ui,sans-serif;color:#a6856c}
+#studentApp .ms-journey-node.mastered .ms-journey-orb{background:#e8f8ef;border-color:#239e73;box-shadow:0 6px 0 #12805b,0 12px 22px #137d5c20}
+#studentApp .ms-journey-node.mastered .ms-journey-orb strong,#studentApp .ms-journey-node.mastered .ms-journey-orb small{color:#168761}
+#studentApp .ms-journey-node.developing .ms-journey-orb{background:#fff4df;border-color:#fa921c;box-shadow:0 6px 0 #d8730c,0 12px 22px #a9601820}
+#studentApp .ms-journey-node.developing .ms-journey-orb strong,#studentApp .ms-journey-node.developing .ms-journey-orb small{color:#b9630c}
+#studentApp .ms-journey-node.not-assessed .ms-journey-orb{background:#f9f7f5;border-color:#d6c9bd}
+#studentApp .ms-journey-name{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:148px;min-height:29px;line-height:1.27;font-weight:800;font-size:11px;color:#3b2a1c;overflow-wrap:anywhere}
+#studentApp .ms-journey-state{font-weight:650;font-size:10px;line-height:1.2;color:#947761}
+#studentApp .ms-journey-dialog{box-sizing:border-box;max-height:min(84dvh,780px);max-width:min(610px,calc(100vw - 28px));width:100%;overflow:auto;overscroll-behavior:contain;background:#fffaf6;border:1px solid #efcfb1;border-radius:20px;padding:12px;box-shadow:0 24px 80px #28160855;color:#332117}
+#studentApp .ms-journey-dialog::backdrop{background:#27180dc0}
+#studentApp .ms-journey-dialog-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 8px 10px;border-bottom:1px solid #f0dfcf}
+#studentApp .ms-journey-dialog-head strong{font:800 14px/1.2 Inter,system-ui,sans-serif}
+#studentApp .ms-journey-dialog-close{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;background:#fff1e4;border:1px solid #ebd1bc;border-radius:10px;color:#974e1a;cursor:pointer;font-size:24px;line-height:1}
+#studentApp .ms-journey-dialog-close:focus-visible{outline:3px solid #f5ae5b}
+#studentApp .ms-journey-detail{margin:0!important;padding:11px 7px!important;border:0!important;box-shadow:none!important;background:transparent!important}
+#studentApp .ms-journey-detail .ct-history{align-items:flex-start}
+#studentApp .ms-journey-detail .ct-history b{white-space:nowrap}
+@media(max-width:640px){
+ #studentApp .ms-journey-banner{padding:12px 13px}
+ #studentApp .ms-journey-banner h3{font-size:14px}
+ #studentApp .ms-journey-track,#studentApp .ms-journey-wave{height:330px}
+ #studentApp .ms-journey-node{width:130px}
+ #studentApp .ms-journey-orb{width:70px;height:70px;border-width:4px}
+ #studentApp .ms-journey-orb strong{font-size:20px}
+ #studentApp .ms-journey-name{max-width:122px;font-size:10px}
+ #studentApp .ms-journey-state{font-size:9px}
+ #studentApp .ms-journey-detail .v20-ct-detail-top{flex-wrap:wrap}
+ #studentApp .ms-journey-detail .v20-ct-score{align-items:flex-start}
+}

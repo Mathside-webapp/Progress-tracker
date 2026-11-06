@@ -36,6 +36,7 @@
 <link rel="stylesheet" href="css/teacher-preview-match-v24.31.css?v=24.31"/>
 <link rel="stylesheet" href="css/teacher-preview-fixes-v24.32.css?v=24.32"/>
 <link rel="stylesheet" href="css/teacher-empty-art-v24.32.css?v=24.32"/>
+<link rel="stylesheet" href="css/student-zigzag-v24.35.css?v=24.35-student-journey"/>
 </head>
 <body>
 <dialog class="app-loading" hidden="" id="appLoading" aria-labelledby="loadingTitle" aria-describedby="loadingMessage">
@@ -436,7 +437,7 @@
 <div class="v8-hero"><div class="v8-hero-copy"><span class="v20-student-eyebrow"><b>00</b> / YOUR LEARNING HOME</span><h1><span id="v8Greeting">Good morning,</span><br/><span class="v8-greeting-name" id="v8GreetingName">Student!</span> <span aria-hidden="true" class="v8-wave">👋</span></h1><p>Keep going! Every problem you solve<br/>brings you closer to your goals.</p></div><div aria-hidden="true" class="v8-character"><img alt="" hidden="" id="v8HeroCharacter"/><div class="v8-neutral-hero"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="m1 8 11-5 11 5-11 5zM5 11v7l7 4 7-4v-7M22 9v8"></path></svg><span>Let’s learn<br/>something new!</span></div></div><div aria-hidden="true" class="v8-encouragement">Small<br/>Progress<br/>Big Results!<span></span></div><span aria-hidden="true" class="v8-hero-sparks">✦</span></div>
 <section aria-label="Learning summary" class="v8-metrics"><article class="v8-metric"><span class="v8-metric-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="m12 2 3.1 6.3 7 .9-5 4.9 1.2 7L12 18l-6.3 3.1 1.2-7-5-4.9 7-.9z"></path></svg></span><div><h3>Average Grade</h3><strong data-v8-metric="average">—</strong><small data-v8-note="average"></small><span class="v8-micro" data-v8-detail="average"></span></div></article><article class="v8-metric"><span class="v8-metric-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM14 3v5h5M9 12h7M9 16h5"></path></svg></span><div><h3>Total Activities</h3><strong data-v8-metric="total">—</strong><small data-v8-note="total"></small><span class="v8-micro" data-v8-detail="total"></span></div></article><article class="v8-metric"><span class="v8-metric-icon"><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><path d="M7 3h10v6a5 5 0 0 1-10 0zM7 5H3v3a5 5 0 0 0 5 5M17 5h4v3a5 5 0 0 1-5 5M12 14v6M7 22h10"></path></svg></span><div><h3>Highest Score</h3><strong data-v8-metric="highest">—</strong><small data-v8-note="highest"></small><span class="v8-micro" data-v8-detail="highest"></span></div></article></section>
 <section class="v22-dashboard-competencies v8-paper" aria-labelledby="v22CompetencyHeading">
-<header class="v8-section-heading v22-competency-heading"><div><span class="v22-section-kicker">YOUR LEARNING MILESTONES</span><h2 id="v22CompetencyHeading"><svg aria-hidden="true" class="v8-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>Competencies</h2><p>Follow your skills, scores, and progress in one place.</p></div></header>
+<header class="v8-section-heading v22-competency-heading"><div><h2 id="v22CompetencyHeading"><svg aria-hidden="true" class="v8-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5"/></svg>My learning path</h2></div></header>
 <div id="ctStudentContent" class="ct-student-content" aria-live="polite"><div class="v20-ct-state">Preparing your competency progress…</div></div>
 </section>
 <section class="v8-upcoming v8-paper"><header class="v8-section-heading"><h2><svg aria-hidden="true" class="v8-icon" viewbox="0 0 24 24"><rect height="17" rx="2" width="18" x="3" y="5"></rect><path d="M7 2v6M17 2v6M3 11h18M8 16l3 3 5-5"></path></svg>Upcoming Tasks</h2><button data-v8-action="view-tasks" type="button">View All</button></header><div id="v8UpcomingList"></div></section>
@@ -1071,7 +1072,7 @@
     <div class="ct-delete-actions"><button type="button" class="btn btn-light" id="ctDeleteCancel">Cancel</button><button type="button" class="btn ct-delete-confirm" id="ctDeleteConfirm">Delete competency</button></div>
   </section>
 </dialog>
-<script src="js/competency-tracker.js?v=21.0-student-repair"></script>
+<script src="js/competency-tracker.js?v=24.35-zigzag"></script>
 <script src="js/student-v8.js?v=15.3-overdue-history-fix"></script>
 <script src="js/v10-features.js?v=24.26-completed-activities"></script>
 <script src="js/design-v9.js?v=9"></script>

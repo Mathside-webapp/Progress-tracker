@@ -238,21 +238,39 @@
       const mastered=items.filter(c=>(c.teacherLevel||suggestedLevel(c.percent)).toLowerCase()==='mastered').length;
       const assessed=items.filter(c=>c.percent!==null && Number.isFinite(c.percent));
       const avg=assessed.length?Math.round(assessed.reduce((t,c)=>t+c.percent,0)/assessed.length):null;
+      // Student-only scrollable zigzag; all scoring comes from the existing secure query.
+      const journeyX = 110, journeyGap = 190, topY = 70, bottomY = 220;
+      const journeyWidth = Math.max(650, journeyX * 2 + journeyGap * (items.length - 1));
+      const journeyPoints = items.map((c,i)=>({x:journeyX+i*journeyGap,y:i%2===0?topY:bottomY}));
+      const journeyLine = journeyPoints.reduce((path,point,i)=>{
+        if(i===0)return `M ${point.x} ${point.y}`;
+        const previous=journeyPoints[i-1],mid=(previous.x+point.x)/2;
+        return path+` C ${mid-55} ${previous.y}, ${mid+55} ${point.y}, ${point.x} ${point.y}`;
+      },'');
       root.innerHTML=`
-        <div class="v20-ct-overview">
-          <div class="v20-ct-stat"><span>Total competencies</span><strong>${items.length}</strong><small>Your learning milestones</small></div>
-          <div class="v20-ct-stat"><span>Mastered</span><strong>${mastered}</strong><small>Skills you have demonstrated</small></div>
-          <div class="v20-ct-stat"><span>Average progress</span><strong>${avg===null?'—':avg+'%'}</strong><small>${assessed.length} assessed competenc${assessed.length===1?'y':'ies'}</small></div>
-        </div>
-        <section class="v20-ct-journey" aria-labelledby="v20CtJourneyTitle">
-          <div class="v20-ct-journey-head"><div><span class="v20-ct-overline">YOUR LEARNING PATH</span><h2 id="v20CtJourneyTitle">One skill at a time.</h2><p>Tap a circle to see your score and assessment history.</p></div><button type="button" class="v20-ct-retry v20-ct-refresh">↻ Refresh</button></div>
-          <div class="ct-line-scroll" aria-label="Competency milestones"><div class="ct-line">${items.map((c,i)=>`<button type="button" class="ct-node ${c.percent===null?'ct-unassessed':(c.teacherLevel||suggestedLevel(c.percent)).toLowerCase()==='mastered'?'ct-mastered':'ct-progress'}" data-index="${i}" aria-label="${esc(c.name)}, ${c.percent===null?'not assessed':c.percent+' percent'}"><span class="ct-circle">${c.percent===null?'–':(c.teacherLevel||suggestedLevel(c.percent)).toLowerCase()==='mastered'?'✓':Math.round(c.percent)+'%'}</span><span class="ct-node-name">${esc(c.name)}</span></button>`).join('')}</div></div>
-          <div class="v20-ct-legend"><span><i class="is-mastered"></i> Mastered</span><span><i class="is-developing"></i> In progress</span><span><i class="is-unassessed"></i> Not assessed</span></div>
+        <section class="ms-journey" aria-labelledby="msJourneyTitle">
+          <header class="ms-journey-banner"><span class="ms-journey-star" aria-hidden="true">✦</span><h3 id="msJourneyTitle">My math skills</h3></header>
+          <div class="ms-journey-scroll" tabindex="0" aria-label="Your competencies. Swipe or scroll horizontally to explore more skills.">
+            <div class="ms-journey-track" style="width:${journeyWidth}px">
+              <svg class="ms-journey-wave" viewBox="0 0 ${journeyWidth} 330" preserveAspectRatio="none" aria-hidden="true"><path d="${journeyLine}" fill="none" stroke="#ead0ba" stroke-width="8" stroke-linecap="round" stroke-dasharray="10 16"/></svg>
+              ${items.map((c,i)=>{
+                const level=(c.teacherLevel||suggestedLevel(c.percent));
+                const tone=c.percent===null?'not-assessed':level.toLowerCase()==='mastered'?'mastered':'developing';
+                const value=c.percent===null?'—':Math.round(c.percent)+'%';
+                const status=c.percent===null?'Not assessed':level.toLowerCase()==='mastered'?'Completed':'In progress';
+                const pos=journeyPoints[i];
+                return `<button type="button" class="ms-journey-node ${tone}" data-index="${i}" style="left:${pos.x}px;top:${i%2===0?32:182}px" title="${esc(c.name)}" aria-label="${esc(c.name)}, ${value}, ${esc(status)}. View scores."><span class="ms-journey-orb"><strong>${value}</strong><small aria-hidden="true">${tone==='mastered'?'✓':tone==='not-assessed'?'·':'★'}</small></span><span class="ms-journey-name">${esc(c.name)}</span><span class="ms-journey-state">${esc(status)}</span></button>`;
+              }).join('')}
+            </div>
+          </div>
         </section>
-        <section class="ct-detail v20-ct-detail" id="ctDetail" aria-live="polite"></section>`;
+        <dialog id="ctStudentSkillDialog" class="ms-journey-dialog" aria-label="Competency details">
+          <div class="ms-journey-dialog-head"><strong>Competency details</strong><button type="button" class="ms-journey-dialog-close" aria-label="Close competency details">×</button></div>
+          <section class="ct-detail v20-ct-detail ms-journey-detail" id="ctDetail" aria-live="polite"></section>
+        </dialog>`;
       function select(i){
         const c=items[i];if(!c)return;
-        root.querySelectorAll('.ct-node').forEach((node,j)=>{node.classList.toggle('ct-selected',i===j);node.setAttribute('aria-pressed',String(i===j));});
+        root.querySelectorAll('.ms-journey-node').forEach((node,j)=>{node.classList.toggle('is-selected',i===j);node.setAttribute('aria-pressed',String(i===j));});
         const level=c.teacherLevel||suggestedLevel(c.percent);
         const levelDescription=c.teacherLevel?'Teacher-reviewed proficiency':'Suggested from recorded scores';
         const details=c.history.map(a=>{
@@ -265,8 +283,41 @@
           <div class="v20-ct-history-title"><h4>Assessment history</h4><span>${c.history.length} activit${c.history.length===1?'y':'ies'}</span></div>
           <div class="v20-ct-history">${details||'<p class="v20-ct-no-history">No scored assessment evidence yet.</p>'}</div>`;
       }
-      root.querySelectorAll('.ct-node').forEach(n=>n.addEventListener('click',()=>{select(Number(n.dataset.index));$('ctDetail')?.classList.add('v22-detail-open');}));
-      root.querySelector('.v20-ct-refresh')?.addEventListener('click',student);
+      const skillDialog=root.querySelector('#ctStudentSkillDialog');
+      const skillScroller=root.querySelector('.ms-journey-scroll');
+      let dragging=false, originX=0, originScroll=0, moved=false;
+      // Mouse drag works on desktop; mobile keeps native momentum swipe.
+      skillScroller?.addEventListener('pointerdown',event=>{
+        if(event.pointerType==='touch'||event.button!==0)return;
+        dragging=true;moved=false;originX=event.clientX;originScroll=skillScroller.scrollLeft;
+      });
+      skillScroller?.addEventListener('pointermove',event=>{
+        if(!dragging)return;
+        const delta=event.clientX-originX;
+        if(Math.abs(delta)>6){moved=true;skillScroller.scrollLeft=originScroll-delta;skillScroller.classList.add('is-dragging');}
+      });
+      const stopDrag=()=>{dragging=false;skillScroller?.classList.remove('is-dragging');};
+      skillScroller?.addEventListener('pointerup',stopDrag);
+      skillScroller?.addEventListener('pointercancel',stopDrag);
+      skillScroller?.addEventListener('pointerleave',stopDrag);
+      skillScroller?.addEventListener('click',event=>{
+        if(moved){event.preventDefault();event.stopPropagation();moved=false;}
+      },true);
+      skillScroller?.addEventListener('wheel',event=>{
+        if(!skillScroller || skillScroller.scrollWidth<=skillScroller.clientWidth)return;
+        if(event.deltaY!==0 && Math.abs(event.deltaY)>Math.abs(event.deltaX)){
+          event.preventDefault();skillScroller.scrollLeft+=event.deltaY;
+        }
+      },{passive:false});
+      root.querySelectorAll('.ms-journey-node').forEach(n=>n.addEventListener('click',()=>{
+        select(Number(n.dataset.index));
+        if(skillDialog && !skillDialog.open){
+          if(typeof skillDialog.showModal==='function')skillDialog.showModal();
+          else skillDialog.setAttribute('open','');
+        }
+      }));
+      skillDialog?.querySelector('.ms-journey-dialog-close')?.addEventListener('click',()=>skillDialog.close());
+      skillDialog?.addEventListener('click',event=>{if(event.target===skillDialog)skillDialog.close();});
       select(0);
     }catch(error){
       if(request!==studentRequestSerial)return;
