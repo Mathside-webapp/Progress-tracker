@@ -807,7 +807,7 @@
       const assignment = assignmentById(submission.assignment_id);
       await withLoading(
         'Clearing submission and notifying student…',
-        'The student will see a generic bell alert and the reason in Activities > Submitted.',
+        '',
         async () => {
           const { error } = await db.rpc('mathside_clear_submission_with_reason', {
             p_submission_id: submission.id,
@@ -830,7 +830,7 @@
           showTeacherView('submissions');
         }
       );
-      toast('Submission cleared. The student was notified in the bell and can see the reason in Activities > Submitted.', 'success', 'Notification created');
+      toast('Submission cleared.', 'success');
     } catch (error) {
       console.error(error);
       if (deletionAndNotificationSaved) {

@@ -1,4 +1,4 @@
-/* Mathside V24.37: red cleared submissions only in student Activities > Submitted. */
+/* Mathside V24.39: red cleared submissions in student To Do, not Submitted. */
 #studentApp .v8-activity-row.is-cleared{border-color:#efb9b9;background:#fffafa;box-shadow:0 4px 15px rgba(150,36,40,.07)}
 #studentApp .v8-activity-row .v8-status.cleared{background:#ffe6e8!important;color:#a71f31!important;border:1px solid #e7a3ab;font-weight:800;min-width:0;white-space:normal;text-align:center}
 #studentApp .v8-cleared-reason{grid-column:2 / -1;grid-row:auto;min-width:0;border:1px solid #f0bdc2;border-left:4px solid #cb293c;background:#fff2f2;border-radius:12px;padding:12px 15px;color:#842335;font-size:12px;line-height:1.5}
@@ -7,3 +7,16 @@
 #studentApp .v8-cleared-reason p b{font-weight:800}
 #studentApp .v8-activity-row.is-cleared .v8-view-button{background:#fff;border-color:#d13b4c;color:#b12637}
 @media(max-width:530px){#studentApp .v8-cleared-reason{grid-column:1 / -1;padding:11px 12px;font-size:11px}#studentApp .v8-activity-row.is-cleared>.v8-status{grid-row:3;grid-column:2;justify-self:start}#studentApp .v8-activity-row.is-cleared .v8-view-button{grid-row:3;grid-column:3}}
+
+/* Red clearing reason in the dedicated Student > To-Do panel, too. */
+#studentApp .v10-todo-card.is-cleared{border:1px solid #efb9b9!important;background:#fffafa!important;box-shadow:0 4px 15px rgba(150,36,40,.07)}
+#studentApp .v10-todo-card.is-cleared .v10-todo-check{background:#ffe6e8!important;color:#b12637!important}
+#studentApp .v10-todo-card.is-cleared .v10-todo-meta{display:flex;flex-wrap:wrap;justify-content:flex-end;min-width:0;gap:8px}
+#studentApp .v10-todo-card.is-cleared .v8-status.cleared{display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:9px;max-width:100%;background:#ffe6e8!important;color:#a71f31!important;border:1px solid #e7a3ab!important}
+#studentApp .v10-todo-card.is-cleared .v8-view-button{border-color:#d13b4c!important;color:#b12637!important;background:#fff!important}
+#studentApp .v10-cleared-reason{min-width:0;margin-top:10px;padding:11px 13px;border:1px solid #f0bdc2;border-left:4px solid #cb293c;border-radius:12px;background:#fff2f2;color:#842335;font-size:12px;line-height:1.5}
+#studentApp .v10-cleared-reason b{display:block;font-size:12px;color:#a01c2e;margin-bottom:3px}
+#studentApp .v10-cleared-reason p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;color:#842335}
+#studentApp .v10-cleared-reason p b{display:inline;font-size:inherit}
+@media(max-width:900px){#studentApp .v10-todo-card.is-cleared .v10-todo-meta{grid-column:2;justify-content:flex-start}}
+@media(max-width:640px){#studentApp .v10-todo-card.is-cleared .v10-todo-meta{grid-column:1;justify-content:flex-start}}

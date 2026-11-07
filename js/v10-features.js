@@ -94,10 +94,11 @@
     list.innerHTML = pending.map(a => {
       const due = relativeDue(a.due_at);
       const section = sectionById(a.section_id);
-      return `<article class="v10-todo-card ${due.key}">
-        <div class="v10-todo-check" aria-hidden="true">✓</div>
-        <div class="v10-todo-copy"><span>${esc(sectionLabel(section))}</span><h3>${esc(a.title)}</h3><p>${esc(a.instructions || 'Open this activity to continue working.')}</p></div>
-        <div class="v10-todo-meta"><span class="v10-due-chip ${due.key}">${esc(due.label)}</span><button class="v8-view-button" type="button" data-answer-assignment="${esc(a.id)}">Open</button></div>
+      const cleared = studentClearedSubmission(a.id);
+      return `<article class="v10-todo-card ${due.key} ${cleared?'is-cleared':''}">
+        <div class="v10-todo-check" aria-hidden="true">${cleared?'!':'✓'}</div>
+        <div class="v10-todo-copy"><span>${esc(sectionLabel(section))}</span><h3>${esc(a.title)}</h3><p>${esc(a.instructions || 'Open this activity to continue working.')}</p>${cleared?`<div class="v10-cleared-reason"><b>Reason for clearing:</b><p>${esc(cleared.reason_text || 'Your teacher cleared this submission.')}</p>${cleared.teacher_note?`<p><b>Teacher note:</b> ${esc(cleared.teacher_note)}</p>`:''}</div>`:''}</div>
+        <div class="v10-todo-meta">${cleared?'<span class="v8-status cleared">Cleared — Resubmit</span>':`<span class="v10-due-chip ${due.key}">${esc(due.label)}</span>`}<button class="v8-view-button" type="button" data-answer-assignment="${esc(a.id)}">${cleared?'Resubmit':'Open'}</button></div>
       </article>`;
     }).join('');
   }
@@ -374,7 +375,7 @@
     setBadge('studentNotificationBadge', state.profile?.role === 'student' ? unread.length : 0);
     setBadge('studentFeedbackNavBadge', state.profile?.role === 'student' ? unread.filter(n => n.type === 'feedback').length : 0);
     if (!box) return;
-    box.innerHTML = feature.notifications.length ? feature.notifications.map(n => `<div class="v10-notification-row ${n.read_at ? '' : 'unread'}"><button type="button" class="v10-notification-open" data-notification-id="${esc(n.id)}"><span class="v10-notification-kind">${notificationIcon(n.type)}</span><span class="v10-notification-copy"><b>${esc(n.title || 'Mathside update')}</b><small>${esc(n.title === 'Submission cleared — action needed' ? 'Your submission was cleared. Open Activities > Submitted to view the reason.' : (n.body || ''))}</small><time>${esc(formatDateTime(n.created_at))}</time></span>${n.read_at ? '' : '<i></i>'}</button><button type="button" class="v10-notification-delete" data-notification-delete="${esc(n.id)}" aria-label="Delete ${esc(n.title || 'notification')}" title="Delete notification">×</button></div>`).join('') : featureEmpty('You’re all caught up.', 'New class updates will appear here.');
+    box.innerHTML = feature.notifications.length ? feature.notifications.map(n => `<div class="v10-notification-row ${n.read_at ? '' : 'unread'}"><button type="button" class="v10-notification-open" data-notification-id="${esc(n.id)}"><span class="v10-notification-kind">${notificationIcon(n.type)}</span><span class="v10-notification-copy"><b>${esc(n.title || 'Mathside update')}</b><small>${esc(n.title === 'Submission cleared — action needed' ? 'Your submission was cleared. Open Activities > To Do to view the reason.' : (n.body || ''))}</small><time>${esc(formatDateTime(n.created_at))}</time></span>${n.read_at ? '' : '<i></i>'}</button><button type="button" class="v10-notification-delete" data-notification-delete="${esc(n.id)}" aria-label="Delete ${esc(n.title || 'notification')}" title="Delete notification">×</button></div>`).join('') : featureEmpty('You’re all caught up.', 'New class updates will appear here.');
   }
 
   async function refreshNotifications({ force = false } = {}) {
@@ -428,7 +429,7 @@
       const staleDeadlineReminder = n => {
         // A clear-submission notice contains words such as 'missing' and
         // 'incomplete', but it is NOT an obsolete deadline reminder.
-        // Clearing reasons are private and visible only in Activities > Submitted.
+        // Clearing reasons are private and visible only in the student To Do areas.
         if (n.type === 'system' && n.title === 'Submission cleared — action needed') return false;
         const signal = `${n.type || ''} ${n.title || ''} ${n.body || ''}`;
         if (!/remind|missing|pending|overdue|not submitted|incomplete|deadline|due/i.test(signal)) return false;
@@ -463,8 +464,13 @@
   function routeNotification(note) {
     if (state.profile?.role === 'student') {
       if (note.title === 'Submission cleared — action needed') {
-        studentTaskFilter = 'submitted';
+        studentTaskFilter = 'ongoing';
         showStudentPanel('activities');
+        // A bell may refresh before the workspace itself; reload cleared
+        // records so the red To Do card is visible without signing out.
+        if (typeof refreshStudent === 'function') {
+          refreshStudent().catch(error => console.warn('Cleared work refresh:', error?.message || error));
+        }
       } else if (note.type === 'feedback') showStudentPanel('feedback');
       else showStudentPanel('todo');
     } else if (state.profile?.role === 'teacher') {

@@ -639,6 +639,9 @@ function studentNeedsToSubmit(assignment) {
   if (!assignment || assignment.status !== 'published' || assignment.archived_at) return false;
   const release = assignment.publish_at ? new Date(assignment.publish_at).getTime() : 0;
   if (Number.isFinite(release) && release > Date.now()) return false;
+  // A teacher-cleared submission needs attention again, even if older
+  // archived/history records still contain a completed-credit entry.
+  if (studentClearedSubmission(assignment.id)) return true;
   return !studentHasRecordedSubmission(assignment.id);
 }
 
@@ -1271,8 +1274,8 @@ async function loadStudentData() {
     readOwnArchive('mathside_archived_scores','assignment_id,student_id,score,archived_at'),
     readOwnArchive('mathside_submission_history','assignment_id,student_id,status,submitted_at,archived_at')
   ]);
-  // Clearing deletes the original response, so keep the red Submitted-tab
-  // notice in a private RLS-protected table, separate from the 7-day bell.
+  // Clearing deletes the original response, so keep the red To Do notice
+  // in a private RLS-protected table, separate from the 7-day bell.
   const clearedRows = [];
   for (let offset=0;;offset+=500) {
     const {data, error} = await db.from('mathside_submission_clears')
@@ -3813,6 +3816,9 @@ function studentClearedSubmission(assignmentId) {
 }
 
 function studentAssignmentState(assignment) {
+  // Cleared is actionable To Do, never Submitted or Missed, until a new
+  // response supersedes the private clearing record.
+  if (assignment?.status === 'published' && studentClearedSubmission(assignment.id)) return 'ongoing';
   if (studentHasRecordedSubmission(assignment.id)) return 'submitted';
   if (assignment?.status === 'archived') return 'archived';
   const due = assignment?.due_at ? new Date(assignment.due_at) : null;
@@ -3846,7 +3852,7 @@ function studentScorePercent() {
 function renderStudentDashboard() {
   const activeTasks = state.assignments.filter(a => a.status === 'published' && !a.archived_at);
   const assigned = activeTasks.length;
-  const completed = activeTasks.filter(a => studentHasRecordedSubmission(a.id)).length;
+  const completed = activeTasks.filter(a => !studentClearedSubmission(a.id) && studentHasRecordedSubmission(a.id)).length;
   const todo = Math.max(0, assigned - completed);
   const completion = assigned ? Math.round((completed / assigned) * 100) : 0;
   const average = studentScorePercent();

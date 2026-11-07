@@ -35,12 +35,12 @@ assert.match(sql,/revoke all on function public\.mathside_clear_submission_with_
 assert.match(css,/#clearSubmissionModal \.clear-reason-block/);
 assert.match(css,/#clearSubmissionModal \.archive-confirm-box/);
 assert.match(html,/css\/v12-archive-features\.css\?v=24\.36-clear-reasons/);
-assert.match(html,/js\/v12-archive-features\.js\?v=24\.37\.1-clean-clear-dialog/);
-assert.match(sw,/mathside-pwa-v24-38-student-alerts/);
+assert.match(html,/js\/v12-archive-features\.js\?v=24\.39-clear-confirm/);
+assert.match(sw,/mathside-pwa-v24-39-cleared-to-do/);
 assert.match(notificationJs,/n\.type === 'system' && n\.title === 'Submission cleared — action needed'/);
-assert.match(html,/js\/v10-features\.js\?v=24\.37-generic-bell/);
-assert.match(sw,/js\/v10-features\.js\?v=24\.37-generic-bell/);
+assert.match(html,/js\/v10-features\.js\?v=24\.39-bell-to-do/);
+assert.match(sw,/js\/v10-features\.js\?v=24\.39-bell-to-do/);
 assert.match(sw,/css\/v12-archive-features\.css\?v=24\.36-clear-reasons/);
-assert.match(sw,/js\/v12-archive-features\.js\?v=24\.37\.1-clean-clear-dialog/);
+assert.match(sw,/js\/v12-archive-features\.js\?v=24\.39-clear-confirm/);
 for(const id of ['sectionModal','assignmentModal','performanceTaskModal'])assert.ok(html.includes(`id="${id}"`));
 console.log('PASS: reason validation, teacher-only atomic delete+notify RPC, mobile scoped CSS, PWA cache and unchanged editor forms');
