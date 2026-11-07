@@ -8,6 +8,10 @@
 
   const FUNCTION_NAME = 'send-push-notification';
   const PROMPT_KEY = 'mathside_push_prompt_dismissed_v1';
+  const STUDENT_REOFFER_PREFIX = 'mathside_student_push_reoffer_v24_38_';
+  const studentSession = () => typeof state !== 'undefined' && state?.profile?.role === 'student';
+  const iosDevice = () => /iPhone|iPad|iPod/i.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const studentOfferKey = user => STUDENT_REOFFER_PREFIX + user.id;
   const PUSH_SYNC_KEY = 'mathside_push_last_sync_v1';
   const PUSH_SYNC_TTL_MS = 6 * 60 * 60 * 1000;
   let pushSyncPromise = null;
@@ -291,6 +295,7 @@
       await saveSubscription(subscription);
       localStorage.setItem(PUSH_SYNC_KEY, `${user.id}:${Date.now()}`);
       localStorage.removeItem(PROMPT_KEY);
+      if (studentSession()) localStorage.setItem(studentOfferKey(user), '1');
       registrationFailure = null;
       if (!quiet && typeof toast === 'function') toast('App alerts enabled on this device.', 'success', 'Notifications enabled');
       updateUi();
@@ -331,6 +336,10 @@
     try {
       await unregisterForCurrentUser({ unsubscribe: true });
       localStorage.setItem(PROMPT_KEY, '1');
+      if (studentSession()) {
+        const user = await currentUser();
+        if (user) localStorage.setItem(studentOfferKey(user), '1');
+      }
       localStorage.removeItem(PUSH_SYNC_KEY);
       if (typeof toast === 'function') toast('App notifications were turned off on this device.', 'success', 'Notifications off');
     } finally {
@@ -351,11 +360,46 @@
     };
   }
 
+  function setStudentPushHint(message) {
+    const dialog = document.getElementById('v10NotificationDialog');
+    if (!dialog) return;
+    let hint = document.getElementById('mathsideStudentPushHint');
+    if (!studentSession()) {
+      if (hint) hint.hidden = true;
+      return;
+    }
+    if (!hint) {
+      hint = document.createElement('p');
+      hint.id = 'mathsideStudentPushHint';
+      hint.className = 'mathside-push-student-hint';
+      hint.setAttribute('role', 'status');
+      dialog.querySelector('.v10-notification-title')?.insertAdjacentElement('afterend', hint);
+    }
+    hint.hidden = false;
+    hint.textContent = message;
+  }
+
+  function explainUnavailable() {
+    const message = iosDevice() && !isStandalone()
+      ? 'On iPhone or iPad, open Mathside in Safari, choose Share > Add to Home Screen, then open the installed Mathside app and tap Enable phone alerts in the bell.'
+      : 'Phone alerts require HTTPS, an enabled service worker and a browser with Web Push support. The Mathside notification bell will still work inside the app.';
+    setStudentPushHint(message);
+    if (typeof toast === 'function') toast(message, 'orange', 'Phone alerts');
+  }
+
   async function updateUi() {
     const button = document.getElementById('v10PushNotificationBtn');
     if (!button) return;
     if (!supported()) {
-      button.hidden = true;
+      // Keep setup guidance discoverable for students on unsupported browsers.
+      button.hidden = !studentSession();
+      button.disabled = false;
+      button.classList.remove('push-enabled');
+      button.textContent = iosDevice() && !isStandalone() ? 'Set up iPhone alerts' : 'Phone alerts help';
+      button.title = 'How to turn on Mathside alerts on this device';
+      setStudentPushHint(iosDevice() && !isStandalone()
+        ? 'For phone alerts on iPhone, add Mathside to your Home Screen. In-app bell notifications already work.'
+        : 'Phone alerts are not supported by this browser. In-app bell notifications still work.');
       return;
     }
     try {
@@ -363,10 +407,18 @@
       button.hidden = false;
       button.disabled = busy;
       button.classList.toggle('push-enabled', info.enabled);
-      button.textContent = busy ? 'Checking…' : (info.enabled ? 'App alerts on' : 'Enable app alerts');
-      button.title = info.enabled ? 'Turn off push notifications on this device' : 'Receive Mathside notifications outside the app';
+      button.textContent = busy ? 'Checking…' : info.enabled ? 'Phone alerts on' : info.permission === 'denied' ? 'Alerts blocked · Help' : 'Enable phone alerts';
+      button.title = info.enabled ? 'Turn off phone alerts on this device' : 'Enable Mathside phone notifications for this device';
+      setStudentPushHint(info.enabled
+        ? 'Phone alerts are on for this device. New Mathside messages also appear in the bell.'
+        : info.permission === 'denied'
+          ? 'Phone alerts are blocked in your browser or device settings. Enable notifications for Mathside there, then return here.'
+          : 'Receive activity, feedback and submission updates on this device. Tap Enable phone alerts to opt in.');
     } catch (_) {
-      button.textContent = 'Enable app alerts';
+      button.hidden = false;
+      button.disabled = false;
+      button.textContent = 'Enable phone alerts';
+      setStudentPushHint('In-app bell notifications work even if phone alerts are unavailable.');
     }
   }
 
@@ -388,8 +440,12 @@
         </div>
       </div>`;
     document.body.appendChild(dialog);
-    dialog.querySelector('#mathsidePushLaterBtn')?.addEventListener('click', () => {
+    dialog.querySelector('#mathsidePushLaterBtn')?.addEventListener('click', async () => {
       localStorage.setItem(PROMPT_KEY, '1');
+      if (studentSession()) {
+        const user = await currentUser();
+        if (user) localStorage.setItem(studentOfferKey(user), '1');
+      }
       dialog.close();
     });
     dialog.querySelector('#mathsidePushEnableBtn')?.addEventListener('click', async () => {
@@ -402,10 +458,11 @@
     clearTimeout(promptTimer);
     promptTimer = setTimeout(async () => {
       try {
-        if (!isStandalone() || !supported() || Notification.permission === 'denied') return;
-        if (localStorage.getItem(PROMPT_KEY) === '1') return;
+        const student = studentSession();
+        if ((!isStandalone() && !student) || !supported() || Notification.permission === 'denied') return;
         const user = await currentUser();
         if (!user) return;
+        if (student ? localStorage.getItem(studentOfferKey(user)) === '1' : localStorage.getItem(PROMPT_KEY) === '1') return;
         const info = await status();
         if (info.enabled) {
           await syncExistingSubscription().catch(() => {});
@@ -423,10 +480,21 @@
   async function handlePushOpen(detail = {}) {
     const notificationId = String(detail.notificationId || '');
     try {
+      let storedNotice = null;
       if (notificationId && typeof db !== 'undefined' && db) {
+        // The trusted stored notification supplies the destination. Do not put
+        // private clearing reasons into the push payload or query string.
+        const { data } = await db.from('mathside_notifications')
+          .select('id,title,type').eq('id', notificationId)
+          .eq('user_id', (await currentUser())?.id || '').maybeSingle();
+        storedNotice = data;
         await db.rpc('mathside_mark_notifications_read', { p_ids: [notificationId] });
       }
       await window.MathsideV10?.refreshNotifications?.();
+      if (storedNotice && typeof window.MathsideV10?.routeNotification === 'function') {
+        window.MathsideV10.routeNotification(storedNotice);
+        return;
+      }
       if (detail.type === 'feedback' && typeof showStudentPanel === 'function' && state?.profile?.role === 'student') {
         showStudentPanel('feedback');
       } else if (detail.relatedAssignmentId && state?.profile?.role === 'student') {
@@ -460,6 +528,13 @@
     if (!button || button.dataset.bound === '1') return;
     button.dataset.bound = '1';
     button.addEventListener('click', async () => {
+      if (!supported()) { explainUnavailable(); return; }
+      if (Notification.permission === 'denied') {
+        const message = 'Notifications are blocked. Open your browser or phone settings, allow notifications for Mathside, then reload Mathside.';
+        setStudentPushHint(message);
+        if (typeof toast === 'function') toast(message, 'orange', 'Alerts blocked');
+        return;
+      }
       try {
         const info = await status();
         if (info.enabled) await disable();
@@ -477,6 +552,7 @@
       .v10-notification-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
       #v10PushNotificationBtn{border-color:#ffb47b!important;color:#c94f00!important;background:#fff6ef!important}
       #v10PushNotificationBtn.push-enabled{background:#ff6500!important;border-color:#ff6500!important;color:#fff!important}
+      .mathside-push-student-hint{margin:3px 0 14px;padding:10px 12px;background:#fff7ef;color:#735037;border:1px solid #f4dfcd;border-radius:12px;font-size:12px;line-height:1.5}
       .mathside-push-note{margin-top:14px;padding:11px 12px;border-radius:13px;background:#fff7ef;color:#6e4b34;font-size:12px;line-height:1.45;border:1px solid #ffe0c8}
       @media(max-width:620px){.v10-notification-title{align-items:flex-start!important}.v10-notification-actions{width:100%;justify-content:flex-start}.v10-notification-actions .btn{font-size:11px!important;padding:8px 10px!important}}
     `;
@@ -490,8 +566,18 @@
     observer.observe(document.body, { childList: true, subtree: true });
     bindNotificationButton();
     consumePushQuery();
+    // Re-offer opt-in once for signed-in students, including browser users.
+    // Never call Notification.requestPermission without a button tap.
+    const studentApp = document.getElementById('studentApp');
+    if (studentApp) {
+      new MutationObserver(() => {
+        if (!studentApp.hidden && studentSession()) maybeOfferPush();
+      }).observe(studentApp, { attributes: true, attributeFilter: ['hidden'] });
+    }
+    setTimeout(() => { if (studentSession()) maybeOfferPush(); }, 3000);
   });
 
+  document.getElementById('studentNotificationBtn')?.addEventListener('click', () => setTimeout(updateUi, 10));
   window.addEventListener('appinstalled', () => maybeOfferPush());
   window.addEventListener('focus', () => {
     updateUi();

@@ -7,7 +7,7 @@ const css = fs.readFileSync(path.join(root,'css/teacher-classic-refinement.css')
 const sw = fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 assert.match(html,/css\/teacher-classic-refinement\.css\?v=24\.28-teacher-compact/);
 assert.match(sw,/css\/teacher-classic-refinement\.css\?v=24\.28-teacher-compact/);
-assert.match(sw,/mathside-pwa-v24-(?:30-all-teacher-panels|31-preview-matched-records|32-record-scores-ui|34-css-recovery-png|35-student-zigzag-css)/);
+assert.match(sw,/mathside-pwa-v24-(?:30-all-teacher-panels|31-preview-matched-records|32-record-scores-ui|34-css-recovery-png|35-student-zigzag-css|36-clear-submission-reasons|37-cleared-submitted|37-1-clean-clear-dialog|38-student-alerts)/);
 for (const id of ['view-dashboard','view-classes','view-assignments','view-performance','view-submissions','view-competencies','view-archive']) {
   assert.ok(html.includes(`id="${id}"`),`Missing ${id}`);
 }

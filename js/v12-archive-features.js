@@ -732,8 +732,38 @@
   });
 
   // ---------------------------------------------------------------
-  // CLEAR SUBMISSION
+  // CLEAR SUBMISSION: REASONS + ATOMIC STUDENT NOTIFICATION
   // ---------------------------------------------------------------
+  // The backend validates the same reason codes before clearing.  Do not
+  // fall back to the older one-argument RPC: that would erase the response
+  // without reliably notifying the student.
+  const CLEAR_SUBMISSION_REASONS = Object.freeze({
+    unclear_photo: 'Blurry or unreadable solution image',
+    incomplete_work: 'Incomplete answers or solution steps',
+    wrong_file: 'Wrong file or activity submitted',
+    missing_attachment: 'Missing required solution or attachment',
+    instructions: 'Submission does not follow the instructions',
+    resubmission: 'Teacher requests a corrected submission',
+    other: 'Other reason',
+  });
+  const clearSubmissionReasonSelect = $('#clearSubmissionReason');
+  const clearSubmissionNoteInput = $('#clearSubmissionNote');
+  const clearSubmissionNoteCount = $('#clearSubmissionNoteCount');
+  const confirmClearSubmissionBtn = $('#confirmClearSubmissionBtn');
+  let clearSubmissionBusy = false;
+
+  // Keep reason validation and the character counter active without a visible bell preview.
+  function updateClearSubmissionReasonState() {
+    if (!clearSubmissionReasonSelect) return;
+    const code = clearSubmissionReasonSelect.value;
+    const selectedText = CLEAR_SUBMISSION_REASONS[code];
+    const note = (clearSubmissionNoteInput?.value || '').trim();
+    if (clearSubmissionNoteCount) clearSubmissionNoteCount.textContent = `${clearSubmissionNoteInput?.value.length || 0} / 280 characters`;
+    if (confirmClearSubmissionBtn) confirmClearSubmissionBtn.disabled = clearSubmissionBusy || !selectedText || (code === 'other' && !note);
+  }
+  clearSubmissionReasonSelect?.addEventListener('change', updateClearSubmissionReasonState);
+  clearSubmissionNoteInput?.addEventListener('input', updateClearSubmissionReasonState);
+
   $('#clearSubmissionBtn')?.addEventListener('click', () => {
     const submission = state.submissions.find(s => s.id === activeSubmissionId);
     if (!submission) return;
@@ -745,40 +775,79 @@
     $('#clearSubmissionText').textContent = `Clear ${student?.display_name || 'this student'}’s submission for “${assignment?.title || `this ${itemKind}`}”?`;
     const warning = $('.archive-warning span', $('#clearSubmissionModal'));
     if (warning) warning.textContent = isPerformance
-      ? 'The student’s submitted output pictures, score, feedback, and submission record will be cleared. The performance task itself is not deleted, so the team leader can submit again if the task is still open.'
-      : 'The student’s submitted answers, score, feedback, and uploaded solution image will be cleared. The activity itself is not deleted, so the student can submit again if the activity is still open.';
+      ? 'The submitted output pictures, score, feedback, and submission record will be cleared. The performance task itself is not deleted. The team leader can submit again only if the task is still open.'
+      : 'The student’s answers, score, feedback, and uploaded solution pictures will be cleared. The activity itself is not deleted. The student can resubmit only while it is still open.';
+    if (clearSubmissionReasonSelect) clearSubmissionReasonSelect.value = '';
+    if (clearSubmissionNoteInput) clearSubmissionNoteInput.value = '';
+    updateClearSubmissionReasonState();
     openDialog('clearSubmissionModal');
   });
 
   $('#confirmClearSubmissionBtn')?.addEventListener('click', async () => {
+    if (clearSubmissionBusy) return;
     const submission = state.submissions.find(s => s.id === archiveState.clearSubmissionId);
     if (!submission) return closeDialog('clearSubmissionModal');
+    const reasonCode = clearSubmissionReasonSelect?.value || '';
+    const teacherNote = (clearSubmissionNoteInput?.value || '').trim();
+    if (!CLEAR_SUBMISSION_REASONS[reasonCode]) {
+      toast('Please select a reason before clearing the submission.', 'orange', 'Reason required');
+      clearSubmissionReasonSelect?.focus();
+      return;
+    }
+    if (reasonCode === 'other' && !teacherNote) {
+      toast('Please explain the reason in the additional note.', 'orange', 'Explanation required');
+      clearSubmissionNoteInput?.focus();
+      return;
+    }
     const proofPaths = submissionProofPaths(submission);
+    clearSubmissionBusy = true;
+    let deletionAndNotificationSaved = false;
+    if (confirmClearSubmissionBtn) confirmClearSubmissionBtn.disabled = true;
     try {
-      closeDialog('clearSubmissionModal');
-      closeDialog('reviewSubmissionModal');
       const assignment = assignmentById(submission.assignment_id);
       await withLoading(
-        'Clearing submission…',
-        isPerformanceTask(assignment)
-          ? 'Removing the performance task submission, score, feedback, and uploaded output pictures.'
-          : 'Removing the student response, score, feedback, and uploaded solution.',
+        'Clearing submission and notifying student…',
+        'The student will see a generic bell alert and the reason in Activities > Submitted.',
         async () => {
-        const { error } = await db.rpc('mathside_clear_submission', { p_submission_id: submission.id });
-        if (error) throw error;
-        if (proofPaths.length) {
-          const removeResult = await db.storage.from('mathside-submission-proofs').remove(proofPaths);
-          if (removeResult.error) console.warn('Proof cleanup:', removeResult.error.message || removeResult.error);
+          const { error } = await db.rpc('mathside_clear_submission_with_reason', {
+            p_submission_id: submission.id,
+            p_reason_code: reasonCode,
+            p_teacher_note: teacherNote || null,
+          });
+          if (error) throw error;
+          deletionAndNotificationSaved = true;
+          // The database notification and deletion have committed together.
+          // Image cleanup is best-effort and cannot revoke the notification.
+          if (proofPaths.length) {
+            const removeResult = await db.storage.from('mathside-submission-proofs').remove(proofPaths);
+            if (removeResult.error) console.warn('Proof cleanup:', removeResult.error.message || removeResult.error);
+          }
+          archiveState.clearSubmissionId = null;
+          activeSubmissionId = null;
+          closeDialog('clearSubmissionModal');
+          closeDialog('reviewSubmissionModal');
+          await refreshTeacher();
+          showTeacherView('submissions');
         }
-        archiveState.clearSubmissionId = null;
-        activeSubmissionId = null;
-        await refreshTeacher();
-        showTeacherView('submissions');
-      });
-      toast(`The student submission was cleared. The ${isPerformanceTask(assignment) ? 'performance task' : 'activity'} remains available if it is still open.`, 'success', 'Submission cleared');
+      );
+      toast('Submission cleared. The student was notified in the bell and can see the reason in Activities > Submitted.', 'success', 'Notification created');
     } catch (error) {
       console.error(error);
-      toast(friendlyErrorMessage(error, 'Could not clear this submission.'), 'orange', 'Clear failed');
+      if (deletionAndNotificationSaved) {
+        closeDialog('clearSubmissionModal');
+        closeDialog('reviewSubmissionModal');
+        toast('The submission was cleared and the student notification was saved, but the teacher list could not refresh. Reload Mathside to see the latest list.', 'orange', 'Refresh needed');
+        return;
+      }
+      const missingRpc = /mathside_clear_submission_with_reason|pgrst202|could not find the function|function does not exist/i.test(String(error?.message || error));
+      toast(missingRpc
+        ? 'Database update required: run sql/Mathside-V24.37-Cleared-Submitted-Status.sql in the Supabase SQL Editor before clearing submissions.'
+        : friendlyErrorMessage(error, 'Submission was not cleared. Please try again.'),
+        'orange', 'Clear failed');
+      // Preserve the selected reason and note if the operation fails.
+    } finally {
+      clearSubmissionBusy = false;
+      updateClearSubmissionReasonState();
     }
   });
 

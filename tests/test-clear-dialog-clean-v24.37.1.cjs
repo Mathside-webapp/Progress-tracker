@@ -1,0 +1,15 @@
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..');
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const html=read('index.html'),js=read('js/v12-archive-features.js'),sw=read('service-worker.js');
+assert.doesNotMatch(html,/Notification bell preview|clearSubmissionNotificationPreview|After clearing, the bell shows a generic alert/);
+for(const id of ['clearSubmissionReason','clearSubmissionNote','clearSubmissionNoteCount','confirmClearSubmissionBtn'])assert.ok(html.includes('id="'+id+'"'),id);
+assert.match(js,/function updateClearSubmissionReasonState\(\)/);
+assert.match(js,/confirmClearSubmissionBtn\.disabled = clearSubmissionBusy \|\| !selectedText \|\| \(code === 'other' && !note\)/);
+assert.match(js,/clearSubmissionNoteCount\.textContent =/);
+assert.match(js,/db\.rpc\('mathside_clear_submission_with_reason'/);
+assert.match(sw,/mathside-pwa-v24-38-student-alerts/);
+assert.match(html,/js\/v12-archive-features\.js\?v=24\.37\.1-clean-clear-dialog/);
+assert.match(sw,/js\/v12-archive-features\.js\?v=24\.37\.1-clean-clear-dialog/);
+console.log('PASS: clear-dialog preview removed, reason validation intact, cache bumped');

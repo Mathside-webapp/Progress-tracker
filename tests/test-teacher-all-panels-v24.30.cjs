@@ -7,7 +7,7 @@ const sw=fs.readFileSync(path.join(root,'service-worker.js'),'utf8');
 const css=fs.readFileSync(path.join(root,'css/teacher-all-panels-v24.30.css'),'utf8');
 assert.match(html,/teacher-all-panels-v24\.30\.css\?v=24\.30/);
 assert.match(sw,/teacher-all-panels-v24\.30\.css\?v=24\.30/);
-assert.match(sw,/mathside-pwa-v24-(?:30-all-teacher-panels|31-preview-matched-records|32-record-scores-ui|34-css-recovery-png|35-student-zigzag-css)/);
+assert.match(sw,/mathside-pwa-v24-(?:30-all-teacher-panels|31-preview-matched-records|32-record-scores-ui|34-css-recovery-png|35-student-zigzag-css|36-clear-submission-reasons|37-cleared-submitted|37-1-clean-clear-dialog|38-student-alerts)/);
 for(const page of ['dashboard','classes','assignments','performance','submissions','competencies','archive']){
   assert.ok(html.includes(`id="view-${page}"`),`Missing teacher page: ${page}`);
 }

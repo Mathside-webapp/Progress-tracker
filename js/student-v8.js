@@ -111,7 +111,7 @@
     const writtenAssignments=state.assignments.filter(a=>a.status==='published'&&!a.archived_at&&!isPerformanceTask(a));
     const oldCompleted=state.assignments.filter(a=>a.status==='archived' && !isPerformanceTask(a) && studentProgressFor(a.id)?.submitted);
     const available=studentTaskFilter==='submitted' ? [...writtenAssignments,...oldCompleted] : writtenAssignments;
-    const list=available.filter(a=>(studentTaskFilter==='all' || (a.status==='archived' ? studentTaskFilter==='submitted' : studentAssignmentState(a)===studentTaskFilter)) && (!needle || `${a.title || ''} ${a.instructions || ''} ${sectionLabel(sectionById(a.section_id))}`.toLowerCase().includes(needle)));
+    const list=available.filter(a=>(studentTaskFilter==='all' || (a.status==='archived' ? studentTaskFilter==='submitted' : (studentAssignmentState(a)===studentTaskFilter || (studentTaskFilter==='submitted' && !!studentClearedSubmission(a.id))))) && (!needle || `${a.title || ''} ${a.instructions || ''} ${sectionLabel(sectionById(a.section_id))}`.toLowerCase().includes(needle)));
     list.sort((a,b)=>{const av=studentTaskSortValue(a,studentTaskSort),bv=studentTaskSortValue(b,studentTaskSort);return typeof av==='string'?av.localeCompare(String(bv)):av-bv;});
     $('#studentTaskSummary').textContent=`${list.length} activit${list.length===1?'y':'ies'} shown${needle?` for “${studentTaskSearch}”`:''}.`;
     const searchInput=$('#studentTaskSearch'), sortSelect=$('#studentTaskSort');
@@ -120,16 +120,18 @@
     const counts={ongoing:0,submitted:0,missed:0};
     writtenAssignments.forEach(a=>{const key=studentAssignmentState(a);if(key in counts)counts[key]+=1;});
     counts.submitted+=oldCompleted.length;
+    counts.submitted+=writtenAssignments.filter(a=>!!studentClearedSubmission(a.id)).length;
     shell.querySelectorAll('[data-student-filter-count]').forEach(n=>{n.textContent=String(counts[n.dataset.studentFilterCount]||0);});
     shell.querySelectorAll('.student-filter').forEach(n=>{const active=n.dataset.studentFilter===studentTaskFilter;n.classList.toggle('active',active);n.setAttribute('aria-pressed',String(active));});
     $('#studentAssignmentList').innerHTML=list.length?list.map(a=>{
-      const k=kind(a),sub=submissionFor(a.id),progress=studentProgressFor(a.id),s=a.status==='archived'
+      const k=kind(a),sub=submissionFor(a.id),progress=studentProgressFor(a.id),cleared=studentTaskFilter==='submitted'?studentClearedSubmission(a.id):null,s=cleared
+        ? {key:'cleared',label:'Cleared — Resubmit'} : a.status==='archived'
         ? {key:'submitted',label:progress?.graded?'Graded · Archived':'Submitted · Archived'} : status(a);
       const archived=a.status==='archived';
       const action=archived&&!sub?'data-v8-action="archived"':s.key==='upcoming'?'data-v8-action="upcoming"':sub?`data-preview-response="${esc(sub.id)}"`:`data-answer-assignment="${esc(a.id)}"`;
       const grade=archived&&progress?.graded&&progress.score!==null
         ? `<small>Saved grade: ${esc(String(progress.score))}${progress.maximum>0?` / ${progress.maximum}`:''} points</small>` : '';
-      return `<article class="v8-activity-row ${archived?'is-archived':''}"><span class="v8-task-icon ${k.color}">${icon('task')}</span><div class="v8-task-title"><b>${esc(a.title)}</b><small>${esc(k.label)}</small>${grade}</div>${due(a)}<span class="v8-status ${s.key}">${esc(s.label)}</span>${archived?'<span class="v8-history-tag">Record saved</span>':`<button type="button" class="v8-view-button" ${action} aria-label="View ${esc(a.title)}">View</button>`}${sub && !archived && sub.resubmit_allowed?`<button class="v8-resubmit" data-answer-assignment="${esc(a.id)}">Submit new attempt</button>`:''}</article>`;
+      return `<article class="v8-activity-row ${archived?'is-archived':''} ${cleared?'is-cleared':''}"><span class="v8-task-icon ${k.color}">${icon('task')}</span><div class="v8-task-title"><b>${esc(a.title)}</b><small>${esc(k.label)}</small>${grade}</div>${due(a)}<span class="v8-status ${s.key}">${esc(s.label)}</span>${archived?'<span class="v8-history-tag">Record saved</span>':`<button type="button" class="v8-view-button" ${action} aria-label="${cleared?'Open for resubmission':'View'} ${esc(a.title)}">${cleared?'Open task':'View'}</button>`}${sub && !archived && sub.resubmit_allowed?`<button class="v8-resubmit" data-answer-assignment="${esc(a.id)}">Submit new attempt</button>`:''}${cleared?`<div class="v8-cleared-reason"><b>Reason for clearing:</b><p>${esc(cleared.reason_text || 'Your teacher cleared this submission.')}</p>${cleared.teacher_note?`<p><b>Teacher note:</b> ${esc(cleared.teacher_note)}</p>`:''}</div>`:''}</article>`;
     }).join(''):empty(writtenAssignments.length?'No matching activities.':'No activities yet.',writtenAssignments.length?'Try another search term or filter.':'Your teacher’s activities will appear here.');
   }
   function renderGrades() {

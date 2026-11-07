@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-35-student-zigzag-css';
+const CACHE_NAME = 'mathside-pwa-v24-38-student-alerts';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
@@ -41,6 +41,7 @@ const APP_SHELL = [
   './css/student-v20-refresh.css?v=20.0',
   './css/student-v22-dashboard.css?v=22.2',
   './css/student-zigzag-v24.35.css?v=24.35-student-journey',
+  './css/student-cleared-v24.37.css?v=24.37-red-cleared',
   './assets/panel-identity/competencies.svg',
   './assets/panel-identity/classes-study.svg',
   './assets/panel-identity/dashboard-workspace.svg',
@@ -65,17 +66,17 @@ const APP_SHELL = [
   './assets/empty-states/competencies.png',
   './assets/empty-states/archive.png',
   './assets/empty-states/records.png',
-  './js/app.js?v=24.25-activity-ux',
-  './js/student-v8.js?v=15.3-overdue-history-fix',
-  './js/v10-features.js?v=24.26-completed-activities',
+  './js/app.js?v=24.37-cleared-submitted',
+  './js/student-v8.js?v=24.37-red-cleared',
+  './js/v10-features.js?v=24.37-generic-bell',
   './js/design-v9.js?v=9',
   './js/pwa.js?v=6.9.15',
-  './js/push-notifications.js?v=6.12',
-  './css/v12-archive-features.css?v=24.12',
+  './js/push-notifications.js?v=24.38-student-alerts',
+  './css/v12-archive-features.css?v=24.36-clear-reasons',
   './css/v14-layout-fixes.css?v=14.0',
   './css/v15-performance-calendar.css?v=15.11',
   './css/performance-class-mode.css?v=2',
-  './js/v12-archive-features.js?v=24.18-class-record-retention-1',
+  './js/v12-archive-features.js?v=24.37.1-clean-clear-dialog',
   './js/v15-performance-tasks.js?v=24.23-class-leader-rating'
 ];
 

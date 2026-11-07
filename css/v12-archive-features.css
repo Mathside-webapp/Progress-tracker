@@ -340,3 +340,22 @@
 #confirmArchiveAssignmentBtn:disabled{opacity:.45;cursor:not-allowed}
 #retryArchiveCleanupBtn{font-size:12px;white-space:nowrap}
 @media(max-width:640px){#view-archive>.section-row .row-actions{flex-wrap:wrap;justify-content:flex-start}}
+
+/* V24.36: submission clear reason + student notification. Scoped to this modal. */
+#clearSubmissionModal .archive-confirm-box{width:min(94vw,610px);max-height:calc(100dvh - 28px);overflow-y:auto;overscroll-behavior:contain}
+#clearSubmissionModal .clear-reason-block{display:grid;gap:7px;margin:16px 0 14px;padding:15px;border:1px solid #ead9cb;background:#fffaf6;border-radius:14px}
+#clearSubmissionModal .clear-reason-block h3{margin:0 0 4px;color:#312117;font-size:15px;line-height:1.3}
+#clearSubmissionModal .clear-reason-block label{font-size:12px;font-weight:800;color:#543d2e}
+#clearSubmissionModal .clear-reason-block label span:not(.clear-reason-optional){color:#b12534}
+#clearSubmissionModal .clear-reason-block select,#clearSubmissionModal .clear-reason-block textarea{display:block;width:100%;max-width:100%;box-sizing:border-box;min-width:0;border:1px solid #dcbfa8;border-radius:10px;background:#fff;color:#34271e;font:inherit;font-size:13px;line-height:1.5;padding:10px 12px;outline-offset:2px}
+#clearSubmissionModal .clear-reason-block select{min-height:44px}
+#clearSubmissionModal .clear-reason-block textarea{resize:vertical;min-height:75px}
+#clearSubmissionModal .clear-reason-block select:focus-visible,#clearSubmissionModal .clear-reason-block textarea:focus-visible{outline:2px solid #f07816;border-color:#f07816}
+#clearSubmissionModal .clear-reason-optional{font-weight:500;color:#947a68}
+#clearSubmissionModal .clear-reason-help{color:#76675e;font-size:11px;line-height:1.45;margin:1px 0 6px}
+#clearSubmissionModal #clearSubmissionNoteCount{text-align:right;margin:-4px 0 1px}
+#clearSubmissionModal .clear-reason-preview{padding:12px;border:1px solid #efcbaa;border-radius:11px;background:#fff4e8;overflow-wrap:anywhere}
+#clearSubmissionModal .clear-reason-preview b{display:block;color:#aa5118;font-size:12px;margin-bottom:5px}
+#clearSubmissionModal .clear-reason-preview p{color:#634937;font-size:12px;line-height:1.55;margin:0;white-space:pre-line}
+#clearSubmissionModal #confirmClearSubmissionBtn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+@media(max-width:480px){#clearSubmissionModal .clear-reason-block{padding:12px;margin:12px 0}#clearSubmissionModal .modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}#clearSubmissionModal .modal-actions .btn{min-width:0;width:100%;font-size:11px;white-space:normal;line-height:1.3;padding:10px 7px}}

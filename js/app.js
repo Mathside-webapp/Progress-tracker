@@ -47,6 +47,7 @@ const state = {
   questions: [],
   keys: [],
   submissions: [],
+  clearedSubmissions: [],
   submissionAnswers: [],
   archivedScores: [],
   submissionHistory: [],
@@ -567,6 +568,7 @@ function resetState() {
   state.questions = [];
   state.keys = [];
   state.submissions = [];
+  state.clearedSubmissions = [];
   state.submissionAnswers = [];
   state.archivedScores = [];
   state.submissionHistory = [];
@@ -803,19 +805,22 @@ function latestWorkspaceItem(items = []) {
 function studentWorkspaceSignatureFromState() {
   const assignment = latestWorkspaceItem(state.assignments.filter(a => a.status === 'published' || a.status === 'archived'));
   const submission = latestWorkspaceItem(state.submissions);
+  const clear = [...(state.clearedSubmissions || [])].sort((a,b) =>
+    new Date(b.cleared_at || 0) - new Date(a.cleared_at || 0))[0];
   const history = [...(state.submissionHistory || [])].sort((a,b) =>
     new Date(b.archived_at || 0) - new Date(a.archived_at || 0))[0];
   return [
     assignment ? `${assignment.id}:${assignment.updated_at || assignment.created_at || ''}` : 'no-assignment',
     submission ? `${submission.id}:${submission.updated_at || submission.submitted_at || ''}` : 'no-submission',
-    history ? `${history.assignment_id}:${history.archived_at}` : 'no-history'
+    history ? `${history.assignment_id}:${history.archived_at}` : 'no-history',
+    clear ? `${clear.assignment_id}:${clear.cleared_at}` : 'no-clear'
   ].join('|');
 }
 
 async function fetchStudentWorkspaceSignature() {
   if (!db || !state.user?.id) return studentWorkspaceSignature;
   const studentId = state.user.id;
-  const [assignmentRes, submissionRes, historyRes] = await Promise.all([
+  const [assignmentRes, submissionRes, historyRes, clearRes] = await Promise.all([
     db.from('mathside_assignments')
       .select('id,updated_at,created_at,status')
       .in('status', ['published', 'archived'])
@@ -827,7 +832,9 @@ async function fetchStudentWorkspaceSignature() {
       .order('updated_at', { ascending: false })
       .limit(1),
     db.from('mathside_submission_history').select('assignment_id,archived_at')
-      .eq('student_id',studentId).order('archived_at', { ascending: false }).limit(1)
+      .eq('student_id',studentId).order('archived_at', { ascending: false }).limit(1),
+    db.from('mathside_submission_clears').select('assignment_id,cleared_at')
+      .eq('student_id',studentId).order('cleared_at', { ascending: false }).limit(1)
   ]);
   if (assignmentRes.error) throw assignmentRes.error;
   if (submissionRes.error) throw submissionRes.error;
@@ -835,11 +842,14 @@ async function fetchStudentWorkspaceSignature() {
   // Old databases can still sign in; historical totals require the new RLS migration.
   if (historyRes.error && !['42P01','PGRST205','42501'].includes(String(historyRes.error.code))) throw historyRes.error;
   const history = historyRes.data?.[0] || null;
+  if (clearRes.error && !['42P01','PGRST205','42501'].includes(String(clearRes.error.code))) throw clearRes.error;
+  const clear = clearRes.data?.[0] || null;
   const submission = submissionRes.data?.[0] || null;
   return [
     assignment ? `${assignment.id}:${assignment.updated_at || assignment.created_at || ''}` : 'no-assignment',
     submission ? `${submission.id}:${submission.updated_at || submission.submitted_at || ''}` : 'no-submission',
-    history ? `${history.assignment_id}:${history.archived_at}` : 'no-history'
+    history ? `${history.assignment_id}:${history.archived_at}` : 'no-history',
+    clear ? `${clear.assignment_id}:${clear.cleared_at}` : 'no-clear'
   ].join('|');
 }
 
@@ -1147,6 +1157,7 @@ async function loadTeacherData() {
   state.questions = [];
   state.keys = [];
   state.submissions = [];
+  state.clearedSubmissions = [];
   state.archivedScores = [];
   state.submissionHistory = [];
   state.archiveHistoryAvailable = false;
@@ -1217,6 +1228,7 @@ async function loadStudentData() {
   state.sections = sectionsRes.data || [];
   state.assignments = assignmentsRes.data || [];
   state.submissions = submissionsRes.data || [];
+  state.clearedSubmissions = [];
   state.archivedScores = [];
   state.submissionHistory = [];
   state.students = [state.profile];
@@ -1259,6 +1271,26 @@ async function loadStudentData() {
     readOwnArchive('mathside_archived_scores','assignment_id,student_id,score,archived_at'),
     readOwnArchive('mathside_submission_history','assignment_id,student_id,status,submitted_at,archived_at')
   ]);
+  // Clearing deletes the original response, so keep the red Submitted-tab
+  // notice in a private RLS-protected table, separate from the 7-day bell.
+  const clearedRows = [];
+  for (let offset=0;;offset+=500) {
+    const {data, error} = await db.from('mathside_submission_clears')
+      .select('assignment_id,reason_code,reason_text,teacher_note,cleared_at')
+      .eq('student_id',studentId)
+      .order('cleared_at',{ascending:false})
+      .range(offset,offset+499);
+    if (error) {
+      if (['42P01','PGRST205','42501'].includes(String(error.code))) {
+        console.warn('Submission clear notices unavailable. Apply V24.37 SQL migration.');
+        break;
+      }
+      throw error;
+    }
+    clearedRows.push(...(data||[]));
+    if ((data||[]).length<500) break;
+  }
+  state.clearedSubmissions = clearedRows;
   state.archivedScores = studentScores;
   state.submissionHistory = studentHistory;
 
@@ -3772,6 +3804,12 @@ function formatStudentDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined }).format(date);
+}
+
+function studentClearedSubmission(assignmentId) {
+  // A new live response always supersedes the prior cleared attempt.
+  if (submissionFor(assignmentId)) return null;
+  return (state.clearedSubmissions || []).find(row => String(row.assignment_id) === String(assignmentId)) || null;
 }
 
 function studentAssignmentState(assignment) {

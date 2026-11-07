@@ -23,7 +23,7 @@
       if (panel.querySelector(':scope > img.ms-empty-art')) return;
       const img = document.createElement('img');
       img.className = 'ms-empty-art';
-      img.src = `${artRoot}${subject}.svg`;
+      img.src = `${artRoot}${subject}.png`;
       img.alt = '';
       img.setAttribute('aria-hidden', 'true');
       img.loading = 'lazy';
@@ -48,7 +48,7 @@
       const text = first.textContent || '';
       if (!/No classes yet|No students in this class yet/i.test(text)) return;
       const img = document.createElement('img');
-      img.className='ms-empty-art'; img.src=artRoot+'classes.svg'; img.alt='';
+      img.className='ms-empty-art'; img.src=artRoot+'records.png'; img.alt='';
       img.setAttribute('aria-hidden', 'true'); img.loading='lazy';
       first.prepend(img); first.classList.add('ms-has-empty-art','ms-record-empty-cell');
     };

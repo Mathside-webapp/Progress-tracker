@@ -374,7 +374,7 @@
     setBadge('studentNotificationBadge', state.profile?.role === 'student' ? unread.length : 0);
     setBadge('studentFeedbackNavBadge', state.profile?.role === 'student' ? unread.filter(n => n.type === 'feedback').length : 0);
     if (!box) return;
-    box.innerHTML = feature.notifications.length ? feature.notifications.map(n => `<div class="v10-notification-row ${n.read_at ? '' : 'unread'}"><button type="button" class="v10-notification-open" data-notification-id="${esc(n.id)}"><span class="v10-notification-kind">${notificationIcon(n.type)}</span><span class="v10-notification-copy"><b>${esc(n.title || 'Mathside update')}</b><small>${esc(n.body || '')}</small><time>${esc(formatDateTime(n.created_at))}</time></span>${n.read_at ? '' : '<i></i>'}</button><button type="button" class="v10-notification-delete" data-notification-delete="${esc(n.id)}" aria-label="Delete ${esc(n.title || 'notification')}" title="Delete notification">×</button></div>`).join('') : featureEmpty('You’re all caught up.', 'New class updates will appear here.');
+    box.innerHTML = feature.notifications.length ? feature.notifications.map(n => `<div class="v10-notification-row ${n.read_at ? '' : 'unread'}"><button type="button" class="v10-notification-open" data-notification-id="${esc(n.id)}"><span class="v10-notification-kind">${notificationIcon(n.type)}</span><span class="v10-notification-copy"><b>${esc(n.title || 'Mathside update')}</b><small>${esc(n.title === 'Submission cleared — action needed' ? 'Your submission was cleared. Open Activities > Submitted to view the reason.' : (n.body || ''))}</small><time>${esc(formatDateTime(n.created_at))}</time></span>${n.read_at ? '' : '<i></i>'}</button><button type="button" class="v10-notification-delete" data-notification-delete="${esc(n.id)}" aria-label="Delete ${esc(n.title || 'notification')}" title="Delete notification">×</button></div>`).join('') : featureEmpty('You’re all caught up.', 'New class updates will appear here.');
   }
 
   async function refreshNotifications({ force = false } = {}) {
@@ -426,6 +426,10 @@
         .map(a => String(a.id).toLowerCase()));
       const resolvedTasks = (state.assignments || []).filter(a => resolvedIds.has(String(a.id).toLowerCase()));
       const staleDeadlineReminder = n => {
+        // A clear-submission notice contains words such as 'missing' and
+        // 'incomplete', but it is NOT an obsolete deadline reminder.
+        // Clearing reasons are private and visible only in Activities > Submitted.
+        if (n.type === 'system' && n.title === 'Submission cleared — action needed') return false;
         const signal = `${n.type || ''} ${n.title || ''} ${n.body || ''}`;
         if (!/remind|missing|pending|overdue|not submitted|incomplete|deadline|due/i.test(signal)) return false;
         const candidates = [n.related_assignment_id, n.assignment_id, n.reference_id,
@@ -458,7 +462,10 @@
 
   function routeNotification(note) {
     if (state.profile?.role === 'student') {
-      if (note.type === 'feedback') showStudentPanel('feedback');
+      if (note.title === 'Submission cleared — action needed') {
+        studentTaskFilter = 'submitted';
+        showStudentPanel('activities');
+      } else if (note.type === 'feedback') showStudentPanel('feedback');
       else showStudentPanel('todo');
     } else if (state.profile?.role === 'teacher') {
       showTeacherView('submissions');
