@@ -663,7 +663,7 @@
     openDialog('classRecordExportModal');
   }
 
-  const performanceRatingDeduction = rating => ({ 5: 0, 4: 2, 3: 3, 2: 4, 1: 5 }[Number(rating)] ?? null);
+  const performanceRatingDeduction = rating => ({ 5: 0, 4: 1, 3: 2, 2: 3, 1: 4 }[Number(rating)] ?? null);
 
   function submissionNumericScore(submission, { performanceTask = false } = {}) {
     if (!submission) return null;
@@ -1110,7 +1110,7 @@
         performanceRowNumber += 1;
         performanceSheet.mergeCells(`A${performanceRowNumber}:${performanceLastColumn}${performanceRowNumber}`);
         const performanceLegend = performanceSheet.getCell(`A${performanceRowNumber}`);
-        performanceLegend.value = 'Participation deduction: Rating 5 = 0 points • 4 = 2 points • 3 = 3 points • 2 = 4 points • 1 = 5 points. Scores cannot go below 0.';
+        performanceLegend.value = 'Participation deduction: Rating 5 = 0 points • 4 = 1 point • 3 = 2 points • 2 = 3 points • 1 = 4 points. Scores cannot go below 0.';
         performanceLegend.font = { italic: true, size: 10, color: { argb: 'FF6B7280' } };
         performanceLegend.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
         performanceLegend.border = thinBorder;
