@@ -2485,7 +2485,10 @@ async function importAssignmentExcel(file) {
   return { questionCountImported, matchedClasses };
 }
 
+let duplicatedAssignmentImagePath = null;
+
 function resetAssignmentForm() {
+  duplicatedAssignmentImagePath = null;
   $('#assignmentForm').reset();
   if ($('#ctAssignmentCompetency')) $('#ctAssignmentCompetency').value = '';
   populateAssignmentSections();
@@ -2990,7 +2993,7 @@ function syncAssignmentEditingClasses() {
 
 $('#assignmentSectionChecklist')?.addEventListener('change', syncAssignmentEditingClasses);
 
-function openAssignmentModal(assignmentId = null) {
+function openAssignmentModal(assignmentId = null, duplicate = false) {
   if (!state.sections.length) {
     toast('Create at least one class before posting an assignment.', 'orange');
     showTeacherView('classes');
@@ -3029,9 +3032,35 @@ function openAssignmentModal(assignmentId = null) {
     loadAssignmentQuestions(assignment.id);
     syncAssignmentEditingClasses();
   }
+  if (duplicate && assignment) {
+    setAssignmentEditorMode();
+    duplicatedAssignmentImagePath = assignment.image_path || null;
+    const form = $('#assignmentForm');
+    const baseTitle = `${assignment.title || 'Activity'} (Copy)`;
+    let title = baseTitle, suffix = 2;
+    while (state.assignments.some(item => item.title === title)) title = `${baseTitle} ${suffix++}`;
+    form.elements.title.value = title;
+    form.elements.due_at.value = '';
+    form.elements.reminder_hours_before.value = '0';
+    form.elements.publish_mode.value = 'now';
+    form.elements.publish_at.value = '';
+    syncAssignmentPublishFields();
+    $('#assignmentModalEyebrow').textContent = 'DUPLICATE ACTIVITY';
+    $('#assignmentModalTitle').textContent = 'Duplicate activity';
+    $('#assignmentModalLead').textContent = 'Review the copied questions, image, settings, and classes. Choose a new deadline before posting. Student submissions and scores are not copied.';
+    $('#assignmentSubmitBtn').textContent = 'Post duplicate';
+  }
   openDialog('assignmentModal');
-  window.MathsideCompetencies?.loadForm(editingAssignmentId);
+  window.MathsideCompetencies?.loadForm(duplicate ? assignment?.id : editingAssignmentId);
 }
+
+document.addEventListener('click', event => {
+  const button = event.target.closest('[data-duplicate-assignment]');
+  if (!button || state.profile?.role !== 'teacher') return;
+  const source = assignmentById(button.dataset.duplicateAssignment);
+  if (!source || isPerformanceTask(source)) return;
+  openAssignmentModal(source.id, true);
+});
 
 $('#postAssignmentBtn').addEventListener('click', () => openAssignmentModal());
 $('#assignmentImage').addEventListener('change', event => {
@@ -3397,6 +3426,13 @@ $('#assignmentForm').addEventListener('submit', async event => {
             if (updateRes.error) throw updateRes.error;
           }
 
+          if (!preparedImageFile && duplicatedAssignmentImagePath) {
+            const copies = await copyMathsideFilesForSection([duplicatedAssignmentImagePath], assignment.id, 'activity');
+            uploadedPaths.push(...copies);
+            const imageUpdate = await db.from('mathside_assignments').update({ image_path: copies[0] }).eq('id', assignment.id);
+            if (imageUpdate.error) throw imageUpdate.error;
+          }
+
           const questionPayload = questions.map(question => ({
             assignment_id: assignment.id,
             position: question.position,
@@ -3545,7 +3581,7 @@ function renderAssignments() {
       <label class="assignment-select-check"><input class="row-check" type="checkbox" data-select-assignment="${assignment.id}" data-assignment-group-ids="${esc(groupIdsAttr)}" ${selected ? 'checked' : ''}><span class="sr-only">Select ${esc(assignment.title)}</span></label>
       <div class="assignment-thumb">${assignment.image_url ? `<img src="${esc(assignment.image_url)}" alt="Assignment image" data-assignment-storage-path="${esc(assignment.image_path || '')}">` : iconSvg('assignment', 'assignment-line-icon')}</div>
       <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared assignment</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}</div><p>${esc(assignment.instructions || 'Mathematics assignment')}</p>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
-      <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button><button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button class="btn btn-danger-outline" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
+      <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button><button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button type="button" class="btn btn-light" data-duplicate-assignment="${assignment.id}" title="Duplicate activity">Duplicate</button><button class="btn btn-danger-outline" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
     </article>`;
   }).join('');
   list.innerHTML = `
