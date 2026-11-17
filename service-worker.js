@@ -2,7 +2,7 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v24-42-duplicate-activity';
+const CACHE_NAME = 'mathside-pwa-v24-43-activity-pdf';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [

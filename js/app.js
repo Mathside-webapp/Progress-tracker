@@ -2485,10 +2485,29 @@ async function importAssignmentExcel(file) {
   return { questionCountImported, matchedClasses };
 }
 
+function isActivityPdf(path) { return /\.pdf(?:$|[?#])/i.test(String(path || '')); }
+function activityReferenceMarkup(assignment) {
+  if (!assignment?.image_url) return '';
+  if (isActivityPdf(assignment.image_path)) return `<a class="btn btn-light activity-pdf-link" href="${esc(assignment.image_url)}" target="_blank" rel="noopener noreferrer" aria-label="Open activity PDF in a new tab">📄 Open PDF</a>`;
+  return `<img src="${esc(assignment.image_url)}" alt="Activity reference" style="max-width:100%;height:auto" data-assignment-storage-path="${esc(assignment.image_path || '')}">`;
+}
+async function prepareActivityReference(file) {
+  if (file.type === 'application/pdf' || isActivityPdf(file.name)) {
+    if (file.size > 10 * 1024 * 1024) throw new Error('Choose a PDF smaller than 10 MB.');
+    const header = new Uint8Array(await file.slice(0, 5).arrayBuffer());
+    if (String.fromCharCode(...header) !== '%PDF-') throw new Error('This file is not a valid PDF. Please choose a PDF document.');
+    const name = isActivityPdf(file.name) ? file.name : `${file.name}.pdf`;
+    return new File([file], name, { type: 'application/pdf' });
+  }
+  if (!String(file.type).startsWith('image/') && !isHeicImage(file)) throw new Error('Choose an image or PDF document.');
+  return compressImageForUpload(file, { maxDimension: 1800, targetBytes: 700 * 1024 });
+}
+
 let duplicatedAssignmentImagePath = null;
 
 function resetAssignmentForm() {
   duplicatedAssignmentImagePath = null;
+  $('#assignmentReferencePreview').innerHTML = '';
   $('#assignmentForm').reset();
   if ($('#ctAssignmentCompetency')) $('#ctAssignmentCompetency').value = '';
   populateAssignmentSections();
@@ -3024,7 +3043,8 @@ function openAssignmentModal(assignmentId = null, duplicate = false) {
       input.disabled = false;
       input.closest('.class-check-option')?.classList.toggle('editing-class-option', input.checked);
     });
-    if (assignment.image_url) {
+    $('#assignmentReferencePreview').innerHTML = isActivityPdf(assignment.image_path) ? activityReferenceMarkup(assignment) : '';
+    if (assignment.image_url && !isActivityPdf(assignment.image_path)) {
       $('#assignmentImagePreview').src = assignment.image_url;
       $('#assignmentImagePreview').hidden = false;
       $('#assignmentImagePreview').dataset.existingPath = assignment.image_path || '';
@@ -3066,8 +3086,14 @@ $('#postAssignmentBtn').addEventListener('click', () => openAssignmentModal());
 $('#assignmentImage').addEventListener('change', event => {
   const file = event.target.files[0];
   if (!file) return;
-  $('#assignmentImagePreview').src = URL.createObjectURL(file);
-  $('#assignmentImagePreview').hidden = false;
+  const image = $('#assignmentImagePreview');
+  if (image.dataset.localUrl) URL.revokeObjectURL(image.dataset.localUrl);
+  const url = URL.createObjectURL(file);
+  image.dataset.localUrl = url;
+  const pdf = file.type === 'application/pdf' || isActivityPdf(file.name);
+  image.hidden = pdf;
+  if (!pdf) image.src = url;
+  $('#assignmentReferencePreview').innerHTML = pdf ? `<p>${esc(file.name)} · ${(file.size / 1048576).toFixed(1)} MB</p><a class="btn btn-light" href="${esc(url)}" target="_blank" rel="noopener">Preview PDF</a>` : '';
 });
 
 $('#importAssignmentExcelBtn')?.addEventListener('click', () => $('#assignmentExcelInput')?.click());
@@ -3154,7 +3180,7 @@ async function updateExistingAssignment(assignment, form, questions, dueAt, remi
   let newImagePath = assignment.image_path || null;
   let uploadedNewPath = null;
   if (imageFile) {
-    const preparedImage = await compressImageForUpload(imageFile, { maxDimension: 1800, targetBytes: 700 * 1024 });
+    const preparedImage = await prepareActivityReference(imageFile);
     uploadedNewPath = `${state.user.id}/${assignment.id}/${Date.now()}-${safeFileName(preparedImage.name)}`;
     const uploadRes = await db.storage.from('mathside-assignment-images').upload(uploadedNewPath, preparedImage, { upsert: false });
     if (uploadRes.error) throw uploadRes.error;
@@ -3397,7 +3423,7 @@ $('#assignmentForm').addEventListener('submit', async event => {
       async () => {
         const imageFile = $('#assignmentImage').files[0];
         const preparedImageFile = imageFile
-          ? await compressImageForUpload(imageFile, { maxDimension: 1800, targetBytes: 700 * 1024 })
+          ? await prepareActivityReference(imageFile)
           : null;
         for (const sectionId of sectionIds) {
           const { data, error } = await db.from('mathside_assignments').insert({
@@ -3579,9 +3605,9 @@ function renderAssignments() {
       : '';
     return `<article class="assignment-card assignment-group-card ${selected ? 'is-selected' : ''} ${scheduled ? 'assignment-scheduled' : ''}">
       <label class="assignment-select-check"><input class="row-check" type="checkbox" data-select-assignment="${assignment.id}" data-assignment-group-ids="${esc(groupIdsAttr)}" ${selected ? 'checked' : ''}><span class="sr-only">Select ${esc(assignment.title)}</span></label>
-      <div class="assignment-thumb">${assignment.image_url ? `<img src="${esc(assignment.image_url)}" alt="Assignment image" data-assignment-storage-path="${esc(assignment.image_path || '')}">` : iconSvg('assignment', 'assignment-line-icon')}</div>
+      <div class="assignment-thumb">${assignment.image_url ? activityReferenceMarkup(assignment) : iconSvg('assignment', 'assignment-line-icon')}</div>
       <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(assignment.title)}</h3>${group.length > 1 ? '<span class="shared-assignment-badge">Shared assignment</span>' : ''}${scheduled ? '<span class="scheduled-badge">Scheduled</span>' : ''}</div><p>${esc(assignment.instructions || 'Mathematics assignment')}</p>${classList}<div class="assignment-meta">${classSummary}${scheduled ? `<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(assignment.publish_at))}</span>` : ''}${missingAnswers ? `<span class="meta-chip answer-key-warning">${missingAnswers} answer${missingAnswers===1?'':'s'} pending</span>` : ''}</div></div>
-      <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button><button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button type="button" class="btn btn-light" data-duplicate-assignment="${assignment.id}" title="Duplicate activity">Duplicate</button><button class="btn btn-danger-outline" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
+      <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${assignment.id}">Preview</button><button class="btn btn-light" data-edit-assignment="${assignment.id}">Edit</button><button type="button" class="btn btn-light" data-duplicate-assignment="${assignment.id}" title="Duplicate activity" aria-label="Duplicate activity"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg></button><button class="btn btn-danger-outline" data-delete-assignment-group="${esc(groupIdsAttr)}">Delete</button></div>
     </article>`;
   }).join('');
   list.innerHTML = `
@@ -3633,6 +3659,7 @@ function openAssignmentPreview(assignmentId) {
   const submissionCount = state.submissions.filter(submission => linkedIds.has(submission.assignment_id)).length;
   const scheduled = assignment.status === 'draft' && assignment.publish_at;
 
+  $('#assignmentPreviewReference').innerHTML = activityReferenceMarkup(assignment);
   $('#assignmentPreviewTitle').textContent = assignment.title || 'Assignment';
   $('#assignmentPreviewInstructions').textContent = assignment.instructions || 'No additional instructions were provided.';
 
@@ -4045,7 +4072,7 @@ function renderStudentAssignments() {
     const canSubmit = a.status !== 'archived' && (!submitted || (Boolean(a.allow_resubmission) && Boolean(submitted?.resubmit_allowed)));
     const actionLabel = a.status === 'archived' ? 'Archived' : submitted ? (canSubmit ? 'Submit again' : 'Submitted') : overdue ? 'Submit late' : 'Open task';
     return `<article class="assignment-card student-task-card ${taskState}">
-      <div class="assignment-thumb">${a.image_url ? `<img src="${esc(a.image_url)}" alt="Assignment image" data-assignment-storage-path="${esc(a.image_path || '')}">` : iconSvg('calculator', 'assignment-line-icon')}</div>
+      <div class="assignment-thumb">${a.image_url ? activityReferenceMarkup(a) : iconSvg('calculator', 'assignment-line-icon')}</div>
       <div class="student-task-body">
         <span class="student-card-section-name">${esc(section?.name || 'Class')}</span>
         <div class="student-task-title-row"><h3>${esc(a.title)}</h3><span class="student-status ${statusClass}">${esc(status)}</span></div>
@@ -4199,7 +4226,8 @@ document.addEventListener('click', event => {
   activeStudentAssignment = assignment;
   $('#answerAssignmentTitle').textContent = assignment.title;
   $('#answerInstructions').textContent = assignment.instructions || '';
-  if (assignment.image_url) {
+  $('#studentActivityPdf').innerHTML = isActivityPdf(assignment.image_path) ? activityReferenceMarkup(assignment) : '';
+  if (assignment.image_url && !isActivityPdf(assignment.image_path)) {
     const taskImage = $('#studentAssignmentImage');
     taskImage.dataset.assignmentStoragePath = assignment.image_path || '';
     taskImage.dataset.retryingAssignmentImage = '';
