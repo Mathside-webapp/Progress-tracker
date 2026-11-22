@@ -1115,6 +1115,60 @@
     if (badge) { badge.textContent = String(activeCount); badge.hidden = activeCount === 0; }
   }
 
+  // V37: presentation only; all destructive actions use the original dialogs.
+  let ptTab='all', ptPage=1;
+  const ptSize=5;
+  const ptSelected=new Set();
+  const ptIcons={eye:'<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="3"/>',edit:'<path d="m16 4 4 4-11 11-5 1 1-5L16 4Zm-2 2 4 4"/>',copy:'<rect x="8" y="8" width="12" height="13" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',check:'<rect x="3" y="3" width="18" height="18" rx="3"/><path d="m7 12 3 3 7-7"/>',archive:'<rect x="3" y="3" width="18" height="5" rx="1"/><path d="M5 8v12h14V8M10 12h4"/>',trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 11v6M14 11v6"/>'};
+  const ptAction=(icon,label,attr,value,disabled=false)=>`<button type="button" ${attr}="${esc(value)}" title="${esc(label)}" aria-label="${esc(label)}" class="${icon==='trash'?'ms37-danger':''}" ${disabled?'disabled':''}><svg viewBox="0 0 24 24" aria-hidden="true">${ptIcons[icon]}</svg></button>`;
+  function ptCounts(group){
+    let expected=0,known=true; const latest=new Map();
+    for(const a of group){
+      const n=new Set((state.members||[]).filter(m=>m.section_id===a.section_id).map(m=>m.student_id)).size;
+      const mode=a.collaboration_mode||'individual';
+      if(mode==='individual')expected+=n;
+      else if(mode==='class')expected+=n?1:0;
+      else if(mode==='group' && a.grouping_creator==='teacher' && Number(a.group_count)>0)expected+=Math.min(n,Number(a.group_count));
+      else known=false;
+      for(const s of state.submissions||[]){if(s.assignment_id!==a.id||s.is_class_mirror||s.status==='cleared'||s.archived_at)continue;const k=`${a.id}:${s.student_id}`;if(!latest.has(k)||new Date(s.submitted_at||0)>new Date(latest.get(k).submitted_at||0))latest.set(k,s);}
+    }
+    const entries=[...latest.values()], submitted=entries.length, graded=entries.filter(s=>s.status==='graded').length;
+    return {expected:known?expected:null,submitted,graded,pending:submitted-graded,progress:submitted?Math.round(graded*100/submitted):0,complete:known&&expected>0&&submitted>=expected&&graded===submitted};
+  }
+  function ptStatus(g,n){const status=performanceTaskGroupState(g);if(status==='archived'||status==='scheduled')return status;if(g.every(a=>a.status==='draft'&&!a.publish_at))return 'draft';if(n.complete)return 'completed';if(n.pending)return 'review';return 'posted';}
+  function ptRenderTable(groups){
+    const list=$('#performanceTaskList');const active=performanceGroups().filter(g=>performanceTaskGroupState(g)!=='archived');
+    const stats={Total:active.length,Posted:active.filter(g=>performanceTaskGroupState(g)==='posted'&&!g.every(a=>a.status==='draft'&&!a.publish_at)).length,Review:active.filter(g=>ptCounts(g).pending>0).length,Groups:active.filter(g=>g[0].collaboration_mode==='group').length};
+    Object.entries(stats).forEach(([k,v])=>{const el=$('#ms37'+k);if(el)el.textContent=v});
+    const valid=new Set(active.flatMap(g=>g.map(a=>a.id))); for(const id of ptSelected)if(!valid.has(id))ptSelected.delete(id);
+    const query=($('#ms37Search')?.value||'').trim().toLowerCase(), rubric=$('#ms37Rubric')?.value||'all';
+    const rows=groups.map(g=>({g,n:ptCounts(g)})).filter(({g,n})=>{
+      const s=ptStatus(g,n);return (ptTab==='all'||(ptTab==='posted'?['posted','review','completed'].includes(s):s===ptTab)) && (rubric==='all'||g.some(a=>Boolean(a.rubric_path))===(rubric==='yes')) && (!query||`${g[0].title} ${g[0].instructions||''} ${groupSectionLabels(g).join(' ')}`.toLowerCase().includes(query));
+    });
+    const total=rows.length, pages=Math.max(1,Math.ceil(total/ptSize));ptPage=Math.max(1,Math.min(ptPage,pages));const shown=rows.slice((ptPage-1)*ptSize,ptPage*ptSize);
+    const ids=shown.flatMap(({g})=>g.map(a=>a.id)); const selectedGroups=active.filter(g=>g.every(a=>ptSelected.has(a.id))).length;
+    const selection=[...ptSelected].join(','); const labels={posted:'Posted',review:'Needs Review',completed:'Completed',draft:'Draft',scheduled:'Scheduled'};
+    const date=v=>v&&Number.isFinite(new Date(v).getTime())?new Date(v).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+    const modes={individual:'Individual',pair:'Pair',group:'Group',class:'Whole class'};
+    const toolbar=`<div class="ms37-bulkbar"><label class="bulk-select-all"><input class="row-check" type="checkbox" data-pt-select-all ${ids.length&&ids.every(id=>ptSelected.has(id))?'checked':''}><span class="sr-only">Select visible tasks</span></label><b class="bulk-selected-count">${selectedGroups} selected</b><div class="bulk-actions">${ptAction('archive','Archive selected performance tasks','data-archive-assignment-group',selection,!selection)}${ptAction('trash','Delete selected performance tasks','data-delete-assignment-group',selection,!selection)}</div><span class="ms37-result-hint">${total} tasks</span></div>`;
+    const body=shown.map(({g,n},i)=>{const a=g[0],id=esc(a.id),all=g.map(t=>t.id).join(','),s=ptStatus(g,n),ls=groupSectionLabels(g),selected=g.every(t=>ptSelected.has(t.id)),sub=n.expected===null?`${n.submitted} received`:`${n.submitted} / ${n.expected}`, mode=a.collaboration_mode||'individual';return `<tr class="assignment-card ms37-row ${selected?'is-selected':''}"><td><div class="ms37-name-cell"><input class="row-check" type="checkbox" data-pt-select="${esc(all)}" aria-label="Select ${esc(a.title)}" ${selected?'checked':''}><span class="ms37-document c${i%5}"><img src="assets/teacher-pixelmatch/icons/orange/04-performance-tasks.png" alt=""></span><span class="ms37-name"><b>${esc(a.title)}</b><small title="${esc(a.instructions||'')}">${esc(a.instructions||'Performance task')}</small></span></div></td><td><div class="ms37-class-list" title="${esc(ls.join(', '))}">${esc(ls[0]||'—')}${ls.length>1?`<small>+${ls.length-1} more</small>`:''}</div></td><td class="ms37-mode">${esc(modes[mode]||mode)}</td><td class="ms37-rubric">${g.some(t=>t.rubric_path)?'Attached':'—'}</td><td>${date(s==='scheduled'?a.publish_at:a.due_at)}</td><td class="ms37-submitted" title="${mode==='individual'?'Learner submissions':'Team / representative submissions'}">${sub}</td><td><div class="ms37-progress-cell" title="${n.graded} of ${n.submitted} received submissions checked"><span class="ms37-progress"><i style="width:${n.progress}%"></i></span><small>${n.progress}%</small></div></td><td><span class="ms37-status ${s}">${labels[s]||s}</span></td><td><div class="ms37-action-icons">${ptAction('eye','Preview task and manage groups','data-preview-assignment',id)}${ptAction('edit','Edit performance task','data-edit-performance-task',id)}${ptAction('copy','Copy task details into a new task','data-pt-copy',id)}${ptAction('check','Open submissions for this section','data-pt-review',id)}${ptAction('archive','Archive task','data-archive-assignment-group',all)}${ptAction('trash','Delete task','data-delete-assignment-group',all)}</div></td></tr>`}).join('');
+    const table=`<div class="ms37-table-scroll"><table class="ms37-table"><colgroup><col style="width:24%"><col style="width:10%"><col style="width:7%"><col style="width:7%"><col style="width:9%"><col style="width:8%"><col style="width:11%"><col style="width:9%"><col style="width:15%"></colgroup><thead><tr>${['Task Title','Grade / Section','Work Mode','Rubric','Due / Post Date','Submissions','Checking Progress','Status','Actions'].map(x=>`<th>${x}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
+    const empty=`<div class="ms37-empty"><img src="assets/teacher-pixelmatch/icons/orange/04-performance-tasks.png" alt=""><b>${active.length?'No tasks match these filters':'No performance tasks yet'}</b><p>${active.length?'Try a different search or filter.':'Create a task to get started.'}</p>${active.length?'':'<button type="button" class="btn btn-orange" data-pt-new>New Performance Task</button>'}</div>`;
+    list.innerHTML=toolbar+(total?table:empty)+`<div class="ms37-footer"><span>Showing ${total?(ptPage-1)*ptSize+1:0}–${Math.min(ptPage*ptSize,total)} of ${total} performance tasks</span><div class="ms37-footer-controls"><span>Page ${ptPage} of ${pages}</span><div class="ms37-pager" role="navigation" aria-label="Performance task pages"><button type="button" data-pt-page="${ptPage-1}" aria-label="Previous page" ${ptPage===1?'disabled':''}>‹</button><button type="button" data-pt-page="${ptPage+1}" aria-label="Next page" ${ptPage===pages?'disabled':''}>›</button></div></div></div>`;
+    const selectAll=list.querySelector('[data-pt-select-all]'); if(selectAll){selectAll.dataset.ids=ids.join(',');selectAll.indeterminate=ids.some(id=>ptSelected.has(id))&&!selectAll.checked;}
+    $$('#view-performance [data-ms37-tab]').forEach(b=>{b.classList.toggle('active',b.dataset.ms37Tab===ptTab);b.setAttribute('aria-pressed',String(b.dataset.ms37Tab===ptTab));});
+  }
+  const ptRoot=$('#view-performance');
+  ptRoot?.addEventListener('input',e=>{if(e.target.id==='ms37Search'){ptPage=1;renderPerformanceTasks();}});
+  ptRoot?.addEventListener('change',e=>{const el=e.target;if(el.matches('[data-pt-select],[data-pt-select-all]')){String(el.dataset.ptSelect||el.dataset.ids||'').split(',').filter(Boolean).forEach(id=>el.checked?ptSelected.add(id):ptSelected.delete(id));renderPerformanceTasks();}else if(el.id==='ms37Rubric'){ptPage=1;renderPerformanceTasks();}});
+  ptRoot?.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||b.disabled)return;
+    if(b.dataset.ms37Tab){if(b.dataset.ms37Tab==='archived'){showTeacherView('archive');const f=$('#archiveCategoryFilter');if(f){f.value='performance';f.dispatchEvent(new Event('change',{bubbles:true}));}return;}ptTab=b.dataset.ms37Tab;ptPage=1;renderPerformanceTasks();}
+    else if(b.dataset.ptPage){ptPage=Number(b.dataset.ptPage);renderPerformanceTasks();}
+    else if(b.hasAttribute('data-pt-new'))openPerformanceTaskModal();
+    else if(b.dataset.ptReview){const a=assignmentById(b.dataset.ptReview);if(!a)return;submissionWorkType='performance_task';submissionSectionId=a.section_id;submissionAssignmentFilter=a.id;submissionReviewFilter='all';showTeacherView('submissions');renderSubmissions();}
+    else if(b.dataset.ptCopy){const a=assignmentById(b.dataset.ptCopy);if(!a)return;if(!activeSections().length)return;await openPerformanceTaskModal();const form=$('#performanceTaskForm');form.elements.title.value=`${a.title||'Performance task'} (Copy)`;form.elements.instructions.value=a.instructions||'';form.elements.max_points.value=String(a.max_points||100);form.elements.allow_resubmission.checked=Boolean(a.allow_resubmission);const ids=new Set(performanceGroupForId(a.id).map(x=>x.section_id));$$('input[name="performance_sections"]', $('#performanceSectionChecklist')).forEach(input=>input.checked=ids.has(input.value));$$('input[name="performance_mode"]').forEach(input=>input.checked=input.value===(a.collaboration_mode||'individual'));$$('input[name="grouping_creator"]').forEach(input=>input.checked=input.value===(a.grouping_creator||'teacher'));$('#performanceGroupCount').value=String(a.group_count||4);syncPerformanceTeamOptions();populatePastPerformanceGroupSources();renderPerformanceTeamPreview();toast('Task details copied. Reattach any references and rubric, choose a deadline, and review team setup before posting.','orange');}
+  });
+
   function renderPerformanceTasks() {
     const list = $('#performanceTaskList');
     if (!list) return;
@@ -1141,23 +1195,7 @@
       }
       return new Date(b?.created_at || b?.publish_at || 0) - new Date(a?.created_at || a?.publish_at || 0);
     });
-    if (!groups.length) {
-      const hasFilter = performanceTaskSectionFilter !== 'all' || performanceTaskStatusFilter !== 'all' || performanceTaskModeFilter !== 'all' || performanceTaskSort !== 'newest';
-      list.innerHTML = `<div class="assignment-empty v9-empty"><span class="v9-empty-icon">▣</span><b>${hasFilter?'No performance tasks match these filters':'No performance tasks yet'}</b><p>${hasFilter?'Tap Filter and choose another section or status.':'Post a task with instructions, pictures, rubric, deadline, and assigned sections.'}</p></div>`;
-      return;
-    }
-    list.innerHTML = groups.map(group => {
-      const a = group[0], ids = group.map(x=>x.id), labels = groupSectionLabels(group);
-      const scheduled = performanceTaskGroupState(group) === 'scheduled';
-      const archived = performanceTaskGroupState(group) === 'archived';
-      const images = assignmentTaskImages(a);
-      const classList = labels.length > 1 ? `<div class="assignment-class-list">${labels.map(x=>`<span>${esc(x)}</span>`).join('')}</div>` : '';
-      return `<article class="assignment-card assignment-group-card performance-task-card performance-group-card ${scheduled?'assignment-scheduled':''} ${archived?'assignment-archived':''}">
-        <div class="assignment-thumb performance-thumb">${a.image_url?`<img src="${esc(a.image_url)}" alt="Performance task picture" data-assignment-storage-path="${esc(a.image_path||'')}">`:'▣'}</div>
-        <div class="assignment-card-body"><div class="assignment-title-line"><h3>${esc(a.title)}</h3>${group.length>1?'<span class="shared-assignment-badge">Shared performance task</span>':''}${scheduled?'<span class="scheduled-badge">Scheduled</span>':''}${archived?'<span class="archived-badge">Archived</span>':''}</div><p>${esc(a.instructions || 'Performance task')}</p>${classList}<div class="assignment-meta"><span class="meta-chip">${labels.length===1?esc(labels[0]):`${labels.length} classes`}</span><span class="meta-chip">${Number(a.max_points||0)} pts</span><span class="meta-chip">${esc(collaborationLabel(a))}</span>${a.due_at?`<span class="meta-chip">Due ${esc(formatDeadlineDate(a.due_at))}</span>`:''}${images.length?`<span class="meta-chip">${images.length} picture${images.length===1?'':'s'}</span>`:''}${a.rubric_path?'<span class="meta-chip rubric-chip">Rubric attached</span>':''}${scheduled?`<span class="meta-chip scheduled-chip">Posts ${esc(formatDeadlineDate(a.publish_at))}</span>`:''}</div></div>
-        <div class="assignment-card-actions"><button class="btn btn-light" data-preview-assignment="${a.id}">Preview</button>${archived?`<button class="btn btn-unarchive" data-unarchive-assignment-group="${esc(ids.join(','))}">Unarchive</button>`:`<button class="btn btn-light" data-edit-performance-task="${a.id}">Edit</button><button class="btn btn-archive" data-archive-assignment-group="${esc(ids.join(','))}">Archive</button>`}<button class="btn btn-danger-outline" data-delete-assignment-group="${esc(ids.join(','))}">Delete</button></div>
-      </article>`;
-    }).join('');
+    ptRenderTable(groups);
   }
   window.renderPerformanceTasks = renderPerformanceTasks;
 
@@ -1224,40 +1262,36 @@
     </article>`;
   }
 
+  const ARCHIVE_PAGE_SIZE = 5;
+  let archivePage = 1;
+  const archiveIcons = {eye:'<circle cx="12" cy="12" r="2.8"/><path d="M2 12s3.8-6 10-6 10 6 10 6-3.8 6-10 6S2 12 2 12Z"/>',restore:'<path d="M4 11a8 8 0 1 1 2 6M4 5v6h6"/>',users:'<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 7a3 3 0 0 1 0 6M18 15a5 5 0 0 1 3 5"/>',trash:'<path d="M4 7h16M10 4h4M6 7l1 13h10l1-13M10 11v6M14 11v6"/>'};
+  const archiveAction=(kind,label,attr,value)=>`<button type="button" class="ms43-action ${kind}" title="${esc(label)}" aria-label="${esc(label)}" ${attr}="${esc(value)}"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${archiveIcons[kind]}</svg></button>`;
+  const archivePic=(name)=>`<img alt="" src="assets/teacher-pixelmatch/icons/orange/${name}.png">`;
   function renderArchiveCenter() {
     const list = $('#archiveList');
     if (!list) return;
     archiveCategoryFilter = ['all','class','activity','performance'].includes(archiveCategoryFilter) ? archiveCategoryFilter : 'all';
     archiveSort = ['newest','oldest','name','name-desc'].includes(archiveSort) ? archiveSort : 'newest';
     syncArchiveFilterUi();
-
+    $$('[data-ms-archive-category]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.msArchiveCategory===archiveCategoryFilter)));
     const classes = state.sections.filter(section => Boolean(section.archived_at));
-    const activities = archivedWrittenGroups();
-    const performance = archivedPerformanceGroups();
-    $('#archivedClassCount') && ($('#archivedClassCount').textContent = String(classes.length));
-    $('#archivedActivityCount') && ($('#archivedActivityCount').textContent = String(activities.length));
-    $('#archivedPerformanceCount') && ($('#archivedPerformanceCount').textContent = String(performance.length));
-
-    let records = [
-      ...classes.map(section => ({ category:'class', name:String(section.name||''), time:archiveRecordTime(section.archived_at, section.created_at), html:archiveClassCard(section) })),
-      ...activities.map(group => ({ category:'activity', name:String(group[0]?.title||''), time:Math.max(...group.map(a=>archiveRecordTime(a.archived_at,a.created_at))), html:archiveActivityCard(group) })),
-      ...performance.map(group => ({ category:'performance', name:String(group[0]?.title||''), time:Math.max(...group.map(a=>archiveRecordTime(a.archived_at,a.created_at))), html:archivePerformanceCard(group) }))
-    ];
-    if (archiveCategoryFilter !== 'all') records = records.filter(record => record.category === archiveCategoryFilter);
-    records.sort((a,b) => {
-      if (archiveSort === 'oldest') return a.time - b.time || a.name.localeCompare(b.name, undefined, {sensitivity:'base'});
-      if (archiveSort === 'name') return a.name.localeCompare(b.name, undefined, {sensitivity:'base'});
-      if (archiveSort === 'name-desc') return b.name.localeCompare(a.name, undefined, {sensitivity:'base'});
-      return b.time - a.time || a.name.localeCompare(b.name, undefined, {sensitivity:'base'});
-    });
-
-    if (!records.length) {
-      const filtered = archiveCategoryFilter !== 'all';
-      list.innerHTML = `<div class="assignment-empty v9-empty archive-empty"><span class="v9-empty-icon">▤</span><b>${filtered?'No archived items in this category':'Archive is empty'}</b><p>${filtered?'Choose another category from Filter.':'Archived classes, activities, and performance tasks will appear here.'}</p></div>`;
-      return;
-    }
-    list.innerHTML = records.map(record => record.html).join('');
+    const activities = archivedWrittenGroups(), performance = archivedPerformanceGroups();
+    $('#archivedClassCount').textContent=String(classes.length); $('#archivedActivityCount').textContent=String(activities.length); $('#archivedPerformanceCount').textContent=String(performance.length);
+    const className=s=>s?`${s.name} · Grade ${s.grade_level}`:'Unknown class';
+    const dateLabel=time=>time?new Date(time).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+    const groupRecord=(g,category)=>{const a=g[0],ids=g.map(x=>x.id).join(','), labels=(category==='activity'?assignmentGroupSectionLabels(g):groupSectionLabels(g));const pts=[...new Set(g.map(x=>totalPoints(x.id)))].filter(x=>Number.isFinite(x)&&x>0);return {category,name:String(a.title||''),time:Math.max(...g.map(x=>archiveRecordTime(x.archived_at))),labels,details:pts.length===1?`${pts[0]} pts`:pts.length?`${Math.min(...pts)}–${Math.max(...pts)} pts`:'—',actions:archiveAction('eye','Preview archived assessment','data-preview-assignment',a.id)+archiveAction('restore','Unarchive assessment','data-unarchive-assignment-group',ids)+archiveAction('trash','Delete permanently','data-delete-assignment-group',ids)};};
+    let records=[...classes.map(s=>{const count=studentsForSection(s.id).length;return {category:'class',name:String(s.name||''),time:archiveRecordTime(s.archived_at),labels:[className(s)],details:`${count} student${count===1?'':'s'}`,actions:archiveAction('eye','View students','data-view-class-students',s.id)+archiveAction('restore','Unarchive class','data-unarchive-class',s.id)+archiveAction('users','Reuse students','data-create-from-archive',s.id)+archiveAction('trash','Delete class permanently','data-delete-class',s.id)};}),...activities.map(g=>groupRecord(g,'activity')),...performance.map(g=>groupRecord(g,'performance'))];
+    const term=String($('#ms43Search')?.value||'').trim().toLowerCase();
+    if(archiveCategoryFilter!=='all')records=records.filter(r=>r.category===archiveCategoryFilter);
+    if(term)records=records.filter(r=>[r.name,r.category,...r.labels,r.details].join(' ').toLowerCase().includes(term));
+    records.sort((a,b)=>archiveSort==='name'?a.name.localeCompare(b.name,undefined,{sensitivity:'base'}):archiveSort==='name-desc'?b.name.localeCompare(a.name,undefined,{sensitivity:'base'}):archiveSort==='oldest'?a.time-b.time||a.name.localeCompare(b.name):b.time-a.time||a.name.localeCompare(b.name));
+    const total=records.length,pages=Math.max(1,Math.ceil(total/ARCHIVE_PAGE_SIZE)); archivePage=Math.max(1,Math.min(archivePage,pages));const offset=(archivePage-1)*ARCHIVE_PAGE_SIZE;
+    const categories={class:['Class','02-classes'],activity:['Activity','03-activities'],performance:['Performance Task','04-performance-tasks']};
+    const rows=records.slice(offset,offset+ARCHIVE_PAGE_SIZE).map(r=>`<tr class="ms43-row"><td><div class="ms43-record-name">${archivePic(categories[r.category][1])}<b>${esc(r.name)}</b></div></td><td><span class="ms43-pill ${r.category}">${categories[r.category][0]}</span></td><td>${esc(r.labels[0]||'—')}${r.labels.length>1?`<small class="ms43-more" title="${esc(r.labels.join(', '))}">+${r.labels.length-1} more</small>`:''}</td><td>${dateLabel(r.time)}</td><td><span class="ms43-details">${esc(r.details)}</span></td><td><div class="ms43-actions">${r.actions}</div></td></tr>`).join('');
+    list.innerHTML=(total?`<div class="ms43-table-shell"><div class="ms43-scroll"><table class="ms43-table"><thead><tr><th><button type="button" data-ms43-sort="name">Name ↕</button></th><th>Category</th><th>Class / Section</th><th><button type="button" data-ms43-sort="date">Archived on ↕</button></th><th>Details</th><th>Actions</th></tr></thead><tbody>${rows}</tbody></table></div></div>`:`<div class="ms43-empty"><img src="assets/empty-states/archive.png" alt=""><b>${term||archiveCategoryFilter!=='all'?'No matching archived records':'Archive is empty'}</b><p>${term||archiveCategoryFilter!=='all'?'Try a different search or category.':'Archived classes, activities, and performance tasks will appear here.'}</p></div>`)+`<div class="ms43-footer"><span>Showing ${total?offset+1:0}–${Math.min(offset+ARCHIVE_PAGE_SIZE,total)} of ${total} archived records</span><div><button type="button" data-ms43-page="prev" aria-label="Previous page" ${archivePage===1?'disabled':''}>‹</button><b>Page ${archivePage} of ${pages}</b><button type="button" data-ms43-page="next" aria-label="Next page" ${archivePage===pages?'disabled':''}>›</button></div></div>`;
   }
+  $('#ms43Search')?.addEventListener('input',()=>{archivePage=1;renderArchiveCenter();});
+  $('#view-archive')?.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled)return;if(b.dataset.ms43Page){archivePage+=b.dataset.ms43Page==='next'?1:-1;renderArchiveCenter();}else if(b.dataset.ms43Sort){archiveSort=b.dataset.ms43Sort==='name'?(archiveSort==='name'?'name-desc':'name'):(archiveSort==='newest'?'oldest':'newest');archivePage=1;renderArchiveCenter();}});
   window.renderArchiveCenter = renderArchiveCenter;
 
   function setCompactFilterPanel(buttonId, panelId, open) {
@@ -1273,8 +1307,8 @@
   });
   $('#archiveFilterClose')?.addEventListener('click', () => setCompactFilterPanel('#archiveFilterBtn', '#archiveFilterPanel', false));
   $('#archiveFilterDone')?.addEventListener('click', () => setCompactFilterPanel('#archiveFilterBtn', '#archiveFilterPanel', false));
-  $('#archiveCategoryFilter')?.addEventListener('change', event => { archiveCategoryFilter = event.currentTarget.value || 'all'; renderArchiveCenter(); });
-  $('#archiveSort')?.addEventListener('change', event => { archiveSort = event.currentTarget.value || 'newest'; renderArchiveCenter(); });
+  $('#archiveCategoryFilter')?.addEventListener('change', event => { archiveCategoryFilter = event.currentTarget.value || 'all'; archivePage=1; renderArchiveCenter(); });
+  $('#archiveSort')?.addEventListener('change', event => { archiveSort = event.currentTarget.value || 'newest'; archivePage=1; renderArchiveCenter(); });
   $('#archiveClearFilters')?.addEventListener('click', () => { archiveCategoryFilter = 'all'; archiveSort = 'newest'; renderArchiveCenter(); });
 
   $('#activityFilterBtn')?.addEventListener('click', () => {
@@ -1296,10 +1330,10 @@
   });
   $('#performanceTaskFilterClose')?.addEventListener('click', () => setCompactFilterPanel('#performanceTaskFilterBtn', '#performanceTaskFilterPanel', false));
   $('#performanceTaskFilterDone')?.addEventListener('click', () => setCompactFilterPanel('#performanceTaskFilterBtn', '#performanceTaskFilterPanel', false));
-  $('#performanceTaskSectionFilter')?.addEventListener('change', event => { performanceTaskSectionFilter = event.currentTarget.value || 'all'; renderPerformanceTasks(); });
+  $('#performanceTaskSectionFilter')?.addEventListener('change', event => { performanceTaskSectionFilter = event.currentTarget.value || 'all'; ptPage=1; renderPerformanceTasks(); });
   $('#performanceTaskStatusFilter')?.addEventListener('change', event => { performanceTaskStatusFilter = event.currentTarget.value || 'all'; renderPerformanceTasks(); });
-  $('#performanceTaskModeFilter')?.addEventListener('change', event => { performanceTaskModeFilter = event.currentTarget.value || 'all'; renderPerformanceTasks(); });
-  $('#performanceTaskSort')?.addEventListener('change', event => { performanceTaskSort = event.currentTarget.value || 'newest'; renderPerformanceTasks(); });
+  $('#performanceTaskModeFilter')?.addEventListener('change', event => { performanceTaskModeFilter = event.currentTarget.value || 'all'; ptPage=1; renderPerformanceTasks(); });
+  $('#performanceTaskSort')?.addEventListener('change', event => { performanceTaskSort = event.currentTarget.value || 'newest'; ptPage=1; renderPerformanceTasks(); });
   $('#performanceTaskClearFilters')?.addEventListener('click', () => {
     performanceTaskSectionFilter = 'all'; performanceTaskStatusFilter = 'all'; performanceTaskModeFilter = 'all'; performanceTaskSort = 'newest'; renderPerformanceTasks();
   });
@@ -1603,6 +1637,32 @@
     setCompactFilterPanel('#activityFilterBtn', '#activityFilterPanel', false);
     setCompactFilterPanel('#performanceTaskFilterBtn', '#performanceTaskFilterPanel', false);
   });
+
+  // Mathside V30: a narrow, UI-only bridge for restoring the teacher's
+  // submission filters after an explicit browser/app update. No data is saved
+  // here and grading functions remain unchanged.
+  window.MathsideSubmissionViewPreferences = {
+    read() {
+      return {
+        workType: submissionWorkType,
+        sectionId: submissionSectionId,
+        reviewFilter: submissionReviewFilter,
+        assignmentId: submissionAssignmentFilter,
+        groupMode: submissionGroupMode,
+        sort: submissionSort
+      };
+    },
+    apply(prefs) {
+      if (!prefs || typeof prefs !== 'object') return;
+      if (['written_work','performance_task'].includes(prefs.workType)) submissionWorkType = prefs.workType;
+      if (typeof prefs.sectionId === 'string') submissionSectionId = prefs.sectionId;
+      if (['all','new','checked'].includes(prefs.reviewFilter)) submissionReviewFilter = prefs.reviewFilter;
+      if (typeof prefs.assignmentId === 'string') submissionAssignmentFilter = prefs.assignmentId;
+      if (['section','combined'].includes(prefs.groupMode)) submissionGroupMode = prefs.groupMode;
+      if (['newest','name','name-desc'].includes(prefs.sort)) submissionSort = prefs.sort;
+      renderSubmissions();
+    }
+  };
 
   // ---------------------------------------------------------------
   // PERFORMANCE TASK TEAMWORK

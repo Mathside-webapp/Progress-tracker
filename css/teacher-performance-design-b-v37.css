@@ -1,0 +1,164 @@
+/* Mathside V35: approved Activities Design B. Scoped strictly to #view-performance. */
+#teacherApp #view-performance{--a-orange:#ff6b00;--a-ink:#201f22;--a-border:#f0e3db;--a-muted:#827877;font-family:Inter,"Segoe UI",Arial,sans-serif!important;color:var(--a-ink)!important}
+#teacherApp #view-performance .ms37-hero{height:clamp(212px,17.3vw,242px);min-height:212px;border:1px solid #f4e7dc;border-radius:16px;position:relative;overflow:hidden;background:#fffaf6 url('../assets/teacher-performance-v37/performance-header.png') no-repeat right center;background-size:cover;display:flex;align-items:center;margin-bottom:13px}
+#teacherApp #view-performance .ms37-hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,250,246,1) 0%,rgba(255,250,246,.98) 19%,rgba(255,250,246,.83) 35%,rgba(255,250,246,.27) 53%,transparent 71%)}
+#teacherApp #view-performance .ms37-hero-copy{position:relative;z-index:1;padding:22px 32px;display:flex;align-items:center;gap:18px;width:min(66%,800px)}
+#teacherApp #view-performance .ms37-hero-icon{display:grid;place-items:center;background:#ff7109;width:53px;height:53px;flex:none;border-radius:13px;box-shadow:0 4px 12px #eb64001b}
+#teacherApp #view-performance .ms37-hero-icon img{width:28px;height:28px;object-fit:contain}
+#teacherApp #view-performance .ms37-hero-copy h2{margin:0;font-size:clamp(30px,3vw,43px);font-weight:850;letter-spacing:-1.35px;line-height:1.12;color:#242126}
+#teacherApp #view-performance .ms37-hero-copy p{margin:8px 0 0;max-width:520px;color:#6a6262;font-size:15.5px;line-height:1.48}
+#teacherApp #view-performance .ms37-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(185px,.86fr);gap:10px;margin-bottom:20px;align-items:stretch}
+#teacherApp #view-performance .ms37-stat{height:86px;min-width:0;border-radius:13px;display:flex;gap:11px;align-items:center;padding:12px 17px;border:1px solid #f4e9e5;background:#fff1ed}
+#teacherApp #view-performance .ms37-stat-posted{background:#fff4ec}
+#teacherApp #view-performance .ms37-stat-scheduled{background:#fff7e8}
+#teacherApp #view-performance .ms37-stat-check{background:#eef8f0}
+#teacherApp #view-performance .ms37-stat-icon{height:44px;width:44px;flex:none;display:grid;place-items:center;border-radius:10px;background:#ffe2d0}
+#teacherApp #view-performance .ms37-stat-scheduled .ms37-stat-icon{background:#ffedc8}
+#teacherApp #view-performance .ms37-stat-check .ms37-stat-icon{background:#dcf1e1}
+#teacherApp #view-performance .ms37-stat-icon img{width:27px;height:27px;object-fit:contain}
+#teacherApp #view-performance .ms37-stat strong{font-size:27px;line-height:1.08;font-weight:850;letter-spacing:-.7px;display:block;color:#1d2020}
+#teacherApp #view-performance .ms37-stat small{font-size:11px;color:#615b5a;display:block;margin-top:2px;white-space:nowrap}
+#teacherApp #view-performance .ms37-stat-arrow{color:#ec7b38;margin-left:auto;font-size:24px;font-weight:300}
+#teacherApp #view-performance .ms37-create{border:0;align-self:center;min-height:49px;border-radius:11px;background:#ff6b00;color:#fff;font-size:14px;white-space:nowrap;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 12px #dc610021}
+#teacherApp #view-performance .ms37-create:hover{background:#ec5e00}
+#teacherApp #view-performance .ms37-create span{font-size:28px;line-height:1;font-weight:300}
+#teacherApp #view-performance .ms37-filters{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:13px;flex-wrap:wrap}
+#teacherApp #view-performance .ms37-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#teacherApp #view-performance .ms37-tab{height:40px;border:1px solid #ece7e4;background:#fff;border-radius:22px;padding:0 16px;font-size:12px;font-weight:710;color:#464448;box-shadow:0 2px 6px #38302508;white-space:nowrap}
+#teacherApp #view-performance .ms37-tab.active{border-color:#ff6b00;background:#ff6b00;color:#fff}
+#teacherApp #view-performance .ms37-tab:hover:not(.active){background:#fff5ec;border-color:#fac9a8}
+#teacherApp #view-performance .ms37-filter-fields{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#teacherApp #view-performance .ms37-search,#teacherApp #view-performance .ms37-select{height:39px;border:1px solid #e5e0dd;border-radius:10px;background:#fff;display:flex;align-items:center;box-shadow:0 1px 3px #2f1d1004;min-width:0}
+#teacherApp #view-performance .ms37-search{width:175px;padding:0 11px;gap:8px}
+#teacherApp #view-performance .ms37-search svg{width:17px;height:17px;flex:none;fill:none;stroke:#948d8a;stroke-width:1.8;stroke-linecap:round}
+#teacherApp #view-performance .ms37-search input{width:100%;min-width:0;border:0;outline:0;background:none;font-size:11px;color:#3f3835;padding:0}
+#teacherApp #view-performance .ms37-select select{min-height:0;height:100%;max-width:160px;background:#fff;border:0!important;outline-offset:2px;border-radius:9px!important;box-shadow:none!important;font-size:11px;font-weight:650;padding:0 20px 0 11px;color:#534b48;cursor:pointer}
+#teacherApp #view-performance .ms37-sort select{max-width:145px}
+#teacherApp #view-performance .ms37-list-shell{background:#fff;border:1px solid #e9e0db;border-radius:16px;box-shadow:0 6px 22px #2b150913;overflow:hidden}
+#teacherApp #view-performance .assignment-list{display:block!important;min-width:0!important;padding:0!important;margin:0!important;background:none!important;border:0!important;box-shadow:none!important;gap:0!important}
+#teacherApp #view-performance .ms37-bulkbar{min-height:50px;padding:8px 17px;display:flex;align-items:center;gap:13px;flex-wrap:wrap;border-bottom:1px solid #eee6e1;background:#fffbf9;color:#625953;font-size:11px}
+#teacherApp #view-performance .ms37-bulkbar .bulk-select-all{display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;font-weight:650;font-size:11px;white-space:nowrap}
+#teacherApp #view-performance input[type=checkbox].row-check{accent-color:#ff7007;width:17px;height:17px;flex:none;margin:0;cursor:pointer}
+#teacherApp #view-performance .ms37-bulkbar .bulk-selected-count{color:#82736d;font-size:11px}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions{margin-left:auto;display:flex;gap:7px}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button{min-height:32px;border-radius:8px;padding:6px 12px;font-size:10.8px;border:1px solid #eae2da;color:#665954;background:#fff;box-shadow:none;font-weight:700}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button:disabled{opacity:.45;cursor:not-allowed}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions .btn-danger{color:#bd3e32;border-color:#f2d9d5}
+#teacherApp #view-performance .ms37-table-scroll{overflow-x:auto;max-width:100%;overflow-y:visible}
+#teacherApp #view-performance .ms37-table{width:100%;min-width:1040px;table-layout:fixed;border-collapse:collapse;border-spacing:0}
+#teacherApp #view-performance .ms37-table th{background:#fff2ea;color:#725f55;text-align:left;font-size:11px;font-weight:750;padding:12px 12px;border-bottom:1px solid #efdfd6}
+#teacherApp #view-performance .ms37-table td{vertical-align:middle;padding:11px 12px;border-bottom:1px solid #eee9e5;font-size:11.4px;color:#4a4442;background:#fff}
+#teacherApp #view-performance .ms37-table .assignment-card{background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;min-height:0!important;margin:0!important;display:table-row!important;transform:none!important}
+#teacherApp #view-performance .ms37-table tr.assignment-card.is-selected td{background:#fff7f0!important}
+#teacherApp #view-performance .ms37-table tr.assignment-card:hover td{background:#fff9f4}
+#teacherApp #view-performance .ms37-table tr:last-child td{border-bottom:0}
+#teacherApp #view-performance .ms37-table .ms37-name-cell{display:flex;align-items:center;gap:11px;min-width:0}
+#teacherApp #view-performance .ms37-document{width:34px;height:37px;flex:none;display:grid;place-items:center;background:#ff9d4c;color:white;border-radius:9px;box-shadow:inset 0 -3px 0 #ffffff28}
+#teacherApp #view-performance .ms37-document img{width:20px;height:20px;object-fit:contain;filter:brightness(0) invert(1)}
+#teacherApp #view-performance .ms37-document.c1{background:#7bbce1}
+#teacherApp #view-performance .ms37-document.c2{background:#ad8de0}
+#teacherApp #view-performance .ms37-document.c3{background:#f6c457}
+#teacherApp #view-performance .ms37-document.c4{background:#86b66c}
+#teacherApp #view-performance .ms37-name{min-width:0;display:flex;flex-direction:column;gap:4px}
+#teacherApp #view-performance .ms37-name b{font-size:11.6px;color:#292423;line-height:1.3;letter-spacing:-.12px;overflow-wrap:anywhere}
+#teacherApp #view-performance .ms37-name small{font-size:10px;color:#8b8280;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#teacherApp #view-performance .ms37-class-list{font-size:11px;line-height:1.3;color:#514945}
+#teacherApp #view-performance .ms37-class-list small{font-size:10px;color:#8b7a75;display:block;margin-top:3px}
+#teacherApp #view-performance .ms37-status{display:inline-flex;align-items:center;padding:6px 9px;font-size:10.6px;font-weight:800;border-radius:7px;white-space:nowrap}
+#teacherApp #view-performance .ms37-status.published{background:#e2f5e5;color:#178445}
+#teacherApp #view-performance .ms37-status.scheduled{background:#fff1d2;color:#a26c08}
+#teacherApp #view-performance .ms37-status.draft{background:#f0f0f0;color:#6a6464}
+#teacherApp #view-performance .ms37-submitted{font-weight:750;white-space:nowrap;color:#514943}
+#teacherApp #view-performance .ms37-progress-cell{display:flex;align-items:center;gap:9px}
+#teacherApp #view-performance .ms37-progress{height:8px;width:105px;max-width:100%;border-radius:99px;background:#e7e6e6;overflow:hidden;flex:none}
+#teacherApp #view-performance .ms37-progress>i{height:100%;display:block;background:#ff770d;border-radius:99px}
+#teacherApp #view-performance .ms37-progress-cell small{font-size:10px;color:#6b6561}
+#teacherApp #view-performance .ms37-action-icons{display:flex;align-items:center;gap:4px;justify-content:flex-start}
+#teacherApp #view-performance .ms37-action-icons button{height:29px;width:29px;display:grid;place-items:center;padding:0;border:0;background:transparent;border-radius:7px;box-shadow:none;color:#9c6a4c}
+#teacherApp #view-performance .ms37-action-icons button:hover{background:#fff1e6;color:#ef6b06}
+#teacherApp #view-performance .ms37-action-icons button.ms37-danger{color:#d3493d}
+#teacherApp #view-performance .ms37-action-icons button.ms37-danger:hover{background:#fff0ed}
+#teacherApp #view-performance .ms37-action-icons svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+#teacherApp #view-performance .ms37-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;min-height:48px;padding:8px 17px;border-top:1px solid #eee8e1;background:#fffbf9;color:#91857f;font-size:11px}
+#teacherApp #view-performance .ms37-pager{display:flex;align-items:center;gap:6px}
+#teacherApp #view-performance .ms37-pager button{height:30px;min-width:30px;border:1px solid #e8ddd6;border-radius:8px;background:#fff;color:#5c524f;font-weight:800}
+#teacherApp #view-performance .ms37-pager button:disabled{opacity:.35;cursor:not-allowed}
+#teacherApp #view-performance .ms37-empty{padding:48px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#746966;text-align:center}
+#teacherApp #view-performance .ms37-empty img{width:64px;height:64px;object-fit:contain}
+#teacherApp #view-performance .ms37-empty b{font-size:17px;color:#2b2421}
+#teacherApp #view-performance .ms37-empty p{font-size:12px;margin:0;color:#847873}
+#teacherApp #view-performance .ms37-empty .btn{font-size:11px;margin-top:6px}
+#teacherApp #view-performance .ms37-result-hint{font-size:11px;color:#8a7a74;white-space:nowrap}
+#teacherApp #view-performance .ms37-hidden{display:none!important}
+@media(max-width:1400px){#teacherApp #view-performance .ms37-stats{grid-template-columns:repeat(4,minmax(0,1fr)) 170px}#teacherApp #view-performance .ms37-stat{padding:10px 12px;gap:7px}#teacherApp #view-performance .ms37-stat-icon{width:37px;height:37px}#teacherApp #view-performance .ms37-stat strong{font-size:23px}#teacherApp #view-performance .ms37-filter-fields{width:100%;justify-content:flex-end}}
+@media(max-width:1020px){#teacherApp #view-performance .ms37-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#teacherApp #view-performance .ms37-create{min-height:78px}#teacherApp #view-performance .ms37-hero-copy{width:75%}}
+@media(max-width:780px){#teacherApp #view-performance .ms37-hero{height:190px;min-height:190px;background-position:right center}#teacherApp #view-performance .ms37-hero-copy{width:88%;padding:16px;gap:12px}#teacherApp #view-performance .ms37-hero-icon{width:40px;height:40px}#teacherApp #view-performance .ms37-hero-icon img{width:22px;height:22px}#teacherApp #view-performance .ms37-hero-copy h2{font-size:30px}#teacherApp #view-performance .ms37-hero-copy p{font-size:11px;max-width:260px}#teacherApp #view-performance .ms37-hero:before{background:linear-gradient(90deg,#fffaf6 0%,#fffaf6f1 43%,#fffaf6a8 75%,transparent)}#teacherApp #view-performance .ms37-filter-fields{justify-content:flex-start}#teacherApp #view-performance .ms37-search{flex:1;width:100%;min-width:100%}}
+@media(max-width:470px){#teacherApp #view-performance .ms37-hero{height:178px;min-height:178px}#teacherApp #view-performance .ms37-hero-copy{width:95%;gap:9px}#teacherApp #view-performance .ms37-hero-icon{height:35px;width:35px}#teacherApp #view-performance .ms37-hero-copy h2{font-size:26px}#teacherApp #view-performance .ms37-stats{gap:8px}#teacherApp #view-performance .ms37-stat{height:73px;padding:9px}#teacherApp #view-performance .ms37-stat strong{font-size:21px}#teacherApp #view-performance .ms37-stat small{font-size:10px}#teacherApp #view-performance .ms37-stat-arrow{display:none}#teacherApp #view-performance .ms37-create{grid-column:span 2;min-height:46px}#teacherApp #view-performance .ms37-filters{gap:10px}#teacherApp #view-performance .ms37-tab{padding:0 12px;font-size:11px}#teacherApp #view-performance .ms37-filter-fields .ms37-select{flex:1;min-width:135px}#teacherApp #view-performance .ms37-filter-fields .ms37-select select{max-width:100%;width:100%}#teacherApp #view-performance .ms37-sort{min-width:100%!important}#teacherApp #view-performance .ms37-sort select{min-width:100%}}
+@media(prefers-reduced-motion:reduce){#teacherApp #view-performance *{transition:none!important;animation:none!important}}
+/* Legacy archive/delete attributes previously added a boxed border to icon buttons.
+   Keep the approved Design B icon-only actions visually consistent. */
+#teacherApp #view-performance .ms37-action-icons button[data-archive-assignment-group],
+#teacherApp #view-performance .ms37-action-icons button[data-unarchive-assignment-group],
+#teacherApp #view-performance .ms37-action-icons button[data-delete-assignment-group]{border:0!important;box-shadow:none!important;background:transparent!important;outline-offset:2px!important}
+#teacherApp #view-performance .ms37-action-icons button[data-archive-assignment-group]:hover,
+#teacherApp #view-performance .ms37-action-icons button[data-delete-assignment-group]:hover{background:#fff0e6!important}
+
+/* Match borderless archive/delete action buttons already in each activity row. */
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions{margin-left:auto;display:flex;align-items:center;gap:5px}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button.ms37-bulk-icon{
+  width:32px!important;height:32px!important;min-height:32px!important;min-width:32px!important;
+  padding:0!important;display:grid!important;place-items:center!important;
+  border:0!important;outline-offset:2px!important;box-shadow:none!important;
+  background:transparent!important;border-radius:7px!important;color:#9c6a4c!important;
+}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button.ms37-bulk-icon:not(:disabled):hover{background:#fff1e6!important;color:#ef6b06!important}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button.ms37-bulk-icon.ms37-danger{color:#d3493d!important}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button.ms37-bulk-icon.ms37-danger:not(:disabled):hover{background:#fff0ed!important;color:#c52c27!important}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button.ms37-bulk-icon:disabled{opacity:.38!important;cursor:not-allowed!important}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button.ms37-bulk-icon svg{width:17px!important;height:17px!important;stroke:currentColor!important;fill:none!important;stroke-width:1.85!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button.ms37-bulk-icon:focus-visible{outline:2px solid #ff7c2d!important}
+#teacherApp #view-performance .ms37-footer-controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-left:auto}
+#teacherApp #view-performance .ms37-page-size{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:11px;color:#776861}
+#teacherApp #view-performance .ms37-page-size select{min-width:59px;height:30px;padding:0 19px 0 7px;border-radius:8px;border:1px solid #e8ddd6;background:#fff;color:#594d48;box-shadow:none;font-size:11px;font-weight:700}
+@media(max-width:780px){
+  #teacherApp #view-performance .ms37-hero:before{background:linear-gradient(90deg,rgba(255,250,246,.99) 0%,rgba(255,250,246,.91) 45%,rgba(255,250,246,.35) 77%,transparent 100%)!important}
+}
+@media(max-width:470px){#teacherApp #view-performance .ms37-footer-controls{margin-left:0;width:100%;justify-content:space-between;gap:9px}#teacherApp #view-performance .ms37-bulkbar{gap:8px;padding:8px 12px}}
+
+#teacherApp #view-performance .ms37-list-shell{scroll-margin-top:83px}
+#teacherApp #view-performance .ms37-hero{background-size:auto 100%!important;background-position:right center!important;background-color:#fff7ee!important}
+#teacherApp #view-performance .ms37-hero:before{background:linear-gradient(90deg,#fffaf6 0%,#fffaf6 32%,#fffaf6b0 39%,transparent 54%)!important}
+#teacherApp #view-performance .ms37-hero-copy{width:55%;position:relative;z-index:1}
+#teacherApp #view-performance .ms37-hero-copy h2{font-size:clamp(29px,3vw,44px);line-height:1.12}
+#teacherApp #view-performance .ms37-stats{grid-template-columns:repeat(4,minmax(0,1fr)) minmax(200px,1.05fr)}
+#teacherApp #view-performance .ms37-create{padding:0 12px;font-size:13px}
+#teacherApp #view-performance .ms37-filters{gap:10px}
+#teacherApp #view-performance .ms37-tab{padding:0 12px;height:38px}
+#teacherApp #view-performance .ms37-filter-fields{gap:7px;flex:1;justify-content:flex-end;width:auto}
+#teacherApp #view-performance .ms37-search{width:185px;flex:1;min-width:145px;max-width:245px}
+#teacherApp #view-performance .ms37-select select{max-width:132px}
+#teacherApp #view-performance .ms37-table{min-width:1100px;table-layout:fixed}
+#teacherApp #view-performance .ms37-table td,#teacherApp #view-performance .ms37-table th{padding:10px 8px}
+#teacherApp #view-performance .ms37-action-icons{gap:2px;justify-content:flex-start;flex-wrap:nowrap}
+#teacherApp #view-performance .ms37-action-icons button{width:29px!important;min-width:29px!important;height:30px!important;padding:0!important}
+#teacherApp #view-performance .ms37-action-icons button:focus-visible,#teacherApp #view-performance button:focus-visible{outline:2px solid #ff790b;outline-offset:2px}
+#teacherApp #view-performance .ms37-name small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+#teacherApp #view-performance .ms37-mode{font-weight:700}
+#teacherApp #view-performance .ms37-status.posted{background:#e3f4e8;color:#268044}
+#teacherApp #view-performance .ms37-status.review{background:#fff0ce;color:#986400}
+#teacherApp #view-performance .ms37-status.completed{background:#eee6f8;color:#765098}
+#teacherApp #view-performance .ms37-pager button.active{background:#ff6b00;color:white;border-color:#ff6b00}
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions{margin-left:auto}
+#teacherApp #view-performance .ms37-rubric{white-space:nowrap}
+@media(max-width:1250px){#teacherApp #view-performance .ms37-filter-fields{flex-basis:100%}}
+@media(max-width:1020px){#teacherApp #view-performance .ms37-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#teacherApp #view-performance .ms37-create{grid-column:span 2;min-height:48px}}
+@media(max-width:780px){#teacherApp #view-performance .ms37-hero-copy{width:77%}#teacherApp #view-performance .ms37-hero:before{background:linear-gradient(90deg,#fffaf6 0%,#fffaf6f5 42%,#fffaf6b0 60%,transparent 100%)!important}#teacherApp #view-performance .ms37-filter-fields{justify-content:flex-start}#teacherApp #view-performance .ms37-search{max-width:none;min-width:100%}}
+@media(max-width:470px){#teacherApp #view-performance .ms37-hero-copy{width:95%}#teacherApp #view-performance .ms37-hero-copy h2{font-size:25px}#teacherApp #view-performance .ms37-footer-controls{margin-left:0;width:100%}}
+
+#teacherApp #view-performance .ms37-bulkbar .bulk-actions button{border:0!important;box-shadow:none!important;background:transparent!important;width:32px;height:32px;min-width:32px;padding:0;display:grid;place-items:center;color:#9c6a4c}#teacherApp #view-performance .ms37-bulkbar .bulk-actions button.ms37-danger{color:#d3493d}#teacherApp #view-performance .ms37-bulkbar .bulk-actions button svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}#teacherApp #view-performance .ms37-bulkbar .bulk-actions button:disabled{opacity:.38;cursor:not-allowed}#teacherApp #view-performance .ms37-progress{width:66%;max-width:90px;flex:1;min-width:36px}
+
+#teacherApp #view-performance .ms37-hero{background-size:auto 86%!important;background-position:right bottom!important} #teacherApp #view-performance .ms37-hero:before{background:linear-gradient(90deg,#fffaf6 0%,#fffaf6 26%,#fffaf6b0 32%,transparent 47%)!important}
+/* Keep the illustration to the right of the heading rather than overlaying it. */
+#teacherApp #view-performance .ms37-hero{background-size:auto 76%!important;background-position:right center!important}
+#teacherApp #view-performance .ms37-hero:before{background:linear-gradient(90deg,#fffaf6 0%,#fffaf6 30%,rgba(255,250,246,.75) 36%,transparent 47%)!important}
+@media(max-width:780px){#teacherApp #view-performance .ms37-hero{background-size:auto 69%!important;background-position:right bottom!important}#teacherApp #view-performance .ms37-hero:before{background:linear-gradient(90deg,#fffaf6 0%,#fffaf6ee 55%,#fffaf6a0 75%,transparent)!important}}

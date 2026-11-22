@@ -1,0 +1,38 @@
+/* Mathside V46 — choose a persisted class illustration during creation only.
+   Existing class actions, records, grade calculations and student UI unchanged. */
+#sectionModal .modal-box{width:min(564px,calc(100vw - 24px))!important}
+#sectionModal .orange-class-form{gap:24px!important}
+#sectionModal .ms46-create-theme-field{gap:10px!important}
+#sectionModal .ms46-theme-current{height:104px;position:relative;overflow:hidden;border-radius:14px;border:1px solid #f3d5b8;background:#fff6eb;display:flex;align-items:flex-end;box-shadow:0 3px 12px rgba(168,95,45,.06)}
+#sectionModal .ms46-theme-current>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;display:block}
+#sectionModal .ms46-theme-current:after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#fff8f0ee 0%,#fff6ebad 48%,transparent 80%);pointer-events:none}
+#sectionModal .ms46-current-info{z-index:1;position:relative;padding:12px 15px;display:flex;flex-direction:column;gap:2px;color:#292b3a;text-shadow:0 1px 3px #fff}
+#sectionModal .ms46-current-info span{font:800 9px/1.2 Inter,'Segoe UI',sans-serif;letter-spacing:1.15px;color:#bd6d38}
+#sectionModal .ms46-current-info strong{font-size:16px;font-weight:800}
+#sectionModal .ms46-current-check{position:absolute;z-index:1;right:12px;top:12px;background:#ff6b00;color:#fff;border-radius:50%;width:24px;height:24px;display:grid;place-items:center;font-size:14px;font-weight:800;box-shadow:0 1px 5px #aa501844}
+#sectionModal .ms46-theme-choices{border:1px solid #ead5c5;border-radius:12px;background:#fff;overflow:clip}
+#sectionModal .ms46-theme-choices summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;min-height:44px;padding:10px 14px;color:#9c4b18;background:#fff9f2;font-size:12.5px;font-weight:760}
+#sectionModal .ms46-theme-choices summary::-webkit-details-marker{display:none}
+#sectionModal .ms46-theme-choices summary:hover{background:#fff3e7}
+#sectionModal .ms46-theme-summary-icon{font-size:22px;line-height:1;transition:transform .18s}
+#sectionModal .ms46-theme-choices[open] .ms46-theme-summary-icon{transform:rotate(180deg)}
+#sectionModal .ms46-theme-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:13px;max-height:325px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d5b79d transparent}
+#sectionModal .ms46-theme-choice{position:relative;min-width:0;margin:0!important;padding:4px!important;display:flex;flex-direction:column;gap:5px;cursor:pointer;overflow:hidden;background:#fff;border:1.5px solid #e8dcd2;border-radius:10px;transition:background .12s,border-color .12s,box-shadow .12s}
+#sectionModal .ms46-theme-choice:hover{border-color:#f09c60;background:#fff9f3}
+#sectionModal .ms46-theme-choice:has(input:checked){border-color:#f26d09;background:#fff3e6;box-shadow:0 0 0 1px #f26d09 inset}
+#sectionModal .ms46-theme-choice:has(input:focus-visible){outline:3px solid #f4a06a;outline-offset:1px}
+#sectionModal .ms46-theme-choice input[type=radio]{position:absolute!important;left:3px!important;top:3px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none}
+#sectionModal .ms46-theme-art{width:100%;height:65px;border-radius:7px;display:block;background:#f7f2ee;overflow:hidden}
+#sectionModal .ms46-theme-art img{display:block;width:100%;height:100%;object-fit:cover}
+#sectionModal .ms46-theme-option-foot{display:flex;align-items:center;justify-content:space-between;gap:5px;min-width:0;color:#40372f;font-size:11px;font-weight:700;padding:0 4px 4px}
+#sectionModal .ms46-theme-option-foot>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sectionModal .ms46-theme-check{width:17px;height:17px;min-width:17px;border-radius:50%;display:grid;place-items:center;background:#ece7e2;color:transparent;font-size:11px}
+#sectionModal .ms46-theme-choice:has(input:checked) .ms46-theme-check{background:#ff6b00;color:#fff}
+#sectionModal .ms46-saved-note{display:flex;align-items:flex-start;gap:7px;margin:0;color:#746a65;font-size:11px;line-height:1.5}
+#sectionModal .ms46-saved-note svg{flex:0 0 15px;margin-top:1px;color:#158469}
+@media(max-width:520px){
+  #sectionModal .orange-class-form{gap:20px!important}
+  #sectionModal .ms46-theme-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-height:300px;padding:9px;gap:7px}
+  #sectionModal .ms46-theme-current{height:92px}
+  #sectionModal .ms46-theme-art{height:65px}
+}

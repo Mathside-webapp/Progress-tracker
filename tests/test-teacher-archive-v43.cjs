@@ -1,0 +1,11 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const h = fs.readFileSync('index.html','utf8');
+const js = fs.readFileSync('js/v15-performance-tasks.js','utf8');
+const css = fs.readFileSync('css/teacher-archive-v43.css','utf8');
+const sw = fs.readFileSync('service-worker.js','utf8');
+const view=h.slice(h.indexOf('id="view-archive"'),h.indexOf('id="view-submissions"'));
+for(const id of ['ms43Search','archiveSort','archiveCategoryFilter','retryArchiveCleanupBtn','archiveList','archivedClassCount','archivedActivityCount','archivedPerformanceCount'])assert.ok(view.includes('id="'+id+'"'),id);
+assert.match(js,/ARCHIVE_PAGE_SIZE = 5/);assert.match(js,/records\.slice\(offset,offset\+ARCHIVE_PAGE_SIZE\)/);assert.doesNotMatch(view,/Rows per page/i);
+for(const action of ['data-view-class-students','data-unarchive-class','data-create-from-archive','data-delete-class','data-preview-assignment','data-unarchive-assignment-group','data-delete-assignment-group'])assert.ok(js.slice(js.indexOf('function renderArchiveCenter()'),js.indexOf('window.renderArchiveCenter = renderArchiveCenter;')).includes(action));
+assert.match(css,/#teacherApp #view-archive/);assert.match(sw,/mathside-pwa-v(?:45-cloud-class-designs|46-create-class-theme)/);assert.ok(fs.existsSync('assets/teacher-archive-v43/archive-header.png'));

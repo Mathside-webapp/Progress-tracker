@@ -6,8 +6,8 @@ const css=fs.readFileSync(path.join(root,'css/student-zigzag-v24.35.css'),'utf8'
 const js=fs.readFileSync(path.join(root,'js/competency-tracker.js'),'utf8');
 assert.match(html,/css\/student-zigzag-v24\.35\.css\?v=24\.35-student-journey/);
 assert.match(sw,/css\/student-zigzag-v24\.35\.css\?v=24\.35-student-journey/);
-assert.match(html,/js\/competency-tracker\.js\?v=24\.35-zigzag/);
-assert.match(sw,/js\/competency-tracker\.js\?v=24\.35-zigzag/);
+assert.match(html,/js\/competency-tracker\.js\?v=42\.0-teacher-competencies/);
+assert.match(sw,/js\/competency-tracker\.js\?v=42\.0-teacher-competencies/);
 assert.match(js,/mathside_ct_my_progress/);
 assert.match(js,/fallbackStudentProgress/);
 assert.match(js,/ms-journey-scroll/);

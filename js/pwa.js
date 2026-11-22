@@ -3,6 +3,7 @@
 
   let registrationRef = null;
   let reloadingForUpdate = false;
+  let userApprovedAppUpdate = false;
   let deferredInstallPrompt = null;
 
   const isStandalone = () =>
@@ -70,6 +71,7 @@
         // waiting worker to activate, and keep a reload fallback so the button
         // never appears to do nothing.
         if (updateNowBtn.dataset.updating === '1') return;
+        userApprovedAppUpdate = true;
         updateNowBtn.dataset.updating = '1';
         updateNowBtn.disabled = true;
         updateNowBtn.setAttribute('aria-busy', 'true');
@@ -114,6 +116,7 @@
         } catch (error) {
           console.error('Mathside update failed:', error);
           clearTimeout(reloadFallback);
+          userApprovedAppUpdate = false;
           updateNowBtn.dataset.updating = '0';
           updateNowBtn.disabled = false;
           updateNowBtn.removeAttribute('aria-busy');
@@ -438,7 +441,9 @@
   window.addEventListener('offline', updateConnectivityUi);
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloadingForUpdate) return;
+    // A background service-worker activation must not interrupt teachers
+    // while checking work. Only reload after Update now was clicked.
+    if (!userApprovedAppUpdate || reloadingForUpdate) return;
     reloadingForUpdate = true;
     location.reload();
   });

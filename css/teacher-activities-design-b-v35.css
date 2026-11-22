@@ -1,0 +1,104 @@
+/* Mathside V35: approved Activities Design B. Scoped strictly to #view-assignments. */
+#teacherApp #view-assignments{--a-orange:#ff6b00;--a-ink:#201f22;--a-border:#f0e3db;--a-muted:#827877;font-family:Inter,"Segoe UI",Arial,sans-serif!important;color:var(--a-ink)!important}
+#teacherApp #view-assignments .ms35-hero{height:clamp(212px,17.3vw,242px);min-height:212px;border:1px solid #f4e7dc;border-radius:16px;position:relative;overflow:hidden;background:#fffaf6 url('../assets/teacher-activities-v35/activities-header-hd.png') no-repeat right center;background-size:cover;display:flex;align-items:center;margin-bottom:13px}
+#teacherApp #view-assignments .ms35-hero:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(255,250,246,1) 0%,rgba(255,250,246,.98) 19%,rgba(255,250,246,.83) 35%,rgba(255,250,246,.27) 53%,transparent 71%)}
+#teacherApp #view-assignments .ms35-hero-copy{position:relative;z-index:1;padding:22px 32px;display:flex;align-items:center;gap:18px;width:min(66%,800px)}
+#teacherApp #view-assignments .ms35-hero-icon{display:grid;place-items:center;background:#ff7109;width:53px;height:53px;flex:none;border-radius:13px;box-shadow:0 4px 12px #eb64001b}
+#teacherApp #view-assignments .ms35-hero-icon img{width:28px;height:28px;object-fit:contain}
+#teacherApp #view-assignments .ms35-hero-copy h2{margin:0;font-size:clamp(30px,3vw,43px);font-weight:850;letter-spacing:-1.35px;line-height:1.12;color:#242126}
+#teacherApp #view-assignments .ms35-hero-copy p{margin:8px 0 0;max-width:520px;color:#6a6262;font-size:15.5px;line-height:1.48}
+#teacherApp #view-assignments .ms35-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(185px,.86fr);gap:10px;margin-bottom:20px;align-items:stretch}
+#teacherApp #view-assignments .ms35-stat{height:86px;min-width:0;border-radius:13px;display:flex;gap:11px;align-items:center;padding:12px 17px;border:1px solid #f4e9e5;background:#fff1ed}
+#teacherApp #view-assignments .ms35-stat-posted{background:#fff4ec}
+#teacherApp #view-assignments .ms35-stat-scheduled{background:#fff7e8}
+#teacherApp #view-assignments .ms35-stat-check{background:#eef8f0}
+#teacherApp #view-assignments .ms35-stat-icon{height:44px;width:44px;flex:none;display:grid;place-items:center;border-radius:10px;background:#ffe2d0}
+#teacherApp #view-assignments .ms35-stat-scheduled .ms35-stat-icon{background:#ffedc8}
+#teacherApp #view-assignments .ms35-stat-check .ms35-stat-icon{background:#dcf1e1}
+#teacherApp #view-assignments .ms35-stat-icon img{width:27px;height:27px;object-fit:contain}
+#teacherApp #view-assignments .ms35-stat strong{font-size:27px;line-height:1.08;font-weight:850;letter-spacing:-.7px;display:block;color:#1d2020}
+#teacherApp #view-assignments .ms35-stat small{font-size:11px;color:#615b5a;display:block;margin-top:2px;white-space:nowrap}
+#teacherApp #view-assignments .ms35-stat-arrow{color:#ec7b38;margin-left:auto;font-size:24px;font-weight:300}
+#teacherApp #view-assignments .ms35-create{border:0;align-self:center;min-height:49px;border-radius:11px;background:#ff6b00;color:#fff;font-size:14px;white-space:nowrap;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 4px 12px #dc610021}
+#teacherApp #view-assignments .ms35-create:hover{background:#ec5e00}
+#teacherApp #view-assignments .ms35-create span{font-size:28px;line-height:1;font-weight:300}
+#teacherApp #view-assignments .ms35-filters{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:13px;flex-wrap:wrap}
+#teacherApp #view-assignments .ms35-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#teacherApp #view-assignments .ms35-tab{height:40px;border:1px solid #ece7e4;background:#fff;border-radius:22px;padding:0 16px;font-size:12px;font-weight:710;color:#464448;box-shadow:0 2px 6px #38302508;white-space:nowrap}
+#teacherApp #view-assignments .ms35-tab.active{border-color:#ff6b00;background:#ff6b00;color:#fff}
+#teacherApp #view-assignments .ms35-tab:hover:not(.active){background:#fff5ec;border-color:#fac9a8}
+#teacherApp #view-assignments .ms35-filter-fields{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#teacherApp #view-assignments .ms35-search,#teacherApp #view-assignments .ms35-select{height:39px;border:1px solid #e5e0dd;border-radius:10px;background:#fff;display:flex;align-items:center;box-shadow:0 1px 3px #2f1d1004;min-width:0}
+#teacherApp #view-assignments .ms35-search{width:175px;padding:0 11px;gap:8px}
+#teacherApp #view-assignments .ms35-search svg{width:17px;height:17px;flex:none;fill:none;stroke:#948d8a;stroke-width:1.8;stroke-linecap:round}
+#teacherApp #view-assignments .ms35-search input{width:100%;min-width:0;border:0;outline:0;background:none;font-size:11px;color:#3f3835;padding:0}
+#teacherApp #view-assignments .ms35-select select{min-height:0;height:100%;max-width:160px;background:#fff;border:0!important;outline-offset:2px;border-radius:9px!important;box-shadow:none!important;font-size:11px;font-weight:650;padding:0 20px 0 11px;color:#534b48;cursor:pointer}
+#teacherApp #view-assignments .ms35-sort select{max-width:145px}
+#teacherApp #view-assignments .ms35-list-shell{background:#fff;border:1px solid #e9e0db;border-radius:16px;box-shadow:0 6px 22px #2b150913;overflow:hidden}
+#teacherApp #view-assignments .assignment-list{display:block!important;min-width:0!important;padding:0!important;margin:0!important;background:none!important;border:0!important;box-shadow:none!important;gap:0!important}
+#teacherApp #view-assignments .ms35-bulkbar{min-height:50px;padding:8px 17px;display:flex;align-items:center;gap:13px;flex-wrap:wrap;border-bottom:1px solid #eee6e1;background:#fffbf9;color:#625953;font-size:11px}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-select-all{display:flex;align-items:center;gap:8px;margin:0;cursor:pointer;font-weight:650;font-size:11px;white-space:nowrap}
+#teacherApp #view-assignments input[type=checkbox].row-check{accent-color:#ff7007;width:17px;height:17px;flex:none;margin:0;cursor:pointer}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-selected-count{color:#82736d;font-size:11px}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions{margin-left:auto;display:flex;gap:7px}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions button{min-height:32px;border-radius:8px;padding:6px 12px;font-size:10.8px;border:1px solid #eae2da;color:#665954;background:#fff;box-shadow:none;font-weight:700}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions button:disabled{opacity:.45;cursor:not-allowed}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions .btn-danger{color:#bd3e32;border-color:#f2d9d5}
+#teacherApp #view-assignments .ms35-table-scroll{overflow-x:auto;max-width:100%;overflow-y:visible}
+#teacherApp #view-assignments .ms35-table{width:100%;min-width:1040px;table-layout:fixed;border-collapse:collapse;border-spacing:0}
+#teacherApp #view-assignments .ms35-table th{background:#fff2ea;color:#725f55;text-align:left;font-size:11px;font-weight:750;padding:12px 12px;border-bottom:1px solid #efdfd6}
+#teacherApp #view-assignments .ms35-table td{vertical-align:middle;padding:11px 12px;border-bottom:1px solid #eee9e5;font-size:11.4px;color:#4a4442;background:#fff}
+#teacherApp #view-assignments .ms35-table .assignment-card{background:none!important;border:0!important;border-radius:0!important;box-shadow:none!important;min-height:0!important;margin:0!important;display:table-row!important;transform:none!important}
+#teacherApp #view-assignments .ms35-table tr.assignment-card.is-selected td{background:#fff7f0!important}
+#teacherApp #view-assignments .ms35-table tr.assignment-card:hover td{background:#fff9f4}
+#teacherApp #view-assignments .ms35-table tr:last-child td{border-bottom:0}
+#teacherApp #view-assignments .ms35-table .ms35-name-cell{display:flex;align-items:center;gap:11px;min-width:0}
+#teacherApp #view-assignments .ms35-document{width:34px;height:37px;flex:none;display:grid;place-items:center;background:#ff9d4c;color:white;border-radius:9px;box-shadow:inset 0 -3px 0 #ffffff28}
+#teacherApp #view-assignments .ms35-document img{width:20px;height:20px;object-fit:contain;filter:brightness(0) invert(1)}
+#teacherApp #view-assignments .ms35-document.c1{background:#7bbce1}
+#teacherApp #view-assignments .ms35-document.c2{background:#ad8de0}
+#teacherApp #view-assignments .ms35-document.c3{background:#f6c457}
+#teacherApp #view-assignments .ms35-document.c4{background:#86b66c}
+#teacherApp #view-assignments .ms35-name{min-width:0;display:flex;flex-direction:column;gap:4px}
+#teacherApp #view-assignments .ms35-name b{font-size:11.6px;color:#292423;line-height:1.3;letter-spacing:-.12px;overflow-wrap:anywhere}
+#teacherApp #view-assignments .ms35-name small{font-size:10px;color:#8b8280;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#teacherApp #view-assignments .ms35-class-list{font-size:11px;line-height:1.3;color:#514945}
+#teacherApp #view-assignments .ms35-class-list small{font-size:10px;color:#8b7a75;display:block;margin-top:3px}
+#teacherApp #view-assignments .ms35-status{display:inline-flex;align-items:center;padding:6px 9px;font-size:10.6px;font-weight:800;border-radius:7px;white-space:nowrap}
+#teacherApp #view-assignments .ms35-status.published{background:#e2f5e5;color:#178445}
+#teacherApp #view-assignments .ms35-status.scheduled{background:#fff1d2;color:#a26c08}
+#teacherApp #view-assignments .ms35-status.draft{background:#f0f0f0;color:#6a6464}
+#teacherApp #view-assignments .ms35-submitted{font-weight:750;white-space:nowrap;color:#514943}
+#teacherApp #view-assignments .ms35-progress-cell{display:flex;align-items:center;gap:9px}
+#teacherApp #view-assignments .ms35-progress{height:8px;width:105px;max-width:100%;border-radius:99px;background:#e7e6e6;overflow:hidden;flex:none}
+#teacherApp #view-assignments .ms35-progress>i{height:100%;display:block;background:#ff770d;border-radius:99px}
+#teacherApp #view-assignments .ms35-progress-cell small{font-size:10px;color:#6b6561}
+#teacherApp #view-assignments .ms35-action-icons{display:flex;align-items:center;gap:4px;justify-content:flex-start}
+#teacherApp #view-assignments .ms35-action-icons button{height:29px;width:29px;display:grid;place-items:center;padding:0;border:0;background:transparent;border-radius:7px;box-shadow:none;color:#9c6a4c}
+#teacherApp #view-assignments .ms35-action-icons button:hover{background:#fff1e6;color:#ef6b06}
+#teacherApp #view-assignments .ms35-action-icons button.ms35-danger{color:#d3493d}
+#teacherApp #view-assignments .ms35-action-icons button.ms35-danger:hover{background:#fff0ed}
+#teacherApp #view-assignments .ms35-action-icons svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+#teacherApp #view-assignments .ms35-footer{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;min-height:48px;padding:8px 17px;border-top:1px solid #eee8e1;background:#fffbf9;color:#91857f;font-size:11px}
+#teacherApp #view-assignments .ms35-pager{display:flex;align-items:center;gap:6px}
+#teacherApp #view-assignments .ms35-pager button{height:30px;min-width:30px;border:1px solid #e8ddd6;border-radius:8px;background:#fff;color:#5c524f;font-weight:800}
+#teacherApp #view-assignments .ms35-pager button:disabled{opacity:.35;cursor:not-allowed}
+#teacherApp #view-assignments .ms35-empty{padding:48px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#746966;text-align:center}
+#teacherApp #view-assignments .ms35-empty img{width:64px;height:64px;object-fit:contain}
+#teacherApp #view-assignments .ms35-empty b{font-size:17px;color:#2b2421}
+#teacherApp #view-assignments .ms35-empty p{font-size:12px;margin:0;color:#847873}
+#teacherApp #view-assignments .ms35-empty .btn{font-size:11px;margin-top:6px}
+#teacherApp #view-assignments .ms35-result-hint{font-size:11px;color:#8a7a74;white-space:nowrap}
+#teacherApp #view-assignments .ms35-hidden{display:none!important}
+@media(max-width:1400px){#teacherApp #view-assignments .ms35-stats{grid-template-columns:repeat(4,minmax(0,1fr)) 170px}#teacherApp #view-assignments .ms35-stat{padding:10px 12px;gap:7px}#teacherApp #view-assignments .ms35-stat-icon{width:37px;height:37px}#teacherApp #view-assignments .ms35-stat strong{font-size:23px}#teacherApp #view-assignments .ms35-filter-fields{width:100%;justify-content:flex-end}}
+@media(max-width:1020px){#teacherApp #view-assignments .ms35-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#teacherApp #view-assignments .ms35-create{min-height:78px}#teacherApp #view-assignments .ms35-hero-copy{width:75%}}
+@media(max-width:780px){#teacherApp #view-assignments .ms35-hero{height:190px;min-height:190px;background-position:right center}#teacherApp #view-assignments .ms35-hero-copy{width:88%;padding:16px;gap:12px}#teacherApp #view-assignments .ms35-hero-icon{width:40px;height:40px}#teacherApp #view-assignments .ms35-hero-icon img{width:22px;height:22px}#teacherApp #view-assignments .ms35-hero-copy h2{font-size:30px}#teacherApp #view-assignments .ms35-hero-copy p{font-size:11px;max-width:260px}#teacherApp #view-assignments .ms35-hero:before{background:linear-gradient(90deg,#fffaf6 0%,#fffaf6f1 43%,#fffaf6a8 75%,transparent)}#teacherApp #view-assignments .ms35-filter-fields{justify-content:flex-start}#teacherApp #view-assignments .ms35-search{flex:1;width:100%;min-width:100%}}
+@media(max-width:470px){#teacherApp #view-assignments .ms35-hero{height:178px;min-height:178px}#teacherApp #view-assignments .ms35-hero-copy{width:95%;gap:9px}#teacherApp #view-assignments .ms35-hero-icon{height:35px;width:35px}#teacherApp #view-assignments .ms35-hero-copy h2{font-size:26px}#teacherApp #view-assignments .ms35-stats{gap:8px}#teacherApp #view-assignments .ms35-stat{height:73px;padding:9px}#teacherApp #view-assignments .ms35-stat strong{font-size:21px}#teacherApp #view-assignments .ms35-stat small{font-size:10px}#teacherApp #view-assignments .ms35-stat-arrow{display:none}#teacherApp #view-assignments .ms35-create{grid-column:span 2;min-height:46px}#teacherApp #view-assignments .ms35-filters{gap:10px}#teacherApp #view-assignments .ms35-tab{padding:0 12px;font-size:11px}#teacherApp #view-assignments .ms35-filter-fields .ms35-select{flex:1;min-width:135px}#teacherApp #view-assignments .ms35-filter-fields .ms35-select select{max-width:100%;width:100%}#teacherApp #view-assignments .ms35-sort{min-width:100%!important}#teacherApp #view-assignments .ms35-sort select{min-width:100%}}
+@media(prefers-reduced-motion:reduce){#teacherApp #view-assignments *{transition:none!important;animation:none!important}}
+/* Legacy archive/delete attributes previously added a boxed border to icon buttons.
+   Keep the approved Design B icon-only actions visually consistent. */
+#teacherApp #view-assignments .ms35-action-icons button[data-archive-assignment-group],
+#teacherApp #view-assignments .ms35-action-icons button[data-unarchive-assignment-group],
+#teacherApp #view-assignments .ms35-action-icons button[data-delete-assignment-group]{border:0!important;box-shadow:none!important;background:transparent!important;outline-offset:2px!important}
+#teacherApp #view-assignments .ms35-action-icons button[data-archive-assignment-group]:hover,
+#teacherApp #view-assignments .ms35-action-icons button[data-delete-assignment-group]:hover{background:#fff0e6!important}

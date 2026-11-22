@@ -1,0 +1,69 @@
+/* V41 Class Record Design A — scoped to this page only. */
+#teacherApp #view-records{font-family:Inter,"Segoe UI",Arial,sans-serif!important;color:#201f22;min-width:0}
+#teacherApp #view-records .ms41-hero{height:clamp(212px,17.3vw,242px);position:relative;overflow:hidden;border:1px solid #f0e1d5;border-radius:16px;background:linear-gradient(115deg,#fcf4ed,#ffe6cb);display:flex;align-items:center;margin-bottom:16px;isolation:isolate}
+#teacherApp #view-records .ms41-hero:before{content:"";position:absolute;inset:0 0 0 auto;width:59%;background:url('../assets/teacher-records-v41/class-record-header.png') right bottom/100% auto no-repeat;z-index:-1;mask-image:linear-gradient(90deg,transparent,#000 13%)}
+#teacherApp #view-records .ms41-hero-copy{display:flex;align-items:center;gap:23px;padding:28px 32px;width:47%;min-width:0}
+#teacherApp #view-records .ms41-hero-icon{display:grid;place-items:center;flex:none;width:65px;height:65px;border-radius:17px;background:#ff6b00;box-shadow:0 4px 10px #ff6b001a}
+#teacherApp #view-records .ms41-hero-icon img{width:34px;height:34px;object-fit:contain}
+#teacherApp #view-records .ms41-hero h2{margin:0;color:#19191b;font-size:clamp(30px,3.25vw,49px);letter-spacing:-1.5px;line-height:1.12;font-weight:850}
+#teacherApp #view-records .ms41-hero p{font-size:15.5px;line-height:1.45;margin:9px 0 0;color:#665e5a;max-width:450px}
+#teacherApp #view-records .ms-records-toolbar{display:flex;align-items:center;justify-content:flex-start;gap:12px;margin:0 0 16px;flex-wrap:wrap}
+#teacherApp #view-records .ms41-class-select{display:flex;flex-direction:row;align-items:center;position:relative;flex:0 1 250px;min-width:170px;max-width:300px;gap:0}
+#teacherApp #view-records .ms41-class-select img{position:absolute;left:13px;width:24px;height:24px;object-fit:contain;pointer-events:none}
+#teacherApp #view-records .ms-records-toolbar select{height:44px;border:1px solid #e5d9d2;border-radius:11px;background:#fff;padding:0 30px 0 44px;font:700 14px Inter,"Segoe UI",sans-serif;color:#282526}
+#teacherApp #view-records .ms-records-tabs{display:flex;gap:12px;background:transparent;border:0;padding:0;border-radius:0}
+#teacherApp #view-records .ms-records-tabs button,#teacherApp #view-records .ms41-actions button{height:44px;min-height:44px;padding:0 18px;border:1px solid #e8dbd3;border-radius:10px;background:#fff;color:#252224;font:750 14px Inter,"Segoe UI",sans-serif;box-shadow:0 2px 4px #3a1d0c08;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:9px}
+#teacherApp #view-records .ms-records-tabs button.active,#teacherApp #view-records #msRecordsExport{background:#ff6900;border-color:#ff6900;color:white}
+#teacherApp #view-records .ms41-actions{display:flex;gap:12px;margin-left:auto;flex-wrap:wrap}
+#teacherApp #view-records .ms41-actions img,#teacherApp #view-records .ms41-actions svg{width:23px;height:23px;object-fit:contain}
+#teacherApp #view-records .ms-records-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:15px}
+#teacherApp #view-records .ms-records-summary:empty{display:none}
+#teacherApp #view-records .ms-records-summary article.ms41-stat{display:flex;align-items:center;gap:17px;min-height:80px;padding:12px 20px;border:1px solid #f1dfd4;border-radius:13px;background:#fff0e7;margin:0;box-shadow:none;min-width:0}
+#teacherApp #view-records .ms-records-summary article.ms41-yellow{background:#fff6e4;border-color:#f4e6cb}
+#teacherApp #view-records .ms-records-summary article.ms41-green{background:#eef5f0;border-color:#e0eae2}
+#teacherApp #view-records .ms-records-summary article.ms41-purple{background:#f4effb;border-color:#e9e1f2}
+#teacherApp #view-records .ms41-stat img{width:36px;height:36px;object-fit:contain;flex:none}
+#teacherApp #view-records .ms41-stat strong{font:850 clamp(22px,2.1vw,33px)/1.1 Inter,"Segoe UI",sans-serif;letter-spacing:-.65px;color:#1c1c20;display:block;overflow-wrap:anywhere}
+#teacherApp #view-records .ms41-stat span{display:block;margin:3px 0 0;color:#625955;font:500 13px/1.3 Inter,"Segoe UI",sans-serif}
+#teacherApp #view-records .ms41-table-shell{border:1px solid #e8dbd3;background:#fff;border-radius:15px;box-shadow:0 4px 14px #3c1b0810;overflow:hidden;min-width:0}
+#teacherApp #view-records .ms41-table-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 20px;flex-wrap:wrap}
+#teacherApp #view-records .ms41-table-top h3{font-size:19px;letter-spacing:-.4px;color:#201f22;font-weight:800;margin:0}
+#teacherApp #view-records .ms41-search{display:flex;align-items:center;gap:9px;border:1px solid #e8dbd3;border-radius:9px;padding:0 12px;max-width:280px;width:100%;height:38px;background:#fff}
+#teacherApp #view-records .ms41-search img{width:19px;height:19px;object-fit:contain}
+#teacherApp #view-records .ms41-search input{border:0;background:transparent;padding:0;width:100%;min-width:0;box-shadow:none;font-size:13px;height:100%;outline-offset:0}
+#teacherApp #view-records .ms-records-table-scroll{border:0;border-radius:0;overflow:auto;max-width:100%;min-width:0}
+#teacherApp #view-records .ms-records-table{width:100%;min-width:760px;border-collapse:separate;border-spacing:0;font:500 13px/1.3 Inter,"Segoe UI",sans-serif;background:#fff;table-layout:auto}
+#teacherApp #view-records .ms-records-table th,#teacherApp #view-records .ms-records-table td{padding:8px 12px;border-right:1px solid #eaded6;border-bottom:1px solid #eaded6;text-align:center;white-space:nowrap}
+#teacherApp #view-records .ms-records-table th{background:#fff0e2;color:#75380f;font-weight:800;min-width:98px;vertical-align:middle;position:sticky;top:0}
+#teacherApp #view-records .ms-records-table th.ms41-number-head,#teacherApp #view-records .ms-records-table td.ms-record-no{position:sticky;left:0;width:48px;min-width:48px;max-width:48px;z-index:3}
+#teacherApp #view-records .ms-records-table th.ms41-name-head,#teacherApp #view-records .ms-records-table td.ms-record-name{position:sticky;left:48px;min-width:220px;text-align:left;z-index:3}
+#teacherApp #view-records .ms-records-table td.ms-record-name,#teacherApp #view-records .ms-records-table td.ms-record-no{background:#fff;box-sizing:border-box}
+#teacherApp #view-records .ms-records-table td.ms-record-name{font-weight:750;color:#232125;box-shadow:3px 0 5px #26160806}
+#teacherApp #view-records .ms-records-table td.ms-record-no{color:#786b64}
+#teacherApp #view-records .ms-records-table th.ms-record-activity-heading{min-width:125px;max-width:178px;white-space:normal;padding:10px 9px}
+#teacherApp #view-records .ms-records-table th.ms-record-activity-heading strong{font-size:14px;display:block;margin-bottom:2px}
+#teacherApp #view-records .ms-records-table th.ms-record-activity-heading span,#teacherApp #view-records .ms-records-table th small{display:block;max-width:none;white-space:normal;overflow-wrap:anywhere;color:#625650;font-weight:500;font-size:11px;overflow:visible}
+#teacherApp #view-records .ms41-archived,#teacherApp #view-records .ms41-key small{display:inline-block;background:#e8e5e4;color:#56514f;border-radius:6px;padding:2px 7px;font:600 10px Inter,sans-serif;margin-top:3px}
+#teacherApp #view-records .ms-records-table tbody tr:nth-child(even) td{background:#faf8f7}
+#teacherApp #view-records .ms-records-table td.ms-record-completed{background:transparent;color:inherit}
+#teacherApp #view-records .ms41-completion{display:inline-block;color:#93600a;background:#fff0ca;padding:4px 12px;border-radius:20px;font-weight:750}
+#teacherApp #view-records .ms41-completion.is-complete{background:#e0f4df;color:#23711d}
+#teacherApp #view-records .ms-records-table td.ms-record-total{background:#fff6e9;color:#80390f;font-weight:850;min-width:108px}
+#teacherApp #view-records .ms-records-table td.ms41-average{font-weight:750;min-width:85px}
+#teacherApp #view-records .ms-records-table th:last-child,#teacherApp #view-records .ms-records-table td:last-child{border-right:0}
+#teacherApp #view-records .ms41-footer{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;gap:12px;flex-wrap:wrap;color:#6e6159;font-size:13px}
+#teacherApp #view-records .ms41-pages{display:flex;align-items:center;gap:15px;color:#292325;font-weight:750}
+#teacherApp #view-records .ms41-pages button{display:grid;place-items:center;width:38px;height:38px;padding:0;border:1px solid #ecded7;border-radius:10px;background:white;color:#ff6b00;font:500 27px/1 Arial,sans-serif}
+#teacherApp #view-records button:disabled{opacity:.45;cursor:default}
+#teacherApp #view-records .ms41-key{display:flex;gap:12px 25px;align-items:center;flex-wrap:wrap;margin-top:16px;font-size:12px;color:#665c56}
+#teacherApp #view-records .ms41-key strong{color:#302a26}
+#teacherApp #view-records .ms-records-note{font-size:11px;line-height:1.5;color:#75665c}
+@media(max-width:1100px){#teacherApp #view-records .ms41-hero-copy{padding:24px;gap:15px;width:48%}#teacherApp #view-records .ms41-hero-icon{width:49px;height:49px}#teacherApp #view-records .ms41-stat img{width:27px;height:27px}#teacherApp #view-records .ms-records-summary article.ms41-stat{padding:11px;gap:10px}}
+@media(max-width:760px){#teacherApp #view-records .ms41-hero{height:178px;min-height:178px}#teacherApp #view-records .ms41-hero:before{width:66%;opacity:.65;background-position:right bottom;mask-image:linear-gradient(90deg,transparent,#000 60%)}#teacherApp #view-records .ms41-hero-copy{padding:16px;width:75%;gap:12px;align-items:flex-start}#teacherApp #view-records .ms41-hero-icon{width:39px;height:39px;border-radius:10px}#teacherApp #view-records .ms41-hero-icon img{width:23px;height:23px}#teacherApp #view-records .ms41-hero h2{font-size:29px;letter-spacing:-.7px}#teacherApp #view-records .ms41-hero p{font-size:12px;max-width:220px}#teacherApp #view-records .ms-records-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#teacherApp #view-records .ms-records-toolbar{gap:8px}#teacherApp #view-records .ms41-class-select{flex:1 1 100%;max-width:none}#teacherApp #view-records .ms41-actions{margin-left:0;gap:8px}#teacherApp #view-records .ms-records-tabs{gap:8px}#teacherApp #view-records .ms-records-tabs button,#teacherApp #view-records .ms41-actions button{font-size:12px;padding:0 12px}#teacherApp #view-records .ms41-table-top,#teacherApp #view-records .ms41-footer{padding:12px}#teacherApp #view-records .ms41-search{max-width:none}#teacherApp #view-records .ms-records-table th.ms41-name-head,#teacherApp #view-records .ms-records-table td.ms-record-name{min-width:148px;max-width:170px;white-space:normal}#teacherApp #view-records .ms41-pages{gap:9px}}
+/* Override the older five-card record layout, while remaining local to this view. */
+#teacherApp #view-records .ms-records-summary{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+#teacherApp #view-records .ms41-hero:before{width:68%;background-size:auto 100%;mask-image:linear-gradient(90deg,transparent 0%,#000 18%)}
+#teacherApp #view-records .ms-records-table th.ms-record-activity-heading{line-height:1.25!important;padding:8px 9px}
+#teacherApp #view-records .ms-records-table td{padding-top:6px;padding-bottom:6px}
+@media(max-width:900px){#teacherApp #view-records .ms-records-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:760px){#teacherApp #view-records .ms41-hero:before{width:68%;background-size:100% auto;mask-image:linear-gradient(90deg,transparent,#000 60%)}}

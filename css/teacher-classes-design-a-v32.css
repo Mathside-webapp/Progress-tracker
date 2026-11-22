@@ -1,0 +1,90 @@
+/* Mathside V32 — approved Classes Design A, scoped to this teacher page only.
+ * Keeps V31 fixed sidebar, dashboard, records, grading and student views intact. */
+#teacherApp #view-classes.ms32-classes{color:#211d1b;max-width:none;--ms32-orange:#ff6b00;--ms32-line:#eadfd9;--ms32-ink:#211e1d;--ms32-muted:#625f60}
+#teacherApp #view-classes [hidden],#teacherApp #view-classes #classGrid .class-card[hidden]{display:none!important}
+#teacherApp #view-classes .ms32-hero{position:relative!important;display:flex!important;align-items:center!important;justify-content:space-between!important;width:100%!important;height:91px!important;min-height:91px!important;margin:0 0 13px!important;padding:0 20px!important;border-radius:14px!important;border:1px solid #f5e6d8!important;overflow:hidden!important;background:linear-gradient(105deg,#fffaf6 0%,#fffaf7 37%,#fff0db 72%,#ffc98c 100%)!important;box-shadow:none!important}
+#teacherApp #view-classes .ms32-hero:after{content:"";position:absolute;right:0;bottom:-24px;width:82%;height:59px;border-radius:48% 52% 0 0;background:#ffdeba66;pointer-events:none;z-index:0}
+#teacherApp #view-classes .ms32-hero-heading{position:relative;z-index:2;display:flex;align-items:center;gap:13px;max-width:62%;min-width:0;white-space:normal}
+#teacherApp #view-classes .ms32-hero-heading>img{width:35px;height:35px;object-fit:contain;flex:0 0 35px}
+#teacherApp #view-classes .ms32-hero-heading h2{font:800 27px/1.12 Inter,'Segoe UI',Arial,sans-serif;letter-spacing:-.9px;color:#19191b;margin:0 0 4px!important}
+#teacherApp #view-classes .ms32-hero-heading p{font:500 11.3px/1.4 Inter,'Segoe UI',Arial,sans-serif;color:#63574f;margin:0!important}
+#teacherApp #view-classes .ms32-hero-art{position:absolute!important;right:3px!important;bottom:-13px!important;width:41%!important;max-width:none!important;height:106px!important;object-fit:cover!important;object-position:center 44%!important;z-index:1!important;filter:none!important;pointer-events:none}
+#teacherApp #view-classes .ms32-top-summary{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr)) minmax(139px,.65fr)!important;gap:12px!important;align-items:stretch!important;margin:0 0 19px!important}
+#teacherApp #view-classes .ms32-summary-card{height:62px!important;min-width:0;display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 12px;border-radius:12px;background:linear-gradient(100deg,#fff2eb,#fbe9e6);border:1px solid #f8e7df;box-shadow:none}
+#teacherApp #view-classes .ms32-summary-card img{width:28px;height:28px;object-fit:contain;flex:0 0 28px}
+#teacherApp #view-classes .ms32-summary-card span{display:flex;flex-direction:column;gap:0;min-width:0}
+#teacherApp #view-classes .ms32-summary-card strong{font:850 23px/1.1 Inter,'Segoe UI',Arial,sans-serif;color:#181919;letter-spacing:-.7px;white-space:nowrap}
+#teacherApp #view-classes .ms32-summary-card small{font:500 10.7px/1.4 Inter,'Segoe UI',Arial,sans-serif;color:#494446;white-space:nowrap}
+#teacherApp #view-classes .ms32-average-card{background:linear-gradient(110deg,#f4f7f3,#e9f3e9);border-color:#ecf2e9}
+#teacherApp #view-classes .ms32-create-main{height:42px!important;min-height:42px!important;display:inline-flex!important;align-items:center;justify-content:center;gap:7px;border:1px solid #ff6b00;border-radius:9px;background:linear-gradient(180deg,#ff800e,#f75a00);color:#fff;font:750 12px/1 Inter,'Segoe UI',Arial,sans-serif;white-space:nowrap;padding:8px 17px;box-shadow:0 3px 5px #f26a0512;cursor:pointer;align-self:center}
+#teacherApp #view-classes .ms32-create-main:hover{background:#ed5800;filter:brightness(.98)}
+#teacherApp #view-classes .ms32-create-main span{font-size:23px;line-height:.6;font-weight:400}
+#teacherApp #view-classes .ms32-directory{margin:0!important;min-width:0!important}
+#teacherApp #view-classes .ms32-directory-heading{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:15px;min-height:42px;margin:0 0 10px!important}
+#teacherApp #view-classes .ms32-directory-heading h3{display:flex;align-items:center;gap:8px;font:800 17px/1.2 Inter,'Segoe UI',Arial,sans-serif;letter-spacing:-.35px;margin:0;color:#171819;white-space:nowrap}
+#teacherApp #view-classes .ms32-directory-heading h3 img{width:23px;height:23px;object-fit:contain}
+#teacherApp #view-classes .ms32-class-tools{margin:0!important;padding:0!important;display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;min-width:0!important;flex-wrap:nowrap!important}
+#teacherApp #view-classes .ms32-class-tools :is(input,select){height:33px!important;min-height:33px!important;max-height:33px!important;width:100%!important;padding:4px 10px!important;border:1px solid #e5e4e5!important;border-radius:13px!important;background:#fff!important;color:#4b5058!important;font:500 11px/1.2 Inter,'Segoe UI',Arial,sans-serif!important;box-shadow:none!important}
+#teacherApp #view-classes .ms32-class-tools label{margin:0!important;display:block!important;min-width:0!important;flex:none!important;font-size:11px!important}
+#teacherApp #view-classes .ms32-class-tools .ms32-search{width:clamp(136px,18vw,220px)}
+#teacherApp #view-classes .ms32-class-tools .ms32-grade{width:clamp(130px,13vw,178px)}
+#teacherApp #view-classes .ms32-class-tools .ms32-sort{width:clamp(160px,16vw,210px)}
+#teacherApp #view-classes .ms32-view-toggle{display:flex;flex:none;padding:3px;border:1px solid #e7e1de;border-radius:9px;background:#fff;gap:3px}
+#teacherApp #view-classes .ms32-view-toggle button{width:33px;height:28px;display:grid;place-items:center;border:0;border-radius:7px;background:transparent;color:#6e5c4f;cursor:pointer;padding:5px}
+#teacherApp #view-classes .ms32-view-toggle button.active{background:#ff6b00;color:#fff}
+#teacherApp #view-classes .ms32-view-toggle svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+#teacherApp #view-classes .ms32-class-grid{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:start!important;gap:14px!important;margin:0!important;padding:0 0 20px!important;min-width:0!important;box-shadow:none!important;border:0!important;background:transparent!important}
+#teacherApp #view-classes .ms32-class-grid .class-card.ms32-card{position:relative!important;display:flex!important;flex-direction:column!important;gap:0!important;min-height:175px!important;max-width:none!important;width:100%!important;margin:0!important;padding:0!important;background:#fff!important;border-radius:13px!important;border:1px solid #e9e6e5!important;overflow:visible!important;box-shadow:0 3px 7px #25181812!important;transform:none!important;transition:box-shadow .15s,border-color .15s!important}
+#teacherApp #view-classes .ms32-class-grid .ms32-card:hover{border-color:#f5b885!important;box-shadow:0 6px 17px #2518181c!important}
+#teacherApp #view-classes .ms32-banner{height:52px;position:relative;display:block;flex:0 0 52px;background-position:center;background-size:cover;background-repeat:no-repeat;border-radius:12px 12px 0 0;overflow:hidden}
+#teacherApp #view-classes .ms32-grade-badge{position:absolute;left:10px;bottom:0;transform:translateY(26%);display:inline-block;padding:4px 9px;border-radius:15px;background:#fff;color:#242222;font:800 9px/1 Inter,'Segoe UI',Arial,sans-serif;box-shadow:0 1px 2px #00000013;white-space:nowrap}
+#teacherApp #view-classes .ms32-card-content{padding:11px 11px 10px!important;min-width:0!important;display:flex!important;flex-direction:column!important;flex:1}
+#teacherApp #view-classes .ms32-card-title{display:flex;justify-content:space-between;align-items:center;min-width:0;gap:4px;margin-bottom:5px}
+#teacherApp #view-classes .ms32-card-title button.ms32-card-open{padding:0;border:0;background:none;color:#171718;font:800 14px/1.15 Inter,'Segoe UI',Arial,sans-serif;letter-spacing:-.3px;text-align:left;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#teacherApp #view-classes .ms32-card-open:hover{color:#e65c00}
+#teacherApp #view-classes .ms32-card-meta{display:flex;align-items:center;gap:6px;margin:2px 0;color:#3e3b39;font:500 11px/1.2 Inter,'Segoe UI',Arial,sans-serif}
+#teacherApp #view-classes .ms32-card-meta img{width:13px;height:13px;object-fit:contain;flex:none;opacity:.84}
+#teacherApp #view-classes .ms32-card-meta.ms32-muted{color:#7e7977}
+#teacherApp #view-classes .ms32-card-track{height:6px;background:#ecebed;border-radius:12px;overflow:hidden;margin-top:8px;margin-bottom:0}
+#teacherApp #view-classes .ms32-card-track>span{display:block;height:100%;border-radius:12px;background:var(--ms32-accent,#ff7b00);max-width:100%;transition:width .2s}
+#teacherApp #view-classes .ms32-card-more{position:relative;margin-left:auto;z-index:3}
+#teacherApp #view-classes .ms32-card-more>summary{list-style:none;display:grid;place-items:center;width:21px;height:24px;cursor:pointer;border-radius:5px;color:#45403d;font-size:18px;font-weight:800}
+#teacherApp #view-classes .ms32-card-more>summary::-webkit-details-marker{display:none}
+#teacherApp #view-classes .ms32-card-more>summary:hover{background:#fff0e5;color:#ed6100}
+#teacherApp #view-classes .ms32-action-menu{position:absolute;right:-7px;top:26px;z-index:40;width:158px;padding:5px;background:#fff;border:1px solid #e6d8cd;border-radius:10px;box-shadow:0 9px 24px #23180e2a;display:flex;flex-direction:column;gap:2px}
+#teacherApp #view-classes .ms32-action-menu>button{padding:8px 9px;font-size:11px;text-align:left;border:0;background:transparent;color:#303036;border-radius:6px;white-space:nowrap}
+#teacherApp #view-classes .ms32-action-menu>button:hover{background:#fff1e7;color:#bd4b00}
+#teacherApp #view-classes .ms32-action-menu>button.ms32-danger{color:#b73d38}
+#teacherApp #view-classes.ms32-single .ms32-class-grid{grid-template-columns:minmax(0,305px)!important}
+#teacherApp #view-classes .ms32-class-grid.ms32-list-mode{display:flex!important;flex-direction:column!important;gap:8px!important}
+#teacherApp #view-classes .ms32-class-grid.ms32-list-mode .ms32-card{display:grid!important;grid-template-columns:115px minmax(0,1fr)!important;min-height:84px!important;width:100%!important}
+#teacherApp #view-classes .ms32-class-grid.ms32-list-mode .ms32-banner{height:100%;min-height:84px;border-radius:12px 0 0 12px;flex:initial}
+#teacherApp #view-classes .ms32-class-grid.ms32-list-mode .ms32-grade-badge{bottom:8px;transform:none}
+#teacherApp #view-classes .ms32-class-grid.ms32-list-mode .ms32-card-content{padding:11px 15px!important}
+#teacherApp #view-classes .ms32-empty-state{display:flex!important;align-items:center!important;justify-content:center!important;gap:36px!important;padding:11px 28px 28px!important;min-height:264px!important;margin:3px 0 0!important;border:0!important;background:radial-gradient(ellipse at 30% 100%,#fff0df 0%,transparent 65%),#fff!important;border-radius:15px!important;box-shadow:none!important}
+#teacherApp #view-classes .ms32-empty-art{width:min(43%,400px);min-width:240px;flex:none;display:grid;place-items:center}
+#teacherApp #view-classes .ms32-empty-art img{width:100%;height:235px;object-fit:contain;display:block}
+#teacherApp #view-classes .ms32-empty-copy{max-width:430px;flex:1}
+#teacherApp #view-classes .ms32-empty-copy h3{font:850 clamp(21px,2vw,26px)/1.2 Inter,'Segoe UI',Arial,sans-serif;letter-spacing:-.7px;color:#171718;margin:0 0 9px}
+#teacherApp #view-classes .ms32-empty-copy p{font:500 12px/1.6 Inter,'Segoe UI',Arial,sans-serif;color:#5d5c5b;margin:0 0 20px}
+#teacherApp #view-classes .ms32-empty-copy .ms32-create-main{min-width:160px}
+#teacherApp #view-classes .ms32-no-match{grid-column:1/-1;padding:24px;border:1px dashed #e6d6cb;border-radius:12px;color:#846a56;background:#fffaf6;text-align:center;font-size:12px}
+#teacherApp #view-classes :is(.ms32-card-open,.ms32-create-main,.ms32-view-toggle button,.ms32-card-more summary,.ms32-action-menu button):focus-visible{outline:3px solid #e7ad5f;outline-offset:2px}
+@media(min-width:1800px){#teacherApp #view-classes .ms32-class-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important}#teacherApp #view-classes.ms32-single .ms32-class-grid{grid-template-columns:305px!important}}
+@media(min-width:1600px) and (max-width:1799px){#teacherApp #view-classes .ms32-class-grid{grid-template-columns:repeat(5,minmax(0,1fr))!important}#teacherApp #view-classes.ms32-single .ms32-class-grid{grid-template-columns:305px!important}}
+@media(max-width:1240px){#teacherApp #view-classes .ms32-class-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}#teacherApp #view-classes .ms32-class-tools{flex-wrap:wrap!important;justify-content:flex-end!important}#teacherApp #view-classes .ms32-directory-heading{align-items:flex-start!important}#teacherApp #view-classes.ms32-single .ms32-class-grid{grid-template-columns:minmax(0,305px)!important}}
+@media(max-width:1040px){#teacherApp #view-classes .ms32-class-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}#teacherApp #view-classes .ms32-top-summary{grid-template-columns:repeat(3,minmax(0,1fr))!important}#teacherApp #view-classes #createClassBtn{grid-column:1/-1;justify-self:end;padding:8px 16px}}
+@media(max-width:780px){#teacherApp #view-classes .ms32-hero{height:104px!important;min-height:104px!important;padding:14px!important}#teacherApp #view-classes .ms32-hero-heading{max-width:75%}#teacherApp #view-classes .ms32-hero-heading h2{font-size:22px}#teacherApp #view-classes .ms32-hero-heading p{font-size:10px}#teacherApp #view-classes .ms32-hero-art{width:48%!important;right:-14px!important;height:105px!important;opacity:.65}#teacherApp #view-classes .ms32-top-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}#teacherApp #view-classes .ms32-summary-card{height:61px!important;gap:8px;padding:8px!important}#teacherApp #view-classes .ms32-summary-card strong{font-size:21px}#teacherApp #view-classes .ms32-summary-card small{font-size:9.8px}#teacherApp #view-classes #createClassBtn{grid-column:auto;width:100%;align-self:stretch;height:auto!important;min-height:48px!important}#teacherApp #view-classes .ms32-directory-heading{flex-direction:column!important;align-items:stretch!important;gap:12px}#teacherApp #view-classes .ms32-class-tools{justify-content:stretch!important;display:grid!important;grid-template-columns:1fr 1fr!important}#teacherApp #view-classes .ms32-class-tools label{width:100%!important}#teacherApp #view-classes .ms32-class-tools .ms32-search{grid-column:1/-1}#teacherApp #view-classes .ms32-view-toggle{justify-self:end}#teacherApp #view-classes .ms32-class-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}#teacherApp #view-classes.ms32-single .ms32-class-grid{grid-template-columns:minmax(0,305px)!important}#teacherApp #view-classes .ms32-empty-state{min-height:0!important;flex-direction:column!important;gap:10px!important;text-align:center!important;padding:20px 15px 32px!important}#teacherApp #view-classes .ms32-empty-art{width:min(100%,360px)!important;min-width:0!important}#teacherApp #view-classes .ms32-empty-art img{height:200px}#teacherApp #view-classes .ms32-empty-copy{width:100%}}
+@media(max-width:440px){#teacherApp #view-classes .ms32-class-grid{grid-template-columns:1fr!important}#teacherApp #view-classes.ms32-single .ms32-class-grid{grid-template-columns:1fr!important}#teacherApp #view-classes .ms32-hero-heading{max-width:84%}#teacherApp #view-classes .ms32-hero-art{opacity:.38}#teacherApp #view-classes .ms32-hero-heading h2{font-size:23px}#teacherApp #view-classes .ms32-card-content{min-height:110px}#teacherApp #view-classes .ms32-class-tools{grid-template-columns:1fr!important}#teacherApp #view-classes .ms32-class-tools .ms32-search{grid-column:auto}#teacherApp #view-classes .ms32-view-toggle{justify-self:start}}
+@media(prefers-reduced-motion:reduce){#teacherApp #view-classes .ms32-card-track>span{transition:none}}
+/* Hidden must win over presentation rules, including earlier !important display properties. */
+#teacherApp #view-classes.ms32-classes [hidden],
+#teacherApp #view-classes.ms32-classes #classGrid .class-card[hidden]{display:none!important}
+/* Earlier v15 stylesheet targets this grid with THREE IDs, so override it explicitly. */
+#teacherApp #view-classes #classGrid.ms32-class-grid{display:grid!important;grid-auto-flow:row!important;align-items:start!important}
+#teacherApp #view-classes #classGrid.ms32-class-grid.ms32-list-mode{display:flex!important;flex-direction:column!important}
+/* Match the six-card row in the selected reference on wide desktop screens. */
+@media(min-width:1600px){
+ #teacherApp #view-classes #classGrid.ms32-class-grid:not(.ms32-list-mode){grid-template-columns:repeat(6,minmax(0,1fr))!important}
+ #teacherApp #view-classes.ms32-single #classGrid.ms32-class-grid{grid-template-columns:305px!important}
+}

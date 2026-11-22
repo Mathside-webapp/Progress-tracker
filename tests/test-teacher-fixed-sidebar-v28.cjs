@@ -1,0 +1,11 @@
+const fs=require('node:fs');const path=require('node:path');const assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const html=read('index.html'),css=read('css/teacher-fixed-sidebar-v28.css'),js=read('js/teacher-pixelmatch-v27.js');
+assert.ok(!html.includes('id="pmSidebarSettings"'),'teacher Settings sidebar button removed');
+assert.ok(!js.includes('pmSettingsDialog'),'old Settings dialog not created');
+assert.ok(!html.includes('id="pmSidebarNotifications"'),'sidebar notifications removed in V29');
+assert.match(css,/#teacherApp #teacherSidebar\s*\{[\s\S]*?position: fixed !important;/);
+assert.match(css,/#teacherApp \.workspace-main\s*\{[\s\S]*?grid-column: 2 !important;/);
+assert.match(css,/#teacherApp #teacherSidebar\.open\s*\{ transform: translateX\(0\) !important; \}/);
+assert.match(html,/teacher-fixed-sidebar-v28\.css\?v=28\.0/);
+console.log('PASS: fixed navigation and Settings removed; sidebar notification retired in V29');

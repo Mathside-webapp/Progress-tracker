@@ -164,56 +164,65 @@
   byId('msClassSearch')?.addEventListener('input',filterClasses);
   byId('msClassGrade')?.addEventListener('change',filterClasses);
   if(byId('classGrid')) new MutationObserver(filterClasses).observe(byId('classGrid'),{childList:true,subtree:false});
-  let recordRequestId = 0;
+  // V41: read-only presentation. The original score reader and Excel exporter remain unchanged.
+  let recordRequestId = 0, recordPage = 1, recordData = null;
+  const RECORD_PAGE_SIZE = 6;
+  function renderRecordRows(){
+    const body=byId('msRecordsBody'), count=byId('ms41RecordCount'), pageLabel=byId('ms41Page');
+    const prev=byId('ms41Prev'),next=byId('ms41Next');
+    if(!recordData){if(count)count.textContent='No students to display';if(pageLabel)pageLabel.textContent='Page 1 of 1';if(prev)prev.disabled=true;if(next)next.disabled=true;return;}
+    const {record,possible}=recordData, assignments=record.assignments;
+    const q=(byId('ms41RecordSearch')?.value||'').trim().toLowerCase();
+    const rows=record.rows.map((r,i)=>({r,i})).filter(({r})=>text(r.name).toLowerCase().includes(q));
+    const pages=Math.max(1,Math.ceil(rows.length/RECORD_PAGE_SIZE));recordPage=Math.min(Math.max(1,recordPage),pages);
+    const offset=(recordPage-1)*RECORD_PAGE_SIZE;
+    body.innerHTML=rows.slice(offset,offset+RECORD_PAGE_SIZE).map(({r:row,i})=>{
+      const values=row.values.map(v=>`<td class="ms-numeric ${v==='—'?'ms-missing':''} ${v==='Unavailable'?'ms-history-unavailable':''}">${safe(v)}</td>`).join('');
+      const hasScore=row.values.some(v=>typeof v==='number'&&Number.isFinite(v));
+      const avg=hasScore&&possible>0&&!row.incompleteHistory?`${(row.totalScore/possible*100).toFixed(1)}%`:'—';
+      const complete=assignments.length>0&&row.completed===assignments.length;
+      return `<tr><td class="ms-record-no">${i+1}</td><td class="ms-record-name">${safe(row.name)}</td>${values}<td class="ms-record-completed"><span class="ms41-completion ${complete?'is-complete':''}">${row.completed}/${assignments.length}</span></td><td class="ms-record-total">${safe(row.totalScore)}${possible!==null?` / ${possible}`:''}</td><td class="ms41-average">${avg}</td></tr>`;
+    }).join('')||`<tr><td colspan="${assignments.length+5}">${q?'No students match your search.':'No students in this class yet.'}</td></tr>`;
+    count.textContent=rows.length?`Showing ${offset+1}–${Math.min(offset+RECORD_PAGE_SIZE,rows.length)} of ${rows.length} students`:'Showing 0 students';
+    pageLabel.textContent=`Page ${recordPage} of ${pages}`;prev.disabled=recordPage===1;next.disabled=recordPage===pages;
+  }
   async function renderRecords() {
     const select=byId('msRecordsSection');
     if(!select||!isTeacher()||!byId('view-records')?.classList.contains('active'))return;
     const sections=state.sections||[];
     const selected=sections.find(s=>String(s.id)===String(currentRecordSection))||sections.find(s=>!s.archived_at)||sections[0];
     const sig=sections.map(s=>[s.id,s.name,s.grade_level,s.archived_at||''].join(':')).join('|');
-    if(select.dataset.sections!==sig){
-      select.innerHTML=sections.map(s=>`<option value="${safe(s.id)}">Grade ${safe(s.grade_level)} – ${safe(s.name)}${s.archived_at?' (Archived)':''}</option>`).join('') || '<option value="">No classes</option>';
-      select.dataset.sections=sig;
-    }
+    if(select.dataset.sections!==sig){select.innerHTML=sections.map(s=>`<option value="${safe(s.id)}">Grade ${safe(s.grade_level)} – ${safe(s.name)}${s.archived_at?' (Archived)':''}</option>`).join('')||'<option value="">No classes</option>';select.dataset.sections=sig;}
     currentRecordSection=selected?.id||'';select.value=currentRecordSection;
     const summary=byId('msRecordsSummary'),head=byId('msRecordsHead'),body=byId('msRecordsBody'),note=byId('msRecordsNote');
-    if(!selected){summary.innerHTML='';head.innerHTML='';body.innerHTML='<tr><td>No classes yet. Create a class to view records.</td></tr>';return;}
-    const request=++recordRequestId;
-    head.innerHTML='';body.innerHTML='<tr><td class="ms-record-loading">Loading your class scores…</td></tr>';
-    note.textContent='Reading current scores and preserved archived records…';
-    if(typeof window.MathsideV10?.classRecordPreview!=='function'){
-      body.innerHTML='<tr><td>Class record reader unavailable. Reload Mathside.</td></tr>';return;
-    }
+    const request=++recordRequestId;recordData=null;renderRecordRows();
+    byId('ms41RecordTitle').textContent=recordType==='pt'?'Performance Tasks record':'Written Works record';
+    for(const id of ['msRecordsExport','msRecordsOpenRoster'])byId(id).disabled=!selected;
+    summary.innerHTML='';head.innerHTML='';
+    if(!selected){body.innerHTML='<tr><td>No classes yet. Create a class to view records.</td></tr>';note.textContent='Choose a class to view current and preserved scores.';return;}
+    body.innerHTML='<tr><td class="ms-record-loading">Loading your class scores…</td></tr>';note.textContent='Reading current scores and preserved archived records…';
+    if(typeof window.MathsideV10?.classRecordPreview!=='function'){body.innerHTML='<tr><td>Class record reader unavailable. Reload Mathside.</td></tr>';return;}
     try{
       const data=await window.MathsideV10.classRecordPreview(selected.id);
       if(request!==recordRequestId)return;
-      const record=recordType==='pt'?data.performance:data.written;
-      const assignments=record.assignments, ww=recordType==='ww';
-      const cols=assignments.map(a=>`<th scope="col" title="${safe(a.title)}" class="ms-record-activity-heading"><span>${safe(a.title)}</span><small>${a.possible!=null?`${a.possible} pts`:'Score'}${a.archived?' · Archived':''}</small></th>`).join('');
-      head.innerHTML=`<tr><th scope="col">#</th><th scope="col">Student Name</th>${cols}<th scope="col">Completed</th><th scope="col">Total Score</th></tr>`;
-      const colSpan=assignments.length+4;
-      body.innerHTML=record.rows.map((row,i)=>{
-        const values=row.values.map(v=>`<td class="ms-numeric ${v==='—'?'ms-missing':''} ${v==='Unavailable'?'ms-history-unavailable':''}">${safe(v)}</td>`).join('');
-        return `<tr><td class="ms-record-no">${i+1}</td><td class="ms-record-name">${safe(row.name)}</td>${values}<td class="ms-record-completed">${row.completed}/${assignments.length}</td><td class="ms-record-total">${safe(row.totalScore)}</td></tr>`;
-      }).join('')||`<tr><td colspan="${colSpan}">No students in this class yet.</td></tr>`;
-      const possible=assignments.map(a=>a.possible).every(n=>n!=null) ? assignments.reduce((sum,a)=>sum+a.possible,0) : null;
-      const scored=record.rows.reduce((sum,r)=>sum+r.totalScore,0);
-      summary.innerHTML=`<article><span>Class</span><strong>${safe(data.section.name)} · Grade ${safe(data.section.grade_level)}</strong></article><article><span>Students</span><strong>${data.students}</strong></article><article><span>${ww?'Written Works':'Performance Tasks'}</span><strong>${assignments.length}</strong></article><article><span>Points available</span><strong>${possible===null?'See activity headers':possible}</strong></article><article><span>Total scored across class</span><strong>${scored}</strong></article>`;
-      note.textContent=data.archivedUnavailable ? 'Some archived grades cannot be read because the archive snapshot tables are unavailable. Unavailable values are not counted in totals. The saved Excel record may also require the archive SQL migrations.' :
-        'Scores include preserved archived grades and teacher overrides. Pending work counts as completed; missing work does not. Performance Task scores use the same team/class participation logic as the Excel export. The workbook format is unchanged.';
-    }catch(error){
-      if(request!==recordRequestId)return;
-      console.error('Mathside Class Records:',error);
-      summary.innerHTML='';head.innerHTML='';body.innerHTML='<tr><td class="ms-record-error">Unable to load record scores. Check your connection and permissions, then reopen Class Records.</td></tr>';
-      note.textContent=String(error?.message||'Record data could not be loaded.');
-    }
+      const record=recordType==='pt'?data.performance:data.written, assignments=record.assignments, ww=recordType==='ww';
+      const cols=assignments.map((a,i)=>`<th scope="col" title="${safe(a.title)}" class="ms-record-activity-heading"><strong>${ww?'WW':'PT'} ${i+1}</strong><span>${safe(a.title)}</span><small>${a.possible!=null?`${a.possible} pts`:'Score'}</small>${a.archived?'<b class="ms41-archived">Archived</b>':''}</th>`).join('');
+      const possible=assignments.every(a=>a.possible!=null)?assignments.reduce((sum,a)=>sum+a.possible,0):null;
+      head.innerHTML=`<tr><th scope="col" class="ms41-number-head">#</th><th scope="col" class="ms41-name-head">Student name</th>${cols}<th scope="col">Completed</th><th scope="col">Total score${possible!==null?`<small>${possible} pts</small>`:''}</th><th scope="col">Average</th></tr>`;
+      const scoredRows=record.rows.filter(r=>r.values.some(v=>typeof v==='number'&&Number.isFinite(v))&&!r.incompleteHistory);
+      const avg=possible>0&&scoredRows.length?`${(scoredRows.reduce((n,r)=>n+r.totalScore,0)/scoredRows.length).toFixed(1)} / ${possible}`:'—';
+      const archived=assignments.filter(a=>a.archived).length;
+      const card=(icon,value,label,tone)=>`<article class="ms41-stat ${tone}"><img src="assets/teacher-pixelmatch/icons/orange/${icon}.png" alt=""><div><strong>${safe(value)}</strong><span>${safe(label)}</span></div></article>`;
+      summary.innerHTML=card('02-classes',data.students,'Total Students','')+card(ww?'03-activities':'04-performance-tasks',assignments.length-archived,ww?'Active Written Works':'Active Performance Tasks','ms41-yellow')+card('08-archive',archived,'Archived','ms41-green')+card('06-class-records',avg,'Recorded Class Average','ms41-purple');
+      recordData={record,possible};renderRecordRows();
+      note.textContent=(data.archivedUnavailable?'Some archived grades are unavailable. Unavailable values are not counted in totals. ':'')+'Totals include recorded scores and teacher overrides; pending work counts as completed. Average is recorded points divided by all available points, not an official grade. Class average uses learners with numeric scores and available history only. Excel export is unchanged.';
+    }catch(error){if(request!==recordRequestId)return;console.error('Mathside Class Records:',error);summary.innerHTML='';head.innerHTML='';body.innerHTML='<tr><td class="ms-record-error">Unable to load record scores. Check your connection and permissions, then reopen Class Records.</td></tr>';note.textContent=String(error?.message||'Record data could not be loaded.');}
   }
-  byId('msRecordsSection')?.addEventListener('change',e=>{currentRecordSection=e.target.value;renderRecords();});
-  document.querySelectorAll('[data-ms-record-type]').forEach(button=>button.addEventListener('click',()=>{
-    recordType=button.dataset.msRecordType;
-    document.querySelectorAll('[data-ms-record-type]').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-pressed',String(b===button));});
-    renderRecords();
-  }));
+  byId('msRecordsSection')?.addEventListener('change',e=>{currentRecordSection=e.target.value;recordPage=1;byId('ms41RecordSearch').value='';renderRecords();});
+  document.querySelectorAll('[data-ms-record-type]').forEach(button=>button.addEventListener('click',()=>{recordType=button.dataset.msRecordType;recordPage=1;document.querySelectorAll('[data-ms-record-type]').forEach(b=>{b.classList.toggle('active',b===button);b.setAttribute('aria-pressed',String(b===button));});renderRecords();}));
+  byId('ms41RecordSearch')?.addEventListener('input',()=>{recordPage=1;renderRecordRows();});
+  byId('ms41Prev')?.addEventListener('click',()=>{recordPage--;renderRecordRows();});
+  byId('ms41Next')?.addEventListener('click',()=>{recordPage++;renderRecordRows();});
   byId('msRecordsExport')?.addEventListener('click',()=>{
     if(!isTeacher()||!currentRecordSection)return;
     window.MathsideV10?.exportClassRecord(currentRecordSection);

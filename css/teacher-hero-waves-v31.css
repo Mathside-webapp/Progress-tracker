@@ -1,0 +1,43 @@
+/* Mathside V31 — welcome illustration + exact layered sidebar footer restoration.
+   Presentation-only overrides. Existing teacher and student data/logic preserved. */
+/* A taller hero reveals more of the original PNG without stretching its aspect ratio. */
+@media(min-width:781px){
+ #teacherApp #view-dashboard .pm-hero{
+   height:clamp(212px,17.3vw,242px)!important;
+   min-height:clamp(212px,17.3vw,242px)!important;
+   max-height:none!important;
+ }
+ #teacherApp #view-dashboard .pm-hero-art{width:76%!important}
+ #teacherApp #view-dashboard .pm-hero-art img{
+   object-fit:contain!important;
+   object-position:right bottom!important;
+   width:auto!important;height:100%!important;
+   right:0!important;top:0!important;bottom:0!important;
+ }
+ #teacherApp #view-dashboard .pm-hero-copy{padding:23px 28px!important}
+ #teacherApp #view-dashboard .pm-hero-message{margin-top:15px!important}
+}
+/* Reintroduce the full multi-layered wave from the favored screenshot.
+   It is fixed to the sidebar bottom, not a separate scrolling element. */
+#teacherApp #teacherSidebar{position:fixed!important;overflow:hidden!important}
+#teacherApp #teacherSidebar::before{
+ content:""!important;display:block!important;position:absolute!important;
+ left:0!important;right:0!important;top:auto!important;bottom:0!important;
+ width:100%!important;height:143px!important;
+ border:0!important;border-radius:0!important;
+ background: url("../assets/teacher-pixelmatch/mathside-sidebar-waves-v31.png") center bottom / 100% 100% no-repeat!important;
+ opacity:1!important;pointer-events:none!important;z-index:0!important;
+}
+#teacherApp #teacherSidebar::after{content:none!important;display:none!important}
+#teacherApp #teacherSidebar > *{position:relative;z-index:1}
+@media(max-width:780px){
+ #teacherApp #view-dashboard .pm-hero {height:190px!important;min-height:190px!important}
+ #teacherApp #view-dashboard .pm-hero-art img{object-fit:contain!important;object-position:right bottom!important;right:-6px!important}
+ #teacherApp #teacherSidebar::before{height:136px!important}
+}
+@media(max-width:480px){
+ #teacherApp #view-dashboard .pm-hero {height:178px!important;min-height:178px!important}
+}
+@media(max-height:650px) and (min-width:781px){
+ #teacherApp #teacherSidebar::before{height:115px!important}
+}

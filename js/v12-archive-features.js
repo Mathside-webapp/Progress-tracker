@@ -146,9 +146,11 @@
     const form = new FormData(formElement);
     const grade = Number(form.get('grade_level'));
     const name = String(form.get('name') || '').trim();
+    const themeId = String(form.get('theme_id') ?? '0');
     const sourceSectionId = String(form.get('import_archived_section') || '').trim();
     const colors = { 7:'#ff6b00', 8:'#ff8f00', 9:'#ff4f81', 10:'#3e8ef7', 11:'#7b61c8', 12:'#2c9c78' };
     if (!name) return toast('Enter a class name.', 'orange');
+    if (!/^(?:[0-9]|1[0-5])$/.test(themeId)) return toast('Select a valid class design.', 'orange');
     if (!window.MathsideActionButton?.start(submitBtn, 'Creating…')) return;
     try {
       let created;
@@ -157,6 +159,7 @@
           teacher_id: state.user.id,
           grade_level: grade,
           name,
+          theme_id: themeId,
           color: colors[grade] || '#ff6b00'
         }).select().single();
         if (error) throw error;

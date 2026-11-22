@@ -1,0 +1,168 @@
+/* MATHSIDE V29 — Compact, non-scrolling teacher navigation + proportional hero.
+ * Changes are scoped to #teacherApp to protect the student site.
+ * No application data, class records or assessment actions are modified.
+ */
+/* The rail itself is fixed, full viewport height, and never scrolls separately.
+ * All teacher pages can scroll in the ordinary document as needed. */
+#teacherApp #teacherSidebar {
+  height:100vh!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  overflow-x:hidden!important;
+  overflow-y:hidden!important;
+  overscroll-behavior:none!important;
+  display:flex!important;
+  flex-direction:column!important;
+  padding-bottom:0!important;
+}
+/* No notification shortcut nor divider at the sidebar bottom. Top-bar notifications stay. */
+#teacherApp #teacherSidebar .pm-sidebar-secondary,
+#teacherApp #pmSidebarNotifications,
+#teacherApp #pmSecondaryCount {display:none!important}
+#teacherApp #teacherSidebar .sidebar-brand-row {
+  border-bottom:0!important;
+  margin-bottom:13px!important;
+}
+/* Wave is a decorative footer that fits in the fixed rail and cannot extend
+   beyond the viewport or produce an independent scroll surface. */
+#teacherApp #teacherSidebar::before {
+  position:absolute!important;
+  top:auto!important;bottom:0!important;
+  left:-24px!important;right:-10px!important;
+  height:clamp(95px,19vh,174px)!important;
+  background:
+    radial-gradient(120% 80% at 65% 120%,#ff841b 0 70%,transparent 70.5%),
+    radial-gradient(110% 75% at 18% 123%,#ff6710 0 68%,transparent 68.7%),
+    radial-gradient(120% 120% at 95% 143%,#b94d20 0 74%,transparent 74.5%)!important;
+}
+#teacherApp #teacherSidebar::after {
+  top:auto!important;bottom:0!important;
+  height:clamp(45px,9vh,92px)!important;
+  left:-14px!important;right:-14px!important;
+  border-radius:70% 50% 0 0!important;
+  background:linear-gradient(20deg,#f15f0c8c,transparent 75%)!important;
+}
+#teacherApp #teacherSidebar .side-nav {
+  flex:0 0 auto!important;
+  margin-top:4px!important;
+}
+/* Hero: never change the aspect ratio of the approved PNG artwork. */
+#teacherApp #view-dashboard .pm-hero {
+  height:156px!important;
+  min-height:156px!important;
+  max-height:156px!important;
+  border-radius:16px!important;
+  background:linear-gradient(95deg,#fff9f5 0%,#fff8f3 41%,#fbe5cf 100%)!important;
+}
+#teacherApp #view-dashboard .pm-hero-art {
+  inset:0 0 0 auto!important;
+  width:74%!important;
+  height:100%!important;
+  overflow:hidden!important;
+}
+#teacherApp #view-dashboard .pm-hero-art img {
+  position:absolute!important;
+  top:0!important;bottom:auto!important;right:0!important;
+  display:block!important;
+  width:100%!important;min-width:0!important;max-width:none!important;
+  height:100%!important;max-height:none!important;
+  object-fit:cover!important;
+  object-position:center 64%!important;
+  filter:saturate(1.035)!important;
+}
+#teacherApp #view-dashboard .pm-hero-tint {
+  background:linear-gradient(90deg,#fff9f5 0%,#fffbf8 22%,#fffbf8eb 33%,#fff8f1b8 43%,transparent 67%)!important;
+}
+#teacherApp #view-dashboard .pm-hero-copy {
+  padding:13px 28px!important;
+  width:490px!important;
+  max-width:52%!important;
+}
+#teacherApp #view-dashboard .pm-hero-copy>p:first-child {
+  margin:0 0 4px!important;
+  font-size:10.5px!important;
+}
+#teacherApp #view-dashboard .pm-hero-copy h2 {
+  font-size:clamp(24px,2.5vw,35px)!important;
+  letter-spacing:-1.55px!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+  line-height:1.04!important;
+}
+#teacherApp #view-dashboard .pm-hero-underline {
+  margin:2px 0 4px 92px!important;width:73px!important;height:4px!important;
+}
+#teacherApp #view-dashboard .pm-hero-message {
+  font-size:12px!important;
+  line-height:1.38!important;
+  margin:8px 0 0!important;
+  max-width:330px!important;
+}
+/* Bring the whole working dashboard into view at typical desktop resolutions.
+   Sparse activity/checking panels now shrink to content instead of staying empty. */
+#teacherApp #view-dashboard .pm-metrics {
+  margin:10px 0 10px!important;
+  gap:8px!important;
+}
+#teacherApp #view-dashboard .pm-metric {
+  min-height:61px!important;
+  max-height:61px!important;
+  padding-top:7px!important;
+  padding-bottom:7px!important;
+}
+#teacherApp #view-dashboard .pm-dashboard-main {margin-top:0!important}
+#teacherApp #view-dashboard .pm-section-heading {
+  min-height:36px!important;
+  padding-bottom:8px!important;
+}
+#teacherApp #view-dashboard #dashboardClassGrid.pm-class-grid {margin-bottom:12px!important}
+#teacherApp #view-dashboard .pm-class-card {min-height:149px!important}
+#teacherApp #view-dashboard .pm-class-banner {height:46px!important}
+#teacherApp #view-dashboard .pm-class-body {padding-top:8px!important;padding-bottom:8px!important}
+#teacherApp #view-dashboard .pm-left-bottom {gap:12px!important}
+#teacherApp #view-dashboard .pm-list-card {min-height:0!important;height:auto!important}
+#teacherApp #view-dashboard .pm-list-head {height:39px!important;min-height:39px!important}
+#teacherApp #view-dashboard .pm-compact-list .tw-list-row {min-height:41px!important;padding-top:5px!important;padding-bottom:5px!important}
+#teacherApp #view-dashboard .pm-right-workspace {gap:14px!important}
+#teacherApp #view-dashboard .pm-side-head {height:36px!important;min-height:36px!important}
+#teacherApp #view-dashboard .pm-reminders .tw-list-row {min-height:50px!important}
+#teacherApp #view-dashboard .pm-promo {height:180px!important;min-height:180px!important}
+#teacherApp #view-dashboard .pm-promo>img {height:142px!important}
+#teacherApp #view-dashboard {overflow:visible!important;max-height:none!important}
+#teacherApp #view-dashboard .pm-left-workspace,
+#teacherApp #view-dashboard .pm-dashboard-main,
+#teacherApp #view-dashboard .pm-classes,
+#teacherApp #view-dashboard .pm-left-bottom {overflow:visible!important;max-height:none!important}
+@media(min-width:781px){
+ #teacherApp .workspace-content {padding-top:12px!important;padding-bottom:20px!important}
+}
+@media(max-height:650px){
+ #teacherApp #teacherSidebar .sidebar-brand-row {min-height:53px!important;margin-bottom:6px!important}
+ #teacherApp #teacherSidebar .side-nav .side-link {min-height:34px!important;padding-top:5px!important;padding-bottom:5px!important}
+ #teacherApp #teacherSidebar::before {height:90px!important}
+}
+@media(max-width:1100px) and (min-width:781px){
+ #teacherApp #view-dashboard .pm-hero-art {width:68%!important}
+ #teacherApp #view-dashboard .pm-hero-copy {max-width:56%!important}
+ #teacherApp #view-dashboard .pm-hero-copy h2 {font-size:clamp(22px,2.8vw,30px)!important}
+}
+@media(max-width:780px){
+ #teacherApp #teacherSidebar {overflow-y:hidden!important;padding-bottom:0!important}
+ #teacherApp #view-dashboard .pm-hero {height:160px!important;min-height:160px!important;max-height:none!important}
+ #teacherApp #view-dashboard .pm-hero-art {width:72%!important}
+ #teacherApp #view-dashboard .pm-hero-copy {padding:14px 15px!important;max-width:71%!important}
+ #teacherApp #view-dashboard .pm-hero-copy h2 {font-size:clamp(21px,5.2vw,29px)!important;letter-spacing:-.8px!important}
+ #teacherApp #view-dashboard .pm-hero-message {font-size:11px!important;margin-top:8px!important;max-width:220px!important}
+ #teacherApp #view-dashboard .pm-hero-tint {background:linear-gradient(90deg,#fff9f5 0%,#fff9f5f0 25%,#fff9f5bd 52%,transparent 100%)!important}
+ #teacherApp #view-dashboard .pm-metrics {margin:10px 0!important}
+ #teacherApp #view-dashboard .pm-metric {min-height:60px!important;max-height:none!important}
+ #teacherApp #view-dashboard .pm-class-card {min-height:149px!important}
+ #teacherApp #view-dashboard .pm-promo {height:180px!important}
+}
+@media(max-width:480px){
+ #teacherApp #view-dashboard .pm-hero {height:155px!important;min-height:155px!important}
+ #teacherApp #view-dashboard .pm-hero-art {width:74%!important}
+ #teacherApp #view-dashboard .pm-hero-copy {max-width:84%!important}
+ #teacherApp #view-dashboard .pm-hero-copy h2 {font-size:clamp(20px,6.8vw,27px)!important}
+ #teacherApp #view-dashboard .pm-hero-message {max-width:205px!important}
+}

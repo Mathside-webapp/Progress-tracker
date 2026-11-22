@@ -1734,8 +1734,10 @@ $('#sectionForm').addEventListener('submit', async event => {
   const form = new FormData(formElement);
   const grade = Number(form.get('grade_level'));
   const name = String(form.get('name') || '').trim();
+  const themeId = String(form.get('theme_id') ?? '0');
   const colors = { 7:'#ff6b00', 8:'#ff8f00', 9:'#ff4f81', 10:'#3e8ef7', 11:'#7b61c8', 12:'#2c9c78' };
   if (!name) return toast('Enter a class name.', 'orange');
+  if (!/^(?:[0-9]|1[0-5])$/.test(themeId)) return toast('Select a valid class design.', 'orange');
   if (!startActionButton(submitBtn, 'Creating…')) return;
   try {
     await withLoading('Creating class…', `Setting up ${name} for Grade ${grade}.`, async () => {
@@ -1743,7 +1745,8 @@ $('#sectionForm').addEventListener('submit', async event => {
         teacher_id: state.user.id,
         grade_level: grade,
         name,
-        color: colors[grade] || '#ff6b00'
+        theme_id: themeId,
+          color: colors[grade] || '#ff6b00'
       }).select().single();
       if (error) throw error;
       activeSectionId = data.id;

@@ -121,7 +121,7 @@
       if(!result.ok)throw Object.assign(new Error(result.message),{code:result.code||''});
     }
     if(!(await load()))throw lastLoadError||new Error('Could not refresh competency data.');
-    renderManager();
+    renderManager();renderLibrary();renderDashboard();
   }
   // Student CT V20: ONE read-only, student-scoped query instead of independent
   // queries that could fail on restricted RLS and hide the entire panel.
@@ -421,6 +421,8 @@
     });
     return {comps,results};
   }
+  let ms42Tab="list", ms42Page=1;
+  const MS42_PAGE_SIZE=5;
   function renderDashboard(){
     const root=$('ctDashboardContent');if(!root)return;
     const {comps,results}=getDashboardRows();
@@ -429,7 +431,7 @@
     const mastery=assessed.filter(r=>r.overall>=85).length;
     const summary=comps.map((c,i)=>{
       const scores=results.map(r=>r.scores[i].percent).filter(x=>x!==null);
-      return {name:c.name,count:scores.length,mean:scores.length?round(scores.reduce((a,b)=>a+b,0)/scores.length):null,mastered:scores.filter(x=>x>=85).length};
+      return {id:c.id,name:c.name,count:scores.length,mean:scores.length?round(scores.reduce((a,b)=>a+b,0)/scores.length):null,mastered:scores.filter(x=>x>=85).length};
     });
     const id=$('ctDashboardStudent')?.value||'';
     const selected=results.find(r=>String(r.id)===String(id));
@@ -438,19 +440,43 @@
        <div class="ct-mini-line">${selected.scores.map((s,i)=>`<div class="ct-mini-node" title="${esc(comps[i].name)}"><span class="${s.percent===null?'empty':s.percent>=85?'mastered':'developing'}">${s.percent===null?'–':s.percent>=85?'✓':Math.round(s.percent)+'%'}</span><small>${esc(comps[i].name)}</small></div>`).join('')}</div>
        ${!selected.scores.length?'<p class="ct-empty">No competencies are linked to this student’s activities.</p>':`<div class="ct-student-competency-list">${selected.scores.map((s,i)=>`<div class="ct-student-competency-item"><span>${esc(comps[i].name)}</span><strong>${s.percent===null?'Not assessed':s.percent+'%'}</strong></div>`).join('')}</div>`}`
       :`<div class="ct-single-student-empty"><span class="ct-single-student-icon" aria-hidden="true">⌕</span><strong>${results.length?'Find a student to view their progress':'No students in this selection'}</strong><p>${results.length?'Use the Search student field above. One student’s competency tracker will appear here at a time.':'Choose a different grade or section to find students.'}</p></div>`;
-    root.innerHTML=`<div class="ct-summary-cards"><div><strong>${results.length}</strong><span>Students in selected classes</span></div><div><strong>${avg===null?'—':avg+'%'}</strong><span>Average overall CT</span></div><div><strong>${mastery}/${assessed.length}</strong><span>Students at 85%+ overall</span></div><div><strong>${comps.length}</strong><span>Linked competencies</span></div></div>
-      <div class="ct-dashboard-grid"><section class="ct-dashboard-panel"><h3>Combined competency tracker</h3><p class="muted">All students in the selected grade and section are included, even when you select one student to view.</p>
-        ${summary.length?summary.map(c=>`<div class="ct-summary-row"><div><strong>${esc(c.name)}</strong><small>${c.count} of ${results.length} assessed · ${c.count?round(c.mastered/c.count*100)+'% mastered':'No evidence'}</small></div><b>${c.mean===null?'—':c.mean+'%'}</b><div class="ct-bar"><span style="width:${c.mean??0}%"></span></div></div>`).join(''):'<p class="ct-empty">No competencies linked to activities in this selection.</p>'}</section>
-      <section class="ct-dashboard-panel"><h3>Individual student CT</h3><p class="muted">Search and select a student above to see only that learner’s competency progress.</p>${studentContent}</section></div>
-      <p class="ct-dashboard-footnote">Overall CT is the average of each student's assessed competency percentages. Students without valid scored evidence are shown as Not assessed, not 0%. Archived scores are included when available. This is a score-based suggestion; teacher review decisions are not yet reflected in these figures.</p>`;
-    if($('ctDashboardStatus'))$('ctDashboardStatus').textContent=`Showing ${results.length} students and ${comps.length} competencies in the combined summary${selected?'; viewing '+selected.name+' individually':''}.`;
+    if(!ready){root.innerHTML='<div class="ms42-table-shell"><p class="ct-empty">Competency records are currently unavailable. Please refresh after checking your database connection.</p></div>';return;}
+    const grade=$('ctDashboardGrade').value,section=$('ctDashboardSection').value;
+    const scopedSections=new Set((state.sections||[]).filter(s=>(!grade||String(s.grade_level)===grade)&&(!section||s.id===section)).map(s=>s.id));
+    const assignments=(state.assignments||[]).filter(a=>scopedSections.has(a.section_id));
+    const linkedIds=new Set(assignments.map(a=>a.id));
+    // The list includes linked competencies plus unlinked private-library items in the unfiltered view.
+    const list=[...summary];
+    if(!grade&&!section)for(const c of names.filter(n=>n.teacher_id===me()))if(!list.some(x=>x.id===c.id))list.push({id:c.id,name:c.name,count:0,mean:null,mastered:0});
+    list.sort((a,b)=>a.name.localeCompare(b.name));
+    const category=x=>x===null?'unassessed':x>=85?'mastered':x>=60?'developing':'support';
+    const labels={unassessed:'Not assessed',mastered:'Mastered',developing:'In Progress',support:'Needs support'};
+    const iconPaths={layers:'<path d="m12 3 10 5-10 5L2 8l10-5ZM2 12l10 5 10-5M2 16l10 5 10-5"/>',check:'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',refresh:'<path d="M20 9a8 8 0 0 0-14-4L3 8m0-5v5h5m-4 7a8 8 0 0 0 14 4l3-3m0 5v-5h-5"/>',alert:'<circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4h.01"/>',eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',link:'<path d="M10 13a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-2 2m3 5a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l2-2"/>',trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6m4-6v6"/>'};
+    const icon=k=>`<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${iconPaths[k]}</svg>`;
+    const stat=(key,val,label,sub='',type=key)=>`<article class="ms42-stat ${type}">${icon(key)}<div><strong>${val}</strong><span>${label}</span>${sub?`<small>${sub}</small>`:''}</div></article>`;
+    const summaryCards=`<div class="ms42-metrics">${stat('layers',list.length,'Competencies')}${stat('check',list.filter(c=>category(c.mean)==='mastered').length,'Mastered','85% and above')}${stat('refresh',list.filter(c=>category(c.mean)==='developing').length,'In Progress','60% to below 85%')}${stat('alert',list.filter(c=>category(c.mean)==='support').length,'Needs Support','Below 60%')}</div>`;
+    const pages=Math.max(1,Math.ceil(list.length/MS42_PAGE_SIZE));ms42Page=Math.min(pages,Math.max(1,ms42Page));const offset=(ms42Page-1)*MS42_PAGE_SIZE;
+    const bar=(v)=>`<div class="ms42-mastery ${category(v)}"><b>${v===null?'—':v+'%'}</b><span><i style="width:${v??0}%"></i></span></div>`;
+    const pill=v=>`<span class="ms42-pill ${category(v)}">${labels[category(v)]}</span>`;
+    const workCount=id=>links.filter(l=>l.competency_id===id&&linkedIds.has(l.assignment_id)).length;
+    const table=`<section class="ms42-table-shell"><div class="ms42-scroll" tabindex="0" aria-label="Competency list"><table class="ms42-table"><thead><tr><th>No.</th><th>Learning Competency</th><th>Linked Work</th><th>Mastery <span title="Mean of assessed students’ competency scores">ⓘ</span></th><th>Status</th><th>Actions</th></tr></thead><tbody>${list.length?list.slice(offset,offset+MS42_PAGE_SIZE).map((c,i)=>`<tr><td>${offset+i+1}</td><td>${esc(c.name)}</td><td><span class="ms42-linked">${workCount(c.id)}</span></td><td>${bar(c.mean)}</td><td>${pill(c.mean)}</td><td><div class="ms42-actions"><button type="button" data-ms42-view="${esc(c.id)}" title="View competency details" aria-label="View ${esc(c.name)}">${icon('eye')}</button><button type="button" data-ms42-link="${esc(c.id)}" title="Manage activity assignments" aria-label="Manage assignments for ${esc(c.name)}">${icon('link')}</button>${names.some(n=>n.id===c.id&&n.teacher_id===me())?`<button type="button" class="ms42-delete" data-ms42-delete="${esc(c.id)}" title="Delete competency (scores preserved)" aria-label="Delete ${esc(c.name)}">${icon('trash')}</button>`:''}</div></td></tr>`).join(''):'<tr><td colspan="6" class="ms42-empty">No competencies linked to this selection. Add a competency or manage activity assignments below.</td></tr>'}</tbody></table></div></section><div class="ms42-footer"><span>Showing ${list.length?offset+1:0}–${Math.min(offset+MS42_PAGE_SIZE,list.length)} of ${list.length} competencies</span><div><button type="button" data-ms42-page="prev" aria-label="Previous page" ${ms42Page===1?'disabled':''}>‹</button><b>Page ${ms42Page} of ${pages}</b><button type="button" data-ms42-page="next" aria-label="Next page" ${ms42Page===pages?'disabled':''}>›</button></div></div>`;
+    const classSummary=`<div class="ms42-class-summary"><div><strong>${results.length}</strong><span>Students</span></div><div><strong>${avg===null?'—':avg+'%'}</strong><span>Average overall CT</span></div><div><strong>${mastery}/${assessed.length}</strong><span>Students at 85%+ overall</span></div><div><strong>${comps.length}</strong><span>Linked competencies</span></div></div><section class="ct-dashboard-panel"><h3>Combined competency tracker</h3><p class="muted">All students in the selected grade and section are included.</p>${summary.length?summary.map(c=>`<div class="ct-summary-row"><div><strong>${esc(c.name)}</strong><small>${c.count} of ${results.length} assessed · ${c.count?round(c.mastered/c.count*100)+'% of assessed students mastered':'No evidence'}</small></div><b>${c.mean===null?'—':c.mean+'%'}</b><div class="ct-bar"><span style="width:${c.mean??0}%"></span></div></div>`).join(''):'<p class="ct-empty">No competencies linked to activities in this selection.</p>'}</section>`;
+    root.innerHTML=summaryCards+(ms42Tab==='list'?table:ms42Tab==='student'?`<section class="ct-dashboard-panel"><h3>Individual student CT</h3>${studentContent}</section>`:classSummary)+`<p class="ct-dashboard-footnote">Mastery is the mean of assessed learner scores. Unassessed competencies (${list.filter(c=>c.mean===null).length}) are not counted in the three mastery categories. Archived scores are included when available. This is a score-based suggestion; teacher review decisions are not reflected in these figures.</p>`;
+    $('ctDashboardStatus').textContent=`${results.length} students · ${comps.length} linked competencies${selected&&ms42Tab==='student'?' · '+selected.name:''}`;
+    root.onclick=e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.ms42Page){ms42Page+=b.dataset.ms42Page==='next'?1:-1;renderDashboard();return;}const id=b.dataset.ms42View||b.dataset.ms42Link||b.dataset.ms42Delete;if(!id)return;
+      if(b.dataset.ms42Delete){[...$('ctLibraryList').querySelectorAll('[data-delete-competency]')].find(x=>x.dataset.deleteCompetency===id)?.click();return;}
+      if(b.dataset.ms42Link){const details=$('ctTeacherList').closest('details');details.open=true;$('ctBulkSelect').value=id;details.scrollIntoView({block:'start',behavior:'smooth'});return;}
+      const c=list.find(x=>x.id===id);if(!c)return;const dlg=document.createElement('dialog');dlg.className='ms42-detail';dlg.innerHTML=`<section><button type="button" aria-label="Close" class="ms42-detail-close">×</button><h3>${esc(c.name)}</h3><p>${c.count} of ${results.length} learners assessed · ${c.mastered} at 85%+</p>${bar(c.mean)}${pill(c.mean)}<h4>Linked assessments</h4>${assignments.filter(a=>links.some(l=>l.assignment_id===a.id&&l.competency_id===id)).map(a=>`<p>${esc(a.title)}${a.status==='archived'?' · Archived':''}</p>`).join('')||'<p>No linked assessments in this selection.</p>'}</section>`;document.body.append(dlg);dlg.querySelector('button').onclick=()=>dlg.close();dlg.addEventListener('close',()=>dlg.remove());dlg.showModal();
+    };
   }
+
   async function dashboard(){if(!teacher())return;dashboardFilters();const chosen=$('ctDashboardStudent').value;if(chosen){const student=(state.students||[]).find(s=>s.id===chosen);if(student){$('ctDashboardStudentSearch').value=student.display_name||'';$('ctDashboardStudentClear').hidden=false;}}renderDashboard();}
 
   document.addEventListener('DOMContentLoaded',()=>{
     $('ctTeacherOpen')?.addEventListener('click',manager);
-    $('ctDashboardGrade')?.addEventListener('change',()=>{ $('ctDashboardSection').value='';clearDashboardStudentSearch();dashboardFilters();renderDashboard(); });
-    $('ctDashboardSection')?.addEventListener('change',()=>{ clearDashboardStudentSearch();dashboardFilters();renderDashboard(); });
+    document.querySelectorAll('[data-ms42-tab]').forEach(b=>b.addEventListener('click',()=>{ms42Tab=b.dataset.ms42Tab;ms42Page=1;document.querySelectorAll('[data-ms42-tab]').forEach(t=>{t.classList.toggle('active',t===b);t.setAttribute('aria-pressed',String(t===b));});document.querySelector('.ms42-student-filter').hidden=ms42Tab!=='student';renderDashboard();}));
+    $('ctDashboardGrade')?.addEventListener('change',()=>{ ms42Page=1; $('ctDashboardSection').value='';clearDashboardStudentSearch();dashboardFilters();renderDashboard(); });
+    $('ctDashboardSection')?.addEventListener('change',()=>{ ms42Page=1; clearDashboardStudentSearch();dashboardFilters();renderDashboard(); });
     const studentSearch=$('ctDashboardStudentSearch');
     studentSearch?.addEventListener('input',()=>{
       if($('ctDashboardStudent').value){$('ctDashboardStudent').value='';renderDashboard();}

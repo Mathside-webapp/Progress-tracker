@@ -1,0 +1,112 @@
+/* Mathside V34 — two approved header banners + Classes action-menu correction.
+ * Scoped only to Dashboard and Classes. Other teacher panels and class-card banners unchanged.
+ * The approved source PNGs were upsampled to 3x using Lanczos + edge sharpening;
+ * this improves on-screen scaling but does not create new image detail.
+ */
+#teacherApp #view-dashboard .pm-hero,
+#teacherApp #view-classes .ms32-hero {
+  height:clamp(212px,17.3vw,242px)!important;
+  min-height:clamp(212px,17.3vw,242px)!important;
+  max-height:none!important;
+  background-repeat:no-repeat!important;
+  background-size:cover!important;
+  background-position:right center!important;
+}
+#teacherApp #view-dashboard .pm-hero {
+  background-color:#fff8f1!important;
+  background-image:url('../assets/teacher-section-headers-v34/01-dashboard-hd.png')!important;
+}
+#teacherApp #view-dashboard .pm-hero-copy {
+  width:min(58%,585px)!important;
+  max-width:58%!important;
+  padding:26px 33px!important;
+}
+#teacherApp #view-dashboard .pm-hero-copy>p:first-child {
+  font-size:14px!important;
+  letter-spacing:1.6px!important;
+  margin-bottom:11px!important;
+}
+#teacherApp #view-dashboard .pm-hero-copy h2 {
+  font-size:clamp(39px,3.6vw,53px)!important;
+  line-height:1.09!important;
+  letter-spacing:-1.65px!important;
+  overflow-wrap:anywhere!important;
+  white-space:normal!important;
+}
+#teacherApp #view-dashboard .pm-hero-message {
+  font-size:16px!important;
+  line-height:1.5!important;
+  max-width:390px!important;
+  margin-top:15px!important;
+}
+#teacherApp #view-dashboard .pm-hero-underline {height:5px!important;width:92px!important;margin-left:125px!important}
+#teacherApp #view-dashboard .pm-hero-tint {
+  background:linear-gradient(90deg,rgba(255,250,247,.90) 0%,rgba(255,250,247,.67) 25%,rgba(255,250,247,.22) 43%,transparent 57%)!important;
+}
+#teacherApp #view-classes .ms32-hero {
+  padding:22px 30px!important;
+  background-color:#fff8f0!important;
+  background-image:url('../assets/teacher-section-headers-v34/02-classes-hd.png')!important;
+}
+#teacherApp #view-classes .ms32-hero:after{display:none!important}
+/* Make the left-side live heading readable without obscuring the artwork on the right. */
+#teacherApp #view-classes .ms32-hero:before{
+  content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,250,247,.99) 0%,rgba(255,250,247,.95) 18%,rgba(255,250,247,.82) 34%,rgba(255,250,247,.18) 54%,transparent 67%);
+}
+#teacherApp #view-classes .ms32-hero-art {display:none!important}
+#teacherApp #view-classes .ms32-hero-heading {
+  width:48%!important;
+  max-width:48%!important;
+  gap:16px!important;
+  align-items:center!important;
+}
+#teacherApp #view-classes .ms32-hero-heading>img{width:46px!important;height:46px!important;flex-basis:46px!important}
+#teacherApp #view-classes .ms32-hero-heading h2{
+  font-size:clamp(31px,3.1vw,43px)!important;
+  letter-spacing:-1.15px!important;
+  margin-bottom:10px!important;
+}
+#teacherApp #view-classes .ms32-hero-heading p{
+  font-size:15px!important;
+  line-height:1.45!important;
+  max-width:510px!important;
+}
+/* The legacy v12 archive stylesheet applies 2px borders by data attribute.
+ * Restore the uniform text-menu style; keyboard focus outlines remain intact. */
+#teacherApp #view-classes .ms32-action-menu button[data-archive-class] {
+  border:0!important;
+  border-width:0!important;
+  border-style:none!important;
+  box-shadow:none!important;
+  background:transparent!important;
+}
+#teacherApp #view-classes .ms32-action-menu button[data-archive-class]:hover{
+  background:#fff1e7!important;
+}
+@media(max-width:780px){
+  #teacherApp #view-dashboard .pm-hero,
+  #teacherApp #view-classes .ms32-hero{height:190px!important;min-height:190px!important;max-height:none!important;background-position:right center!important}
+  #teacherApp #view-dashboard .pm-hero-copy{width:72%!important;max-width:72%!important;padding:19px 19px!important}
+  #teacherApp #view-dashboard .pm-hero-copy h2{font-size:clamp(27px,5vw,38px)!important;letter-spacing:-1px!important}
+  #teacherApp #view-dashboard .pm-hero-copy>p:first-child{font-size:11px!important;margin-bottom:7px!important}
+  #teacherApp #view-dashboard .pm-hero-message{font-size:12px!important;margin-top:11px!important}
+  #teacherApp #view-dashboard .pm-hero-tint{background:linear-gradient(90deg,#fffaf7fa 0%,#fffaf7eb 51%,transparent 100%)!important}
+  #teacherApp #view-classes .ms32-hero{padding:17px!important}
+  #teacherApp #view-classes .ms32-hero:before{background:linear-gradient(90deg,rgba(255,250,247,.99) 0%,rgba(255,250,247,.96) 38%,rgba(255,250,247,.72) 62%,transparent 98%)}
+  #teacherApp #view-classes .ms32-hero-heading{max-width:75%!important;width:75%!important;gap:10px!important}
+  #teacherApp #view-classes .ms32-hero-heading>img{height:34px!important;width:34px!important;flex-basis:34px!important}
+  #teacherApp #view-classes .ms32-hero-heading h2{font-size:28px!important;margin-bottom:6px!important}
+  #teacherApp #view-classes .ms32-hero-heading p{font-size:11px!important}
+}
+@media(max-width:480px){
+  #teacherApp #view-dashboard .pm-hero,
+  #teacherApp #view-classes .ms32-hero{height:178px!important;min-height:178px!important}
+  #teacherApp #view-dashboard .pm-hero-copy{max-width:85%!important;width:85%!important;padding:15px!important}
+  #teacherApp #view-dashboard .pm-hero-copy h2{font-size:clamp(23px,6.1vw,30px)!important}
+  #teacherApp #view-dashboard .pm-hero-message{font-size:11px!important;max-width:255px!important}
+  #teacherApp #view-dashboard .pm-hero-underline{margin-left:65px!important;width:56px!important;height:3px!important}
+  #teacherApp #view-classes .ms32-hero-heading{width:86%!important;max-width:86%!important}
+  #teacherApp #view-classes .ms32-hero-heading h2{font-size:25px!important}
+  #teacherApp #view-classes .ms32-hero-heading p{font-size:10px!important}
+}

@@ -1,0 +1,25 @@
+
+'use strict';
+const fs=require('node:fs');
+const path=require('node:path');
+const assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');
+const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const html=read('index.html');
+const js=read('js/teacher-classes-design-a-v32.js');
+const css=read('css/teacher-classes-design-a-v32.css');
+const sw=read('service-worker.js');
+for(const id of ['view-classes','createClassBtn','ms32ClassSummary','ms32ClassesEmpty','ms32ClassesDirectory','classGrid','msClassSearch','msClassGrade','ms32ClassSort','ms32GridBtn','ms32ListBtn']) assert.ok(html.includes(`id="${id}"`),`Missing hook: ${id}`);
+for(const file of ['assets/teacher-classes-v32/classes-header-art.png','assets/teacher-classes-v32/class-roster-empty.png','assets/teacher-classes-v32/class-yellow.png','assets/teacher-classes-v32/class-rose.png']) assert.ok(fs.statSync(path.join(root,file)).size>100,`Missing artwork ${file}`);
+assert.match(html,/teacher-classes-design-a-v32.css/);
+assert.match(html,/teacher-classes-design-a-v32.js/);
+assert.match(js,/const previous=renderClasses/);
+assert.match(js,/data-view-class-students/);
+assert.match(js,/data-archive-class/);
+assert.match(js,/data-delete-class/);
+assert.match(js,/status !== 'graded'/);
+assert.match(css,/ms32-single/);
+assert.match(css,/#classGrid.ms32-class-grid/);
+assert.match(sw,/mathside-pwa-v(?:32-classes-design-a|33-dashboard-classes-headers|34-hd-banners|35-activities-design-b|36-activity-icons-hd-headers|37-performance-table|38-five-per-page|39-submissions-workspace|40-fixed-five-per-page|41-class-record-design-a|42-competencies-design-b|43-archive-design-a|44-art-and-class-designs|45-cloud-class-designs|46-create-class-theme)/);
+assert.ok(!html.includes('id="pmSidebarNotifications"'));
+console.log('PASS: Classes Design A teacher-only structure, actions, artwork and cache update');

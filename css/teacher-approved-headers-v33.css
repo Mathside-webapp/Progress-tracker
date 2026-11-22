@@ -1,0 +1,39 @@
+/* Mathside V33 – Apply only the two approved page header illustrations.
+   The remaining six teacher pages, individual class-card banners, sidebar and
+   assessment functionality are intentionally untouched. */
+
+/* New Dashboard header illustration. The art spans the banner at its natural
+   proportions; the welcome message remains selectable live HTML text. */
+#teacherApp #view-dashboard .pm-hero {
+  background-color: #fff9f2!important;
+  background-image: url("../assets/teacher-section-headers-v33/01-dashboard.png")!important;
+  background-position: center center!important;
+  background-size: cover!important;
+  background-repeat: no-repeat!important;
+}
+#teacherApp #view-dashboard .pm-hero-art {display:none!important}
+#teacherApp #view-dashboard .pm-hero-tint {
+  background:linear-gradient(90deg,rgba(255,250,247,.66) 0%, rgba(255,250,247,.34) 27%, rgba(255,250,247,0) 49%)!important;
+}
+/* Classes: display the actual illustrated objects on the right, keeping the
+   V32 header dimensions, text, card grid, and class actions unchanged. */
+#teacherApp #view-classes .ms32-hero-art {
+  width:min(48%,485px)!important;
+  max-width:48%!important;
+  height:100%!important;
+  bottom:0!important;
+  right:5px!important;
+  object-fit:contain!important;
+  object-position:right bottom!important;
+}
+@media(max-width:780px){
+ #teacherApp #view-dashboard .pm-hero {background-position: 63% center!important}
+ #teacherApp #view-dashboard .pm-hero-tint {
+    background:linear-gradient(90deg,rgba(255,250,247,.95) 0%,rgba(255,250,247,.86) 42%,rgba(255,250,247,.08) 100%)!important;
+ }
+ #teacherApp #view-classes .ms32-hero-art {width:51%!important;max-width:51%!important;height:100%!important;right:-7px!important;opacity:.8!important}
+}
+@media(max-width:440px){
+ #teacherApp #view-dashboard .pm-hero {background-position: 67% center!important}
+ #teacherApp #view-classes .ms32-hero-art {opacity:.46!important;right:-12px!important}
+}

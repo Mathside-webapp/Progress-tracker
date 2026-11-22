@@ -1,0 +1,50 @@
+/* Mathside V36 — approved banner clarity, consistent icon-only bulk actions, page sizing.
+   Page-specific selectors only; no changes to student pages, other teacher panels or grading. */
+/* A color-contrast enhanced high-density PNG replaces V34/V35 resampling while keeping
+   the exact approved objects/layout. The image itself is still a raster reconstruction. */
+#teacherApp #view-dashboard .pm-hero{
+  background-image:url('../assets/teacher-headers-v36/dashboard-crisp.png')!important;
+  background-position:right center!important;
+}
+#teacherApp #view-dashboard .pm-hero-tint{
+  background:linear-gradient(90deg,rgba(255,250,247,.96) 0%,rgba(255,250,247,.84) 22%,rgba(255,250,247,.25) 34%,transparent 45%)!important;
+}
+#teacherApp #view-classes .ms32-hero{
+  background-image:url('../assets/teacher-headers-v36/classes-crisp.png')!important;
+  background-position:right center!important;
+}
+#teacherApp #view-classes .ms32-hero:before{
+  background:linear-gradient(90deg,rgba(255,250,247,.98) 0%,rgba(255,250,247,.91) 19%,rgba(255,250,247,.38) 33%,transparent 44%)!important;
+}
+#teacherApp #view-assignments .ms35-hero{
+  background-image:url('../assets/teacher-headers-v36/activities-crisp.png')!important;
+  background-position:right center!important;
+}
+#teacherApp #view-assignments .ms35-hero:before{
+  background:linear-gradient(90deg,rgba(255,250,246,.99) 0%,rgba(255,250,246,.90) 19%,rgba(255,250,246,.30) 33%,transparent 45%)!important;
+}
+/* Match borderless archive/delete action buttons already in each activity row. */
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions{margin-left:auto;display:flex;align-items:center;gap:5px}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions button.ms35-bulk-icon{
+  width:32px!important;height:32px!important;min-height:32px!important;min-width:32px!important;
+  padding:0!important;display:grid!important;place-items:center!important;
+  border:0!important;outline-offset:2px!important;box-shadow:none!important;
+  background:transparent!important;border-radius:7px!important;color:#9c6a4c!important;
+}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions button.ms35-bulk-icon:not(:disabled):hover{background:#fff1e6!important;color:#ef6b06!important}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions button.ms35-bulk-icon.ms35-danger{color:#d3493d!important}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions button.ms35-bulk-icon.ms35-danger:not(:disabled):hover{background:#fff0ed!important;color:#c52c27!important}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions button.ms35-bulk-icon:disabled{opacity:.38!important;cursor:not-allowed!important}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions button.ms35-bulk-icon svg{width:17px!important;height:17px!important;stroke:currentColor!important;fill:none!important;stroke-width:1.85!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+#teacherApp #view-assignments .ms35-bulkbar .bulk-actions button.ms35-bulk-icon:focus-visible{outline:2px solid #ff7c2d!important}
+#teacherApp #view-assignments .ms35-footer-controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-left:auto}
+#teacherApp #view-assignments .ms35-page-size{display:flex;align-items:center;gap:7px;white-space:nowrap;font-size:11px;color:#776861}
+#teacherApp #view-assignments .ms35-page-size select{min-width:59px;height:30px;padding:0 19px 0 7px;border-radius:8px;border:1px solid #e8ddd6;background:#fff;color:#594d48;box-shadow:none;font-size:11px;font-weight:700}
+@media(max-width:780px){
+  #teacherApp #view-assignments .ms35-hero:before{background:linear-gradient(90deg,rgba(255,250,246,.99) 0%,rgba(255,250,246,.91) 45%,rgba(255,250,246,.35) 77%,transparent 100%)!important}
+  #teacherApp #view-dashboard .pm-hero-tint{background:linear-gradient(90deg,rgba(255,250,247,.98) 0%,rgba(255,250,247,.86) 51%,transparent 100%)!important}
+  #teacherApp #view-classes .ms32-hero:before{background:linear-gradient(90deg,rgba(255,250,247,.98) 0%,rgba(255,250,247,.88) 47%,transparent 100%)!important}
+}
+@media(max-width:470px){#teacherApp #view-assignments .ms35-footer-controls{margin-left:0;width:100%;justify-content:space-between;gap:9px}#teacherApp #view-assignments .ms35-bulkbar{gap:8px;padding:8px 12px}}
+
+#teacherApp #view-assignments .ms35-list-shell{scroll-margin-top:83px}
