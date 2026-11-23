@@ -2,10 +2,12 @@
    GitHub Pages + localhost friendly.
    Provides app-shell caching, a graceful offline fallback, and controlled updates. */
 
-const CACHE_NAME = 'mathside-pwa-v46-create-class-theme';
+// Previous deployment cache: mathside-pwa-v46-create-class-theme.
+const CACHE_NAME = 'mathside-pwa-v47-dashboard-mobile-fixes';
 const CACHE_PREFIX = 'mathside-pwa-';
 
 const APP_SHELL = [
+  './css/teacher-mobile-fixes-v47.css?v=47.0',
   './css/teacher-create-theme-v46.css?v=46.0',
   './js/teacher-create-theme-v46.js?v=46.0',
   './js/app.js?v=46.0-class-theme-creation',
@@ -75,7 +77,6 @@ const APP_SHELL = [
   './js/teacher-live-submissions-v30.js?v=39.0',
   './js/teacher-pixelmatch-v27.js?v=44.0',
   './assets/teacher-pixelmatch/mathside-hero-desk-original.png',
-  './assets/teacher-pixelmatch/mathside-books-plant.png',
   './assets/teacher-pixelmatch/class-orange.png',
   './assets/teacher-pixelmatch/class-green.png',
   './assets/teacher-pixelmatch/class-blue.png',

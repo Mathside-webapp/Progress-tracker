@@ -1,0 +1,68 @@
+/* Mathside V47: dashboard art, single notification indicator and mobile-accessible class actions.
+   Intentional UI-only changes; no Supabase, grading or archive behavior modified. */
+
+/* Keep the existing unread count while removing the second redundant orange dot. */
+#teacherApp #teacherNotificationBtn::after,
+#teacherApp #teacherNotificationBtn:has(#teacherNotificationBadge:not([hidden]))::after{
+  content:none!important;display:none!important;
+}
+#teacherApp #teacherNotificationBadge:not([hidden]){
+  position:absolute;top:-2px;right:-2px;z-index:3;
+  min-width:17px;height:17px;padding:0 4px;
+  display:grid;place-items:center;
+  border:2px solid #fff;border-radius:999px;
+  color:#fff;background:#f35b32;
+  font:750 10px/1 Inter,'Segoe UI',Arial,sans-serif;
+  box-sizing:content-box;
+}
+#teacherApp #teacherNotificationBadge[hidden]{display:none!important;}
+
+/* Give the dashboard a real destination-oriented quick action, not repeated brand copy.
+   Its small illustration is embedded in index.html so missing partial GitHub uploads can't break it. */
+#teacherApp .pm-promo .pm-promo-copy{max-width:55%;align-self:stretch;align-content:start;}
+#teacherApp .pm-promo .ms47-promo-link{display:inline-flex;gap:5px;align-items:center;
+  margin-top:10px;font:750 11px/1.2 Inter,'Segoe UI',Arial,sans-serif;color:#d8580a;}
+#teacherApp .pm-promo>img{max-width:58%;max-height:calc(100% + 16px);}
+
+/* A 44px touch area around class actions, moved into clear space on the banner. */
+@media (hover:none), (pointer:coarse), (max-width:780px){
+  #teacherApp #view-classes .ms32-class-grid .ms32-card:has(.ms32-card-more[open]){
+    z-index:100!important;
+  }
+  #teacherApp #view-classes .ms32-card-more{
+    position:absolute!important;top:5px!important;right:6px!important;
+    margin:0!important;z-index:8!important;
+  }
+  #teacherApp #view-classes .ms32-card-more>summary{
+    box-sizing:border-box!important;width:44px!important;height:44px!important;min-width:44px!important;
+    display:grid!important;place-items:center!important;
+    background:#fffcf7ee!important;border:1px solid #fff6!important;
+    border-radius:12px!important;color:#3d2c23!important;
+    font:800 27px/1 Inter,'Segoe UI',Arial,sans-serif!important;
+    box-shadow:0 2px 7px #5c321d2b!important;
+    touch-action:manipulation;user-select:none;-webkit-tap-highlight-color:transparent;
+  }
+  #teacherApp #view-classes .ms32-card-more[open]>summary,
+  #teacherApp #view-classes .ms32-card-more>summary:active{background:#fff0df!important;color:#d85a00!important;}
+  #teacherApp #view-classes .ms32-card-more>summary:focus-visible{
+    outline:3px solid #ff890e!important;outline-offset:2px!important;
+  }
+  #teacherApp #view-classes .ms32-action-menu{
+    top:48px!important;right:0!important;width:194px!important;max-width:calc(100vw - 28px)!important;
+    padding:7px!important;border-radius:12px!important;box-shadow:0 14px 32px #20140d38!important;
+  }
+  #teacherApp #view-classes .ms32-action-menu>button{
+    box-sizing:border-box!important;min-height:44px!important;padding:11px 12px!important;
+    font-size:12px!important;touch-action:manipulation;
+  }
+  /* Leave a little extra title space if the card is exceptionally narrow. */
+  #teacherApp #view-classes .ms32-card-title{padding-right:0!important;}
+}
+@media(max-width:530px){
+  #teacherApp #teacherNotificationBtn{width:44px!important;min-width:44px!important;height:44px!important;
+    display:grid!important;place-items:center!important;touch-action:manipulation;}
+  #teacherApp #view-dashboard .pm-promo{min-height:160px!important;}
+  #teacherApp #view-dashboard .pm-promo .pm-promo-copy{max-width:57%;}
+  #teacherApp #view-dashboard .pm-promo>img{right:-9px!important;bottom:-18px!important;
+    width:52%!important;height:auto!important;max-height:100%!important;object-fit:contain!important;}
+}
